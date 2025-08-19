@@ -1,0 +1,1407 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=0.8, maximum-scale=0.8, user-scalable=no">
+    <title>📺 A4V 📺</title>
+    <style>
+      /* Variables CSS del primer HTML para unificar el estilo */
+      :root {
+        --primary: #2563eb;
+        --primary-light: rgba(37, 99, 235, 0.1);
+        --primary-dark: #1e50c7;
+        --bg-light: #f1f5f9;
+        --card-bg: #ffffff;
+        --text: #1e293b;
+        --border-color: #e2e8f0;
+        --white: #ffffff;
+        --radius-md: 10px;
+        --radius-sm: 6px;
+        --shadow-sm: 0 1px 3px rgba(0,0,0,0.1);
+        --primary-rgb: 37, 99, 235;
+        
+        /* Colores del segundo HTML para los nombres de canales */
+        --secondary: #f72585;
+        --success: #4cc9f0;
+        --warning: #f8961e;
+        --info: #4895ef;
+        --movistar-blue: #0085C1;
+        --eurosport-blue: #440c8b;
+        --dazn-black: #000000;
+        --f1-red:#ff3535;
+        --channel-name-color: #888888;
+        --action-red: #ff544d;
+        --classics-red: #fa3732;
+        --sports-green: #11a45b;
+        --vamos-green: #1fc23d;
+        --copadelrey-green: #449653;
+        --champions-teal: #52c29c;
+        --liga-teal: #21ffb8;
+        --hypermotion-cyan: #04d2d7;
+        --golf-teal: #4ee1b0;
+        --eurosport-number-red: #ff3535;
+        --gist-source-color: #4cc9f0;
+        --elcano-source-color: #f72585;
+        --special-gist-color: #9c27b0;
+        --events-source-color: #f8961e;
+        
+        --player-bg: black;
+      }
+      
+      body.dark-mode {
+        --bg-light: #131313;
+        --card-bg: #333436;
+        --text: #f8fafc;
+        --border-color: #555555;
+        --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
+        --primary-light: rgba(var(--primary-rgb), 0.2);
+        --channel-name-color: #e2e2ff;
+        --player-bg: #1e1e1e;
+      }
+      
+      body {
+        background: var(--bg-light);
+        color: var(--text);
+        font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        line-height: 1.6;
+        margin: 0;
+        padding: 0;
+        transition: all 0.3s;
+      }
+      
+      .main-container {
+        max-width: 1400px;
+        margin: 1rem auto;
+        padding: 0 1rem;
+      }
+      
+      .search-filters {
+        background: var(--card-bg);
+        border-radius: var(--radius-md);
+        padding: 1rem;
+        margin-bottom: 1rem;
+        box-shadow: var(--shadow-sm);
+        display: flex;
+        flex-direction: column;
+      }
+      
+      .search-box {
+        position: relative;
+        margin-bottom: 0.8rem;
+      }
+      
+      .search-box input {
+        width: 100%;
+        padding: 0.6rem 1rem 0.6rem 2.2rem;
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-sm);
+        font-size: 0.9rem;
+        background-color: var(--card-bg);
+        color: var(--text);
+        box-sizing: border-box;
+      }
+      
+      .search-box::before {
+        content: "🔍";
+        position: absolute;
+        left: 0.8rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--text);
+        font-size: 0.9rem;
+      }
+      
+      .filter-buttons {
+        display: flex;
+        gap: 0.6rem;
+        margin-top: 0.8rem;
+        flex-wrap: wrap; /* Añadimos flex-wrap para que los botones se envuelvan */
+      }
+      
+      .filter-button {
+        flex: 1;
+        padding: 0.5rem;
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-sm);
+        background: var(--card-bg);
+        color: var(--text);
+        cursor: pointer;
+        font-size: 0.8rem;
+        font-weight: 500;
+        transition: all 0.2s;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-basis: auto; /* Permite que los elementos crezcan y se adapten */
+      }
+      
+      .filter-button:hover {
+        border-color: var(--primary);
+      }
+      
+      .filter-button--active {
+        background: var(--primary);
+        color: white;
+        border-color: var(--primary);
+      }
+      
+      .filter-button--favorites, .filter-button--clear {
+        flex: 0 0 auto;
+        width: 36px;
+        min-width: 36px;
+        padding: 0.5rem 0;
+      }
+      
+      .channels-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 1rem;
+      }
+      
+      .channel-card {
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-md);
+        padding: 1rem;
+        cursor: pointer;
+        box-shadow: var(--shadow-sm);
+        transition: all 0.2s;
+        position: relative;
+        overflow: hidden;
+      }
+      
+      .channel-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        border-color: var(--primary-light);
+      }
+
+      .channel-card .channel-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .channel-name {
+        font-weight: 600;
+        flex-grow: 1;
+        padding: 0 0.5rem;
+        text-align: left;
+        font-size: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .channel-number {
+        color: var(--primary);
+        font-weight: 600;
+        font-size: 0.95rem;
+        white-space: nowrap;
+      }
+
+      /* Estilos adicionales para unificar el aspecto */
+      .channel-info {
+          display: flex; /* Mostrar la info de calidad y audio */
+          justify-content: space-between;
+          align-items: center;
+          margin-top: 0.5rem;
+          font-size: 0.8rem;
+          color: #6b7280;
+      }
+      
+      body.dark-mode .channel-info {
+          color: #a0a0a0;
+      }
+      
+      .channel-card--favorite {
+        border: 2px solid var(--primary);
+      }
+
+      .channel-group {
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-md);
+        padding: 0;
+        margin-bottom: 1rem;
+        box-shadow: var(--shadow-sm);
+      }
+      
+      .channel-group__header {
+        padding: 0.8rem 1rem;
+        background: var(--primary-light);
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      
+      .channel-group__title {
+        font-weight: 600;
+        color: var(--text);
+        font-size: 1rem;
+      }
+      
+      .channel-group__content {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 0.8rem;
+        padding: 0.8rem;
+      }
+      
+      .offline-message {
+        background: #fef2f2;
+        color: #dc2626;
+        padding: 0.5rem;
+        border-radius: var(--radius-sm);
+        margin-bottom: 1rem;
+        text-align: center;
+      }
+      
+      .update-notification {
+        background: #dbeafe;
+        color: var(--primary);
+        padding: 0.5rem;
+        border-radius: var(--radius-sm);
+        margin-bottom: 1rem;
+        text-align: center;
+        font-weight: 600;
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.5s ease, opacity 0.5s ease, margin 0.5s ease;
+        opacity: 0;
+        margin: 0;
+      }
+      
+      .update-notification--show {
+        max-height: 100px;
+        opacity: 1;
+        margin-bottom: 1rem;
+      }
+      
+      .loading-spinner {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border: 3px solid rgba(0, 0, 0, 0.1);
+        border-radius: 50%;
+        border-top-color: var(--primary);
+        animation: spin 1s ease-in-out infinite;
+        margin-left: 10px;
+      }
+      
+      .loading-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 10px;
+        padding: 10px;
+        background: var(--card-bg);
+        border-radius: var(--radius-sm);
+        margin-bottom: 1rem;
+      }
+      
+      .no-results {
+        grid-column: 1 / -1;
+        text-align: center;
+        padding: 2rem;
+        background: var(--card-bg);
+        border-radius: var(--radius-md);
+        box-shadow: var(--shadow-sm);
+        margin-top: 1rem;
+      }
+      
+      .no-results-icon {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+        opacity: 0.5;
+      }
+      
+      .no-results-text {
+        font-size: 1.1rem;
+        color: var(--text);
+        margin-bottom: 0.5rem;
+      }
+      
+      .no-results-hint {
+        font-size: 0.9rem;
+        color: var(--text);
+        opacity: 0.7;
+      }
+
+      .modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.5);
+        display: none;
+        justify-content: center;
+        align-items: center;
+        z-index: 1001;
+      }
+      
+      .modal--active {
+        display: flex;
+      }
+      
+      .modal__content {
+        background: var(--card-bg);
+        border-radius: var(--radius-md);
+        padding: 1.2rem;
+        width: 90%;
+        max-width: 350px;
+        box-shadow: var(--shadow-sm);
+      }
+      
+      .modal__title {
+        margin-bottom: 0.8rem;
+        color: var(--text);
+        font-size: 1.1rem;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      
+      .modal__actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.6rem;
+        margin-top: 1rem;
+      }
+      
+      .modal__btn {
+        padding: 0.5rem 0.8rem;
+        border: none;
+        border-radius: var(--radius-sm);
+        cursor: pointer;
+        font-weight: 500;
+        font-size: 0.9rem;
+        transition: all 0.2s;
+      }
+      
+      .modal__btn--primary {
+        background: var(--primary);
+        color: white;
+      }
+      
+      .modal__btn--primary:hover {
+        background: var(--primary-dark);
+      }
+
+      .settings-section {
+        margin-bottom: 1.2rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid var(--border-color);
+      }
+      
+      .settings-section:last-child {
+        border-bottom: none;
+        margin-bottom: 0;
+        padding-bottom: 0;
+      }
+      
+      .settings-section__title {
+        font-size: 0.9rem;
+        color: var(--primary);
+        margin-bottom: 0.8rem;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      
+      .settings-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.8rem;
+        padding: 0.5rem;
+        border-radius: var(--radius-sm);
+        transition: background 0.2s;
+      }
+      
+      .settings-item:hover {
+        background: var(--primary-light);
+      }
+      
+      .settings-item__info {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex: 1;
+      }
+      
+      .settings-icon {
+        font-size: 1.2rem;
+      }
+      
+      .settings-label {
+        font-size: 0.9rem;
+        color: var(--text);
+        font-weight: 500;
+        display: block;
+      }
+      
+      .settings-description {
+        font-size: 0.75rem;
+        color: var(--text);
+        opacity: 0.7;
+        display: block;
+        margin-top: 2px;
+      }
+      
+      .settings-switch {
+        position: relative;
+        display: inline-block;
+        width: 50px;
+        height: 24px;
+      }
+      
+      .settings-switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+      }
+      
+      .settings-slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #ccc;
+        transition: .4s;
+        border-radius: 24px;
+      }
+      
+      .settings-slider:before {
+        position: absolute;
+        content: "";
+        height: 16px;
+        width: 16px;
+        left: 4px;
+        bottom: 4px;
+        background-color: white;
+        transition: .4s;
+        border-radius: 50%;
+      }
+      
+      input:checked + .settings-slider {
+        background-color: var(--primary);
+      }
+      
+      input:checked + .settings-slider:before {
+        transform: translateX(26px);
+      }
+
+      /* Ocultar el header del segundo HTML para mantener la estética */
+      .header {
+        display: none;
+      }
+
+      /* Estilos para los nombres de los canales */
+      .movistar { color: var(--movistar-blue) !important; }
+      .eurosport { color: var(--eurosport-blue) !important; }
+      .dazn { color: var(--dazn-black) !important; }
+      .f1 { color: var(--f1-red) !important; }
+      .action { color: var(--action-red) !important; }
+      .classics { color: var(--classics-red) !important; }
+      .sports { color: var(--sports-green) !important; }
+      .vamos { color: var(--vamos-green) !important; }
+      .copadelrey { color: var(--copadelrey-green) !important; }
+      .champions { color: var(--champions-teal) !important; }
+      .liga { color: var(--liga-teal) !important; }
+      .hypermotion { color: var(--hypermotion-cyan) !important; }
+      .golf { color: var(--golf-teal) !important; }
+      .eurosport-number { color: var(--eurosport-number-red) !important; }
+      .smartbank { color: var(--smartbank-red) !important; }
+      .plus { color: var(--plus-black) !important; }
+
+      .source-badge {
+          position: absolute;
+          top: 5px;
+          right: 5px;
+          font-size: 0.6rem;
+          font-weight: bold;
+          padding: 0.2rem 0.4rem;
+          border-radius: 3px;
+          z-index: 1;
+      }
+      
+      .gist-badge { background-color: var(--gist-source-color); color: white; }
+      .elcano-badge { background-color: var(--elcano-source-color); color: white; }
+      .special-gist-badge { background-color: var(--special-gist-color); color: white; }
+      .events-badge { background-color: var(--events-source-color); color: white; }
+
+      .retry-button {
+          padding: 0.5rem 1rem;
+          margin-top: 10px;
+          background-color: var(--warning);
+          color: white;
+          border: none;
+          border-radius: var(--radius-sm);
+          cursor: pointer;
+      }
+
+      .status-message {
+          grid-column: 1 / -1;
+          text-align: center;
+          padding: 0.5rem;
+          color: var(--success);
+          font-size: 0.85rem;
+          background-color: rgba(76, 201, 240, 0.1);
+          border-radius: var(--radius-sm);
+          margin-bottom: 0.5rem;
+      }
+
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+
+      @media (max-width: 768px) {
+        .channels-grid {
+          grid-template-columns: 1fr;
+        }
+        
+        .filter-buttons {
+          flex-wrap: wrap; /* Mantenemos la envoltura */
+        }
+        
+        .channel-group__content {
+          grid-template-columns: 1fr;
+        }
+      }
+      
+      @media (min-width: 768px) {
+        .channels-grid {
+          grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+        }
+        
+        .channel-name {
+          font-size: 1.1rem;
+        }
+      }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <div class="player-section" id="playerSection" style="display: none;">
+            <div class="player-container" id="playerContainer">
+                <iframe id="videoFrame" allowfullscreen></iframe>
+                <iframe id="scheduleFrame" allowfullscreen></iframe>
+            </div>
+            <div class="player-controls" id="playerControls">
+                <span class="channel-info" id="channelInfo"></span>
+                <button class="control-btn" id="prevChannelBtn" title="Canal anterior">◄</button>
+                <button class="control-btn" id="nextChannelBtn" title="Canal siguiente">►</button>
+                <button class="control-btn" id="toggleStickyBtn" title="Fijar reproductor">⛊</button>
+                <button class="control-btn" id="favoriteBtn" title="Guardar favorito">★</button>
+                <button class="control-btn" id="closePlayerBtn" title="Cerrar">×</button>
+                <span class="channel-number-display" id="channelNumberDisplay"></span>
+            </div>
+        </div>
+        
+        <div class="search-filters">
+            <div class="search-box">
+                <input type="text" id="searchInput" placeholder="Buscar canales, número (ej: #123)" autofocus>
+            </div>
+            <div class="filter-buttons">
+                <button class="filter-button filter-button--favorites" id="filterFavorites">★</button>
+                <button class="filter-button" id="filterDAZN">DAZN</button>
+                <button class="filter-button" id="filterMovistar">M+</button>
+                <button class="filter-button" id="filterEurosport">Eurosport</button>
+                <button class="filter-button filter-button--clear" id="clearEmojiFilters">x</button>
+            </div>
+        </div>
+
+        <div id="offlineMessage" class="offline-message" style="display: none;">Modo offline: mostrando canales del historial</div>
+        <div id="updateNotification" class="update-notification"></div>
+        <div class="channels-grid" id="channelsGrid">
+            <div class="loading-container">
+                <div class="loading-spinner"></div>
+                <span>Cargando canales...</span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="modal" id="settingsModal">
+        <div class="modal__content">
+            <h3 class="modal__title">⚙️ Ajustes</h3>
+            
+            <div class="settings-section">
+                <h4 class="settings-section__title">🎨 Apariencia</h4>
+                
+                <div class="settings-item">
+                    <div class="settings-item__info">
+                        <span class="settings-icon">🌓</span>
+                        <div>
+                            <span class="settings-label">Modo oscuro</span>
+                            <span class="settings-description">Cambia entre tema claro y oscuro</span>
+                        </div>
+                    </div>
+                    <label class="settings-switch">
+                        <input type="checkbox" id="darkModeCheckbox">
+                        <span class="settings-slider"></span>
+                    </label>
+                </div>
+            </div>
+            
+            <div class="modal__actions">
+                <button class="modal__btn modal__btn--primary" id="closeSettingsBtn">Cerrar</button>
+            </div>
+        </div>
+    </div>
+    <script>
+      const state = {
+          allChannels: [],
+          channelsData: [],
+          currentFilter: 'all',
+          searchTerm: '',
+          favorites: JSON.parse(localStorage.getItem('favorites')) || [],
+          channelHistory: JSON.parse(localStorage.getItem('channelHistory')) || {},
+          currentChannel: null,
+          clearButtonClickCount: 0,
+          lastClearButtonClickTime: 0,
+          isOnline: navigator.onLine,
+          elcanoRetries: 0,
+          eventsRetries: 0,
+          darkMode: localStorage.getItem('darkMode') !== 'false',
+      };
+
+      const MAX_RETRIES = 3;
+      const ELCANO_BACKUP_KEY = 'a4v_elcano_backup';
+      const EVENTS_BACKUP_KEY = 'a4v_events_backup';
+      const CHANNEL_HISTORY_KEY = 'a4v_channel_history';
+      const BACKUP_EXPIRY_HOURS = 6;
+      const HISTORY_EXPIRY_HOURS = 168;
+
+      function toggleDarkMode() {
+        state.darkMode = !state.darkMode;
+        localStorage.setItem('darkMode', state.darkMode);
+        document.body.classList.toggle('dark-mode', state.darkMode);
+        document.getElementById('darkModeCheckbox').checked = state.darkMode;
+      }
+      
+      function applyFilter(filter) {
+        state.currentFilter = filter;
+        document.getElementById('searchInput').value = '';
+        state.searchTerm = '';
+        
+        // Desactiva todos los botones
+        document.querySelectorAll('.filter-button').forEach(btn => btn.classList.remove('filter-button--active'));
+        
+        // Activa el botón correcto
+        const targetBtn = document.getElementById(`filter${filter.charAt(0).toUpperCase() + filter.slice(1)}`);
+        if (targetBtn) {
+            targetBtn.classList.add('filter-button--active');
+        } else if (filter === 'all') {
+            document.getElementById('clearEmojiFilters').classList.add('filter-button--active');
+        }
+        
+        renderResults();
+      }
+
+      function handleClearButtonClick() {
+        const now = Date.now();
+        if (now - state.lastClearButtonClickTime > 1000) state.clearButtonClickCount = 0;
+        state.clearButtonClickCount++;
+        state.lastClearButtonClickTime = now;
+        
+        if (state.clearButtonClickCount >= 3) {
+          document.getElementById('settingsModal').classList.add('modal--active');
+          state.clearButtonClickCount = 0;
+        } else {
+          // Un solo clic en el botón 'X' ahora activa el filtro 'todos'
+          applyFilter('all');
+        }
+      }
+
+      function showStatusMessage(message, type = "info") {
+          let statusElement = document.querySelector(".status-message");
+          
+          if (!statusElement) {
+              statusElement = document.createElement("div");
+              statusElement.className = "status-message";
+              const channelsGrid = document.getElementById("channelsGrid");
+              channelsGrid.prepend(statusElement);
+          }
+          
+          statusElement.textContent = message;
+          statusElement.style.color = type === "error" ? "#dc2626" : "#4cc9f0";
+          statusElement.style.backgroundColor = type === "error" ? "rgba(247, 37, 133, 0.1)" : "rgba(76, 201, 240, 0.1)";
+          if (type === "error") statusElement.style.color = "var(--secondary)";
+          if (type === "success") statusElement.style.color = "var(--success)";
+      }
+
+      function saveBackup(data, key) {
+          const backupData = {
+              timestamp: new Date().getTime(),
+              data: data
+          };
+          localStorage.setItem(key, JSON.stringify(backupData));
+      }
+
+      function loadBackup(key) {
+          const backup = localStorage.getItem(key);
+          if (!backup) return null;
+          
+          const parsedBackup = JSON.parse(backup);
+          const backupAgeHours = (new Date().getTime() - parsedBackup.timestamp) / (1000 * 60 * 60);
+          
+          if (backupAgeHours > BACKUP_EXPIRY_HOURS) {
+              localStorage.removeItem(key);
+              return null;
+          }
+          
+          return parsedBackup.data;
+      }
+      
+      function saveChannelHistory(channels) {
+          const history = {
+              timestamp: new Date().getTime(),
+              channels: channels
+          };
+          localStorage.setItem(CHANNEL_HISTORY_KEY, JSON.stringify(history));
+      }
+
+      function loadChannelHistory() {
+          const history = localStorage.getItem(CHANNEL_HISTORY_KEY);
+          if (!history) return null;
+          
+          const parsedHistory = JSON.parse(history);
+          const backupAgeHours = (new Date().getTime() - parsedHistory.timestamp) / (1000 * 60 * 60);
+          
+          if (backupAgeHours > HISTORY_EXPIRY_HOURS) {
+              localStorage.removeItem(CHANNEL_HISTORY_KEY);
+              return null;
+          }
+          
+          return parsedHistory.channels;
+      }
+
+      function mergeChannels(oldChannels, newChannels) {
+          const uniqueGistChannels = oldChannels.filter(oldChan => 
+              !newChannels.some(newChan => newChan.id === oldChan.id)
+          );
+          return [...uniqueGistChannels, ...newChannels];
+      }
+
+      async function loadInitialChannels() {
+          const channelsGrid = document.getElementById("channelsGrid");
+          channelsGrid.innerHTML = '<div class="loading-container"><div class="loading-spinner"></div><span>Cargando canales...</span></div>';
+          
+          try {
+              const gistChannels = await loadGistChannels();
+              const historicalChannels = loadChannelHistory();
+              
+              if (historicalChannels && historicalChannels.length > 0) {
+                  state.channelsData = mergeChannels(gistChannels, historicalChannels);
+                  renderResults();
+                  showStatusMessage("Mostrando canales históricos mientras se actualizan...");
+              } else {
+                  const elcanoBackup = loadBackup(ELCANO_BACKUP_KEY);
+                  const eventsBackup = loadBackup(EVENTS_BACKUP_KEY);
+                  
+                  let mergedChannels = gistChannels;
+                  
+                  if (elcanoBackup && elcanoBackup.length > 0) {
+                      mergedChannels = mergeChannels(mergedChannels, elcanoBackup);
+                  }
+                  
+                  if (eventsBackup && eventsBackup.length > 0) {
+                      mergedChannels = mergeChannels(mergedChannels, eventsBackup);
+                  }
+                  
+                  state.channelsData = mergedChannels;
+                  renderResults();
+                  showStatusMessage("Cargando canales adicionales...");
+              }
+              
+              loadElcanoChannels();
+              loadEventsChannels();
+              
+          } catch (error) {
+              console.error("Error al cargar canales iniciales:", error);
+              channelsGrid.innerHTML = `
+                  <div class="no-results">
+                      Error al cargar los canales principales.<br>
+                      <button class="retry-button" onclick="loadInitialChannels()">Reintentar</button>
+                  </div>
+              `;
+          }
+      }
+
+      async function loadGistChannels() {
+          const infoGistUrl = "https://gist.githubusercontent.com/T22V/ab76c1aa6c6b90fb2a9ad38dc4a66210/raw";
+          const infoResponse = await fetch(infoGistUrl);
+          
+          if (!infoResponse.ok) throw new Error("Error al obtener la info de canales Gist");
+          const infoContent = await infoResponse.text();
+          
+          return processGistData(infoContent);
+      }
+
+      function processGistData(infoCanales) {
+          const numberedChannels = [];
+          
+          infoCanales.split('\n').forEach(linea => {
+              linea = linea.trim();
+              if (!linea) return;
+              
+              const parts = linea.split(',').map(part => part.trim());
+              
+              if (parts.length >= 5) {
+                  const num = parts[0];
+                  const nombre = parts[1];
+                  const calidad = parts[2] === 'N/A' ? '720p' : (parts[2] === '1080' ? '1080p' : parts[2]);
+                  const multiaudio = parts[3] === 'Sí' || parts[3] === 'Sí,' || parts[3] === 'Yes';
+                  const acestreamId = parts[4].match(/acestream:\/\/([a-fA-F0-9]+)/)?.[1] || 
+                                     parts[4].match(/([a-fA-F0-9]{40})/)?.[1];
+                  
+                  if (acestreamId) {
+                      numberedChannels.push({
+                          id: acestreamId,
+                          number: num,
+                          name: nombre,
+                          quality: calidad,
+                          multiAudio: multiaudio,
+                          isKnown: true,
+                          source: 'gist'
+                      });
+                  }
+              }
+          });
+          
+          return numberedChannels;
+      }
+
+      async function loadElcanoChannels() {
+          showStatusMessage("Actualizando canales adicionales... (esto puede tomar un momento)");
+          
+          try {
+              const elcanoChannels = await loadElcanoSource();
+              const historicalChannels = loadChannelHistory() || [];
+              
+              const mergedChannels = mergeChannels(historicalChannels, elcanoChannels);
+              saveChannelHistory(mergedChannels);
+              saveBackup(elcanoChannels, ELCANO_BACKUP_KEY);
+              
+              const uniqueChannelsMap = new Map();
+              
+              state.channelsData.forEach(channel => {
+                  if (channel.source === 'gist') {
+                      uniqueChannelsMap.set(channel.id, channel);
+                  }
+              });
+              
+              mergedChannels.forEach(channel => {
+                  uniqueChannelsMap.set(channel.id, channel);
+              });
+              
+              state.channelsData = Array.from(uniqueChannelsMap.values());
+              renderResults();
+              showStatusMessage("Canales adicionales actualizados correctamente");
+              state.elcanoRetries = 0;
+              
+          } catch (error) {
+              console.error("Error al cargar ElCanó:", error);
+              state.elcanoRetries++;
+              
+              if (state.elcanoRetries <= MAX_RETRIES) {
+                  console.log(`Reintentando ElCanó (${state.elcanoRetries}/${MAX_RETRIES})...`);
+                  showStatusMessage(`Error al actualizar, reintentando... (Intento ${state.elcanoRetries}/${MAX_RETRIES})`, "error");
+                  setTimeout(loadElcanoChannels, 2000 * state.elcanoRetries);
+              } else {
+                  console.log("Máximo de reintentos alcanzado para ElCanó");
+                  showStatusMessage("No se pudieron actualizar los canales adicionales. Mostrando copia de seguridad.", "error");
+                  
+                  const historicalChannels = loadChannelHistory();
+                  if (historicalChannels && historicalChannels.length > 0) {
+                      const gistChannels = state.channelsData.filter(c => c.source === 'gist');
+                      state.channelsData = [...gistChannels, ...historicalChannels];
+                      renderResults();
+                  }
+              }
+          }
+      }
+
+      async function loadEventsChannels() {
+          showStatusMessage("Actualizando eventos deportivos... (esto puede tomar un momento)");
+          
+          try {
+              const eventsChannels = await loadEventsSource();
+              saveBackup(eventsChannels, EVENTS_BACKUP_KEY);
+              
+              const uniqueChannelsMap = new Map();
+              
+              state.channelsData.forEach(channel => {
+                  uniqueChannelsMap.set(channel.id, channel);
+              });
+              
+              eventsChannels.forEach(channel => {
+                  uniqueChannelsMap.set(channel.id, channel);
+              });
+              
+              state.channelsData = Array.from(uniqueChannelsMap.values());
+              renderResults();
+              showStatusMessage("Eventos deportivos actualizados correctamente");
+              state.eventsRetries = 0;
+              
+          } catch (error) {
+              console.error("Error al cargar eventos deportivos:", error);
+              state.eventsRetries++;
+              
+              if (state.eventsRetries <= MAX_RETRIES) {
+                  console.log(`Reintentando eventos deportivos (${state.eventsRetries}/${MAX_RETRIES})...`);
+                  showStatusMessage(`Error al actualizar eventos, reintentando... (Intento ${state.eventsRetries}/${MAX_RETRIES})`, "error");
+                  setTimeout(loadEventsChannels, 2000 * state.eventsRetries);
+              } else {
+                  console.log("Máximo de reintentos alcanzado para eventos deportivos");
+                  showStatusMessage("No se pudieron actualizar los eventos deportivos. Mostrando copia de seguridad.", "error");
+                  
+                  const eventsBackup = loadBackup(EVENTS_BACKUP_KEY);
+                  if (eventsBackup && eventsBackup.length > 0) {
+                      const otherChannels = state.channelsData.filter(c => c.source !== 'events');
+                      state.channelsData = [...otherChannels, ...eventsBackup];
+                      renderResults();
+                  }
+              }
+          }
+      }
+
+      async function loadElcanoSource() {
+          const PROXIES = [
+              'https://api.allorigins.win/raw?url=',
+              'https://cors-anywhere.herokuapp.com/',
+              'https://api.codetabs.com/v1/proxy/?quest='
+          ];
+          
+          let lastError;
+          
+          for (const proxy of PROXIES) {
+              try {
+                  const proxyUrl = proxy + encodeURIComponent('https://ipfs.io/ipns/elcano.top');
+                  const controller = new AbortController();
+                  const timeoutId = setTimeout(() => controller.abort(), 15000);
+                  
+                  const response = await fetch(proxyUrl, { signal: controller.signal });
+                  
+                  clearTimeout(timeoutId);
+                  
+                  if (!response.ok) throw new Error(`Proxy ${proxy} responded with ${response.status}`);
+                  
+                  const htmlContent = await response.text();
+                  const jsonMatch = htmlContent.match(/const linksData\s*=\s*({[\s\S]*?});/);
+                  
+                  if (!jsonMatch) throw new Error("Data format changed");
+                  
+                  const linksData = JSON.parse(jsonMatch[1]
+                      .replace(/\s*\/\/.*(?:\n|$)/g, '')
+                      .replace(/,\s*}/g, '}')
+                      .replace(/,\s*]/g, ']'));
+                      
+                  return processElcanoData(linksData.links || []);
+                  
+              } catch (error) {
+                  lastError = error;
+                  console.warn(`Proxy ${proxy} failed:`, error);
+                  continue;
+              }
+          }
+          
+          throw lastError || new Error("All proxies failed");
+      }
+
+      async function loadEventsSource() {
+          const PROXIES = [
+              'https://api.allorigins.win/raw?url=',
+              'https://cors-anywhere.herokuapp.com/',
+              'https://api.codetabs.com/v1/proxy/?quest='
+          ];
+          
+          let lastError;
+          
+          for (const proxy of PROXIES) {
+              try {
+                  const proxyUrl = proxy + encodeURIComponent('https://eventos-liartvercelapp.vercel.app/');
+                  const controller = new AbortController();
+                  const timeoutId = setTimeout(() => controller.abort(), 15000);
+                  
+                  const response = await fetch(proxyUrl, { signal: controller.signal });
+                  
+                  clearTimeout(timeoutId);
+                  
+                  if (!response.ok) throw new Error(`Proxy ${proxy} responded with ${response.status}`);
+                  
+                  const htmlContent = await response.text();
+                  return processEventsData(htmlContent);
+                  
+              } catch (error) {
+                  lastError = error;
+                  console.warn(`Proxy ${proxy} failed:`, error);
+                  continue;
+              }
+          }
+          
+          throw lastError || new Error("All proxies failed");
+      }
+
+      function processElcanoData(links) {
+          const numberedChannels = [];
+          let currentNumber = 500;
+          
+          links.forEach(link => {
+              if (link.url && link.url.startsWith('acestream://')) {
+                  const acestreamId = link.url.split('://')[1];
+                  
+                  let quality = '720p';
+                  let multiAudio = false;
+                  
+                  if (link.name.includes('1080')) quality = '1080p';
+                  if (link.name.includes('720')) quality = '720p';
+                  if (link.name.includes('UHD')) quality = 'UHD';
+                  
+                  multiAudio = link.name.includes('MultiAudio') || 
+                               link.name.includes('Multi Audio') || 
+                               link.name.toLowerCase().includes('multi');
+                  
+                  let simplifiedName = link.name
+                      .replace(/1080|720|UHD|MultiAudio|Multi Audio|\(.*?\)/g, '')
+                      .replace(/\s+/g, ' ')
+                      .trim();
+                  
+                  if (simplifiedName.includes('M. LaLiga')) {
+                      simplifiedName = simplifiedName.replace('M. LaLiga', 'M+ La Liga');
+                  } else if (simplifiedName.includes('LaLiga Smartbank')) {
+                      simplifiedName = simplifiedName.replace('LaLiga Smartbank', 'M+ La Liga Hypermotion');
+                  } else if (simplifiedName.includes('Eurosport')) {
+                      simplifiedName = '★' + simplifiedName.replace('Eurosport', 'EUROSPORT');
+                  } else if (simplifiedName.includes('LaLiga')) {
+                      simplifiedName = simplifiedName.replace('LaLiga', 'M+ La Liga');
+                  } else if (simplifiedName.includes('MovistarPlus')) {
+                      simplifiedName = simplifiedName.replace('MovistarPlus', 'M+ Plus');
+                  } else if (simplifiedName.includes('Vamos')) {
+                      simplifiedName = simplifiedName.replace('Vamos', 'M+ Vamos');
+                  } else if (simplifiedName.includes('Deporte') || simplifiedName.includes('Dedporte')) {
+                      simplifiedName = simplifiedName.replace('Deporte', 'M+ Deportes').replace('Dedporte', 'M+ Deportes');
+                  } else if (simplifiedName.includes('Dazn')) {
+                      simplifiedName = simplifiedName.replace('Dazn', 'DAZN');
+                  } else if (simplifiedName.includes('Campeones')) {
+                      simplifiedName = simplifiedName.replace('Campeones', 'M+ Liga de Campeones');
+                  }
+                  
+                  numberedChannels.push({
+                      id: acestreamId,
+                      number: currentNumber.toString(),
+                      name: simplifiedName,
+                      quality: quality,
+                      multiAudio: multiAudio,
+                      isKnown: true,
+                      source: 'elcano'
+                  });
+                  
+                  currentNumber++;
+              }
+          });
+          
+          return numberedChannels;
+      }
+
+      function processEventsData(htmlContent) {
+          const numberedChannels = [];
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(htmlContent, 'text/html');
+          const rows = doc.querySelectorAll('table tbody tr');
+          
+          let currentNumber = 1000;
+          
+          rows.forEach(row => {
+              const cells = row.querySelectorAll('td');
+              if (cells.length >= 6) {
+                  const canalesCell = cells[5];
+                  const links = canalesCell.querySelectorAll('a[href^="acestream://"]');
+                  
+                  links.forEach(link => {
+                      const acestreamId = link.href.split('://')[1];
+                      let channelName = link.textContent.trim();
+                      
+                      channelName = channelName.replace(/\s*\(Op\d+\)/g, '');
+                      
+                      let simplifiedName = channelName
+                          .replace(/1080|720|UHD|MultiAudio|Multi Audio|\(.*?\)/g, '')
+                          .replace(/\s+/g, ' ')
+                          .trim();
+
+                      if (simplifiedName.includes('Vamos')) {
+                          simplifiedName = simplifiedName.replace('Vamos', 'M+ Vamos');
+                      } else if (simplifiedName.includes('M ')) {
+                          simplifiedName = simplifiedName.replace('M ', 'M+ ');
+                      } else if (simplifiedName.includes('Eurosport')) {
+                          simplifiedName = simplifiedName.replace('Eurosport', '★EUROSPORT ');
+                      } else if (simplifiedName.includes('LaLiga')) {
+                          simplifiedName = simplifiedName.replace('LaLiga', 'La Liga');
+                      } else if (simplifiedName.includes('Premier')) {
+                          simplifiedName = simplifiedName.replace('Premier', 'Premier League');
+                      }
+                      
+                      let quality = '720p';
+                      if (channelName.includes('1080')) quality = '1080p';
+                      if (channelName.includes('UHD')) quality = 'UHD';
+                      
+                      const multiAudio = false;
+                      
+                      numberedChannels.push({
+                          id: acestreamId,
+                          number: currentNumber.toString(),
+                          name: simplifiedName,
+                          quality: quality,
+                          multiAudio: multiAudio,
+                          isKnown: true,
+                          source: 'events'
+                      });
+                      
+                      currentNumber++;
+                  });
+              }
+          });
+          
+          return numberedChannels;
+      }
+
+      function highlightBrands(text) {
+          const brands = [
+              { name: 'M+', class: 'movistar' },
+              { name: '★Eurosport', class: 'eurosport' },
+              { name: 'DAZN', class: 'dazn' },
+              { name: 'F1', class: 'f1' },
+              { name: 'Accion', class: 'action' },
+              { name: 'hits', class: 'action' },
+              { name: 'clasicos', class: 'action' },
+              { name: 'Clásicos', class: 'classics' },
+              { name: 'Deportes', class: 'sports' },
+              { name: 'Vamos', class: 'vamos' },
+              { name: 'Copa del Rey', class: 'copadelrey' },
+              { name: 'Liga de Campeones', class: 'champions' },
+              { name: 'La Liga', class: 'liga' },
+              { name: 'Hypermotion', class: 'hypermotion' },
+              { name: 'Golf', class: 'golf' },
+              { name: '★Eurosport \\d+', class: 'eurosport-number', regex: true },
+              { name: 'Smartbank', class: 'smartbank' },
+              { name: 'La Liga Smartbank', class: 'smartbank' },
+              { name: 'Plus', class: 'plus' },
+              { name: 'M+ Plus', class: 'plus' }
+          ];
+
+          let result = text;
+
+          brands.forEach(brand => {
+              if (brand.regex) {
+                  const regex = new RegExp(`(${brand.name})`, 'gi');
+                  result = result.replace(regex, `<span class="${brand.class}">$1</span>`);
+              } else {
+                  const escapedName = brand.name.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+                  const regex = new RegExp(`(${escapedName})`, 'gi');
+                  result = result.replace(regex, `<span class="${brand.class}">$1</span>`);
+              }
+          });
+
+          return result;
+      }
+      
+      function filterChannels() {
+        let filteredChannels = state.channelsData;
+        const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+        
+        // Filtra según el botón activo, si existe
+        let currentFilter = state.currentFilter;
+        if(currentFilter !== 'all' && currentFilter !== 'favorites' && currentFilter !== 'history') {
+             filteredChannels = filteredChannels.filter(channel =>
+                channel.name.toLowerCase().includes(currentFilter.toLowerCase())
+            );
+        }
+
+        if (state.currentFilter === 'favorites') {
+            filteredChannels = filteredChannels.filter(c => state.favorites.includes(c.number));
+        } else if (state.currentFilter === 'history') {
+            const historyChannels = Object.entries(state.channelHistory).map(([number, data]) => {
+                return {
+                    id: data.id,
+                    number,
+                    name: data.names[0] || `Canal ${number}`,
+                    quality: 'N/A',
+                    multiAudio: false,
+                    isKnown: true,
+                    source: 'history'
+                };
+            });
+            filteredChannels = historyChannels;
+        }
+
+        if (searchTerm) {
+          filteredChannels = filteredChannels.filter(channel => 
+              channel.name.toLowerCase().includes(searchTerm) || 
+              (channel.number && channel.number.includes(searchTerm.replace('#', '')))
+          );
+        }
+
+        return filteredChannels;
+      }
+
+      function renderResults() {
+        const filteredChannels = filterChannels();
+        const channelsGrid = document.getElementById('channelsGrid');
+        
+        channelsGrid.innerHTML = '';
+        
+        if (filteredChannels.length === 0) {
+          channelsGrid.innerHTML = `
+              <div class="no-results">
+                  <div class="no-results-icon">📡</div>
+                  <div class="no-results-text">No se encontraron canales</div>
+                  <div class="no-results-hint">Prueba con otros filtros o términos de búsqueda</div>
+              </div>
+          `;
+          return;
+        }
+
+        const sortedChannels = [...filteredChannels].sort((a, b) => {
+            const aIsOff = a.name.includes('OFF');
+            const bIsOff = b.name.includes('OFF');
+            
+            if (aIsOff && !bIsOff) return 1;
+            if (!aIsOff && bIsOff) return -1;
+            
+            return a.name.localeCompare(b.name);
+        });
+
+        const groups = {};
+        const order = ["DAZN", "M+", "★Eurosport", "CBS", "FOX", "HBO", "TSN", "ESPN", "TNT", "Sky Sports", "LaLiga", "ABC", "BBC", "CBC", "FX", "NBC", "Sky", "Sportnet", "Canales#"];
+        const regex = new RegExp(`^(${order.join('|')})`, 'i');
+        
+        sortedChannels.forEach(channel => {
+            const mainNameMatch = channel.name.match(regex);
+            const groupName = mainNameMatch ? mainNameMatch[1].trim() : "Otros";
+            const groupKey = groupName.toUpperCase();
+            
+            if (!groups[groupKey]) {
+              groups[groupKey] = {
+                name: groupName,
+                channels: []
+              };
+            }
+            groups[groupKey].channels.push(channel);
+        });
+        
+        const sortedGroupKeys = Object.keys(groups).sort((a, b) => {
+            const explicitOrder = {
+                'DAZN': 1,
+                'M+': 2,
+                'CANALES#': 3,
+                '★EUROSPORT': 4
+            };
+
+            let orderA = explicitOrder[a] || 99;
+            let orderB = explicitOrder[b] || 99;
+            
+            if (a.toUpperCase() === 'OTROS') orderA = 100;
+            if (b.toUpperCase() === 'OTROS') orderB = 100;
+
+            if (orderA !== orderB) {
+                return orderA - orderB;
+            }
+
+            return a.localeCompare(b);
+        });
+
+        sortedGroupKeys.forEach(groupKey => {
+          const group = groups[groupKey];
+          const groupElement = document.createElement('div');
+          groupElement.className = 'channel-group';
+          groupElement.innerHTML = `
+            <div class="channel-group__header">
+              <div class="channel-group__title">${group.name}</div>
+            </div>
+            <div class="channel-group__content">
+              ${group.channels.map(channel => createChannelCard(channel)).join('')}
+            </div>
+          `;
+          channelsGrid.appendChild(groupElement);
+        });
+        
+      }
+
+      function createChannelCard(channel) {
+        const isFavorite = state.favorites.includes(channel.number);
+        const cardClass = `channel-card ${isFavorite ? 'channel-card--favorite' : ''}`;
+        
+        // Define la clase para el badge de la fuente
+        let sourceBadgeClass = '';
+        let sourceBadgeText = '';
+
+        if (channel.source === 'elcano') {
+            sourceBadgeClass = 'elcano-badge';
+            sourceBadgeText = 'EC';
+        } else if (channel.source === 'events') {
+            sourceBadgeClass = 'events-badge';
+            sourceBadgeText = 'EV';
+        } else if (channel.source === 'special-gist') {
+            sourceBadgeClass = 'special-gist-badge';
+            sourceBadgeText = 'SG';
+        } else {
+            sourceBadgeClass = 'gist-badge';
+            sourceBadgeText = 'NE'; // "No Especificado" o "Normal Gist"
+        }
+
+        return `
+          <div class="${cardClass}" onclick="playChannel('${channel.id}')">
+            <div class="source-badge ${sourceBadgeClass}">${sourceBadgeText}</div>
+            <div class="channel-header">
+              <div class="channel-name">${highlightBrands(channel.name)}</div>
+              <div class="channel-number">${channel.number}</div>
+            </div>
+            <div class="channel-info" style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.5rem; font-size: 0.8rem; color: #6b7280;">
+                <span class="channel-quality">
+                    ${channel.quality || ''}
+                </span>
+                <span class="channel-audio">
+                    ${channel.multiAudio ? '🎧' : ''}
+                </span>
+            </div>
+          </div>
+        `;
+      }
+
+      function playChannel(acestreamId) {
+          window.location.href = `acestream://${acestreamId}`;
+      }
+
+      function handleSearchInput() {
+        state.searchTerm = document.getElementById('searchInput').value.trim();
+        document.querySelectorAll('.filter-button').forEach(btn => btn.classList.remove('filter-button--active'));
+        renderResults();
+      }
+
+      document.addEventListener('DOMContentLoaded', () => {
+          document.body.classList.toggle('dark-mode', state.darkMode);
+          document.getElementById('darkModeCheckbox').checked = state.darkMode;
+          
+          document.getElementById('filterFavorites').addEventListener('click', () => applyFilter('favorites'));
+          document.getElementById('filterDAZN').addEventListener('click', () => applyFilter('dazn'));
+          document.getElementById('filterMovistar').addEventListener('click', () => applyFilter('m+'));
+          document.getElementById('filterEurosport').addEventListener('click', () => applyFilter('eurosport'));
+          document.getElementById('clearEmojiFilters').addEventListener('click', handleClearButtonClick);
+          document.getElementById('searchInput').addEventListener('input', handleSearchInput);
+          document.getElementById('darkModeCheckbox').addEventListener('change', toggleDarkMode);
+          document.getElementById('closeSettingsBtn').addEventListener('click', () => document.getElementById('settingsModal').classList.remove('modal--active'));
+          
+          applyFilter('all');
+          loadInitialChannels();
+      });
+    </script>
+</body>
+</html>

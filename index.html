@@ -46,6 +46,7 @@
         --events-source-color: #f8961e;
         
         --player-bg: black;
+        --channel-number-color: #4b5563;
       }
       
       body.dark-mode {
@@ -57,6 +58,7 @@
         --primary-light: rgba(var(--primary-rgb), 0.2);
         --channel-name-color: #e2e2ff;
         --player-bg: #1e1e1e;
+        --channel-number-color: #b0b0b0;
       }
       
       body {
@@ -115,7 +117,7 @@
         display: flex;
         gap: 0.6rem;
         margin-top: 0.8rem;
-        flex-wrap: wrap; /* Añadimos flex-wrap para que los botones se envuelvan */
+        flex-wrap: wrap;
       }
       
       .filter-button {
@@ -132,7 +134,7 @@
         display: flex;
         justify-content: center;
         align-items: center;
-        flex-basis: auto; /* Permite que los elementos crezcan y se adapten */
+        flex-basis: auto;
       }
       
       .filter-button:hover {
@@ -196,16 +198,9 @@
         text-overflow: ellipsis;
       }
 
-      .channel-number {
-        color: var(--primary);
-        font-weight: 600;
-        font-size: 0.95rem;
-        white-space: nowrap;
-      }
-
       /* Estilos adicionales para unificar el aspecto */
-      .channel-info {
-          display: flex; /* Mostrar la info de calidad y audio */
+      .channel-info-line {
+          display: flex;
           justify-content: space-between;
           align-items: center;
           margin-top: 0.5rem;
@@ -213,7 +208,7 @@
           color: #6b7280;
       }
       
-      body.dark-mode .channel-info {
+      body.dark-mode .channel-info-line {
           color: #a0a0a0;
       }
       
@@ -499,6 +494,30 @@
         transform: translateX(26px);
       }
 
+      /* Estilos para el selector de color */
+      .color-picker {
+        display: flex;
+        gap: 6px;
+      }
+      
+      .color-option {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        border: 2px solid transparent;
+        cursor: pointer;
+        transition: transform 0.2s;
+      }
+      
+      .color-option:hover {
+        transform: scale(1.1);
+      }
+      
+      .color-option.active {
+        border-color: var(--text);
+        transform: scale(1.1);
+      }
+
       /* Ocultar el header del segundo HTML para mantener la estética */
       .header {
         display: none;
@@ -558,6 +577,13 @@
           border-radius: var(--radius-sm);
           margin-bottom: 0.5rem;
       }
+      
+      .channel-number {
+        font-weight: 600;
+        font-size: 0.95rem;
+        white-space: nowrap;
+        color: var(--channel-number-color);
+      }
 
       @keyframes spin {
         to { transform: rotate(360deg); }
@@ -569,7 +595,7 @@
         }
         
         .filter-buttons {
-          flex-wrap: wrap; /* Mantenemos la envoltura */
+          flex-wrap: wrap;
         }
         
         .channel-group__content {
@@ -649,6 +675,22 @@
                         <span class="settings-slider"></span>
                     </label>
                 </div>
+                
+                <div class="settings-item">
+                    <div class="settings-item__info">
+                        <span class="settings-icon">🎨</span>
+                        <div>
+                            <span class="settings-label">Color principal</span>
+                            <span class="settings-description">Elige un color para la interfaz</span>
+                        </div>
+                    </div>
+                    <div class="color-picker">
+                        <button class="color-option" data-color="#2563eb" style="background:#2563eb"></button>
+                        <button class="color-option" data-color="#dc2626" style="background:#dc2626"></button>
+                        <button class="color-option" data-color="#16a34a" style="background:#16a34a"></button>
+                        <button class="color-option" data-color="#9333ea" style="background:#9333ea"></button>
+                    </div>
+                </div>
             </div>
             
             <div class="modal__actions">
@@ -671,6 +713,7 @@
           elcanoRetries: 0,
           eventsRetries: 0,
           darkMode: localStorage.getItem('darkMode') !== 'false',
+          primaryColor: localStorage.getItem('primaryColor') || '#2563eb',
       };
 
       const MAX_RETRIES = 3;
@@ -685,6 +728,7 @@
         localStorage.setItem('darkMode', state.darkMode);
         document.body.classList.toggle('dark-mode', state.darkMode);
         document.getElementById('darkModeCheckbox').checked = state.darkMode;
+        updatePrimaryLightColor();
       }
       
       function applyFilter(filter) {
@@ -1020,7 +1064,7 @@
       async function loadEventsSource() {
           const PROXIES = [
               'https://api.allorigins.win/raw?url=',
-              'https://cors-anywhere.herokuapp.com/',
+              'https://cors-any-where.herokuapp.com/',
               'https://api.codetabs.com/v1/proxy/?quest='
           ];
           
@@ -1050,51 +1094,62 @@
           
           throw lastError || new Error("All proxies failed");
       }
-
+      
+      /**
+       * Procesa los datos de ElCanó para normalizar los nombres de los canales.
+       * @param {Array<Object>} links - Array de objetos de enlaces de ElCanó.
+       * @returns {Array<Object>} Array de objetos de canales normalizados.
+       */
       function processElcanoData(links) {
           const numberedChannels = [];
           let currentNumber = 500;
-          
+
+          // Objeto de mapeo para normalizar los nombres
+          const nameMap = {
+              'M. LaLiga': 'M+ La Liga',
+              'LaLiga Smartbank': 'M+ La Liga Hypermotion',
+              'LaLiga': 'M+ La Liga',
+              'MovistarPlus': 'M+ Plus',
+              'Vamos': 'M+ Vamos',
+              'Deporte': 'M+ Deportes',
+              'Dedporte': 'M+ Deportes',
+              'Dazn': 'DAZN',
+              'Campeones': 'M+ Liga de Campeones'
+          };
+
           links.forEach(link => {
               if (link.url && link.url.startsWith('acestream://')) {
                   const acestreamId = link.url.split('://')[1];
-                  
+
                   let quality = '720p';
                   let multiAudio = false;
-                  
+
                   if (link.name.includes('1080')) quality = '1080p';
                   if (link.name.includes('720')) quality = '720p';
                   if (link.name.includes('UHD')) quality = 'UHD';
-                  
-                  multiAudio = link.name.includes('MultiAudio') || 
-                               link.name.includes('Multi Audio') || 
+
+                  multiAudio = link.name.includes('MultiAudio') ||
+                               link.name.includes('Multi Audio') ||
                                link.name.toLowerCase().includes('multi');
-                  
+
                   let simplifiedName = link.name
                       .replace(/1080|720|UHD|MultiAudio|Multi Audio|\(.*?\)/g, '')
                       .replace(/\s+/g, ' ')
                       .trim();
                   
-                  if (simplifiedName.includes('M. LaLiga')) {
-                      simplifiedName = simplifiedName.replace('M. LaLiga', 'M+ La Liga');
-                  } else if (simplifiedName.includes('LaLiga Smartbank')) {
-                      simplifiedName = simplifiedName.replace('LaLiga Smartbank', 'M+ La Liga Hypermotion');
-                  } else if (simplifiedName.includes('Eurosport')) {
-                      simplifiedName = '★' + simplifiedName.replace('Eurosport', 'EUROSPORT');
-                  } else if (simplifiedName.includes('LaLiga')) {
-                      simplifiedName = simplifiedName.replace('LaLiga', 'M+ La Liga');
-                  } else if (simplifiedName.includes('MovistarPlus')) {
-                      simplifiedName = simplifiedName.replace('MovistarPlus', 'M+ Plus');
-                  } else if (simplifiedName.includes('Vamos')) {
-                      simplifiedName = simplifiedName.replace('Vamos', 'M+ Vamos');
-                  } else if (simplifiedName.includes('Deporte') || simplifiedName.includes('Dedporte')) {
-                      simplifiedName = simplifiedName.replace('Deporte', 'M+ Deportes').replace('Dedporte', 'M+ Deportes');
-                  } else if (simplifiedName.includes('Dazn')) {
-                      simplifiedName = simplifiedName.replace('Dazn', 'DAZN');
-                  } else if (simplifiedName.includes('Campeones')) {
-                      simplifiedName = simplifiedName.replace('Campeones', 'M+ Liga de Campeones');
+                  // Usar el mapeo para normalizar el nombre
+                  for (const key in nameMap) {
+                      if (simplifiedName.includes(key)) {
+                          simplifiedName = simplifiedName.replace(key, nameMap[key]);
+                          break; 
+                      }
                   }
-                  
+
+                  // Caso especial para Eurosport
+                  if (simplifiedName.includes('Eurosport')) {
+                      simplifiedName = '★' + simplifiedName.replace('Eurosport', 'EUROSPORT');
+                  }
+
                   numberedChannels.push({
                       id: acestreamId,
                       number: currentNumber.toString(),
@@ -1104,11 +1159,11 @@
                       isKnown: true,
                       source: 'elcano'
                   });
-                  
+
                   currentNumber++;
               }
           });
-          
+
           return numberedChannels;
       }
 
@@ -1280,43 +1335,82 @@
         });
 
         const groups = {};
-        const order = ["DAZN", "M+", "★Eurosport", "CBS", "FOX", "HBO", "TSN", "ESPN", "TNT", "Sky Sports", "LaLiga", "ABC", "BBC", "CBC", "FX", "NBC", "Sky", "Sportnet", "Canales#"];
-        const regex = new RegExp(`^(${order.join('|')})`, 'i');
         
+        // Expresiones regulares para los grupos específicos
+        const groupRegexes = {
+            'DAZN F1': /DAZN F1/i,
+            'DAZN 1': /DAZN 1/i,
+            'DAZN 2': /DAZN 2/i,
+            'DAZN 3': /DAZN 3/i,
+            'DAZN 4': /DAZN 4/i,
+            'DAZN': /DAZN/i,
+            'M+ La Liga Hypermotion': /M\+ La Liga Hypermotion/i,
+            'M+ La Liga': /M\+ La Liga/i,
+            'M+ Champions': /M\+ Liga de Campeones/i,
+            'M+ Vamos': /M\+ Vamos/i,
+            'M+ Deportes': /M\+ Deportes/i,
+            'M+ Deportes 2': /M\+ Deportes 2/i,
+            'M+ Deportes 3': /M\+ Deportes 3/i,
+            'M+ Deportes 4': /M\+ Deportes 4/i,
+            'M+ Deportes 5': /M\+ Deportes 5/i,
+            'M+ Deportes 6': /M\+ Deportes 6/i,
+            'M+ Plus': /M\+ Plus/i,
+            'M+ Golf': /M\+ Golf/i,
+            'M+': /M\+/i,
+            'Eurosport 1': /Eurosport 1/i,
+            'Eurosport 2': /Eurosport 2/i,
+            'Eurosport': /Eurosport/i,
+            '★Eurosport 1': /★Eurosport 1/i,
+            '★Eurosport 2': /★Eurosport 2/i,
+            '★Eurosport': /★Eurosport/i,
+            'Canales': /Canal/i
+        };
+
+        const groupOrder = [
+            'DAZN F1', 'DAZN 1', 'DAZN 2', 'DAZN 3', 'DAZN 4', 'DAZN',
+            'M+ La Liga Hypermotion', 'M+ La Liga', 'M+ Champions', 
+            'M+ Vamos', 'M+ Deportes', 'M+ Deportes 2', 'M+ Deportes 3', 'M+ Deportes 4', 'M+ Deportes 5', 'M+ Deportes 6',
+            'M+ Plus', 'M+ Golf', 'M+',
+            '★Eurosport 1', '★Eurosport 2', 'Eurosport 1', 'Eurosport 2', '★Eurosport', 'Eurosport',
+            'Canales'
+        ];
+
         sortedChannels.forEach(channel => {
-            const mainNameMatch = channel.name.match(regex);
-            const groupName = mainNameMatch ? mainNameMatch[1].trim() : "Otros";
-            const groupKey = groupName.toUpperCase();
-            
-            if (!groups[groupKey]) {
-              groups[groupKey] = {
-                name: groupName,
-                channels: []
-              };
+            let groupFound = false;
+            for (const groupName of groupOrder) {
+                if (groupRegexes[groupName] && groupRegexes[groupName].test(channel.name)) {
+                    if (!groups[groupName]) {
+                        groups[groupName] = { name: groupName, channels: [] };
+                    }
+                    groups[groupName].channels.push(channel);
+                    groupFound = true;
+                    break;
+                }
             }
-            groups[groupKey].channels.push(channel);
+            if (!groupFound) {
+                if (!groups['Otros']) {
+                    groups['Otros'] = { name: 'Otros', channels: [] };
+                }
+                groups['Otros'].channels.push(channel);
+            }
         });
         
         const sortedGroupKeys = Object.keys(groups).sort((a, b) => {
-            const explicitOrder = {
-                'DAZN': 1,
-                'M+': 2,
-                'CANALES#': 3,
-                '★EUROSPORT': 4
-            };
-
-            let orderA = explicitOrder[a] || 99;
-            let orderB = explicitOrder[b] || 99;
+            const indexA = groupOrder.indexOf(a);
+            const indexB = groupOrder.indexOf(b);
             
-            if (a.toUpperCase() === 'OTROS') orderA = 100;
-            if (b.toUpperCase() === 'OTROS') orderB = 100;
-
-            if (orderA !== orderB) {
-                return orderA - orderB;
+            if (indexA === -1 && indexB === -1) {
+                return a.localeCompare(b);
             }
-
-            return a.localeCompare(b);
+            if (indexA === -1) return 1;
+            if (indexB === -1) return -1;
+            
+            return indexA - indexB;
         });
+        
+        if (groups['Otros']) {
+            sortedGroupKeys.push(sortedGroupKeys.splice(sortedGroupKeys.indexOf('Otros'), 1)[0]);
+        }
 
         sortedGroupKeys.forEach(groupKey => {
           const group = groups[groupKey];
@@ -1335,45 +1429,47 @@
         
       }
 
+      /**
+       * Crea la tarjeta HTML para un canal individual.
+       * @param {Object} channel - Objeto de canal.
+       * @returns {string} HTML de la tarjeta del canal.
+       */
       function createChannelCard(channel) {
-        const isFavorite = state.favorites.includes(channel.number);
-        const cardClass = `channel-card ${isFavorite ? 'channel-card--favorite' : ''}`;
-        
-        // Define la clase para el badge de la fuente
-        let sourceBadgeClass = '';
-        let sourceBadgeText = '';
+          const isFavorite = state.favorites.includes(channel.number);
+          const cardClass = `channel-card ${isFavorite ? 'channel-card--favorite' : ''}`;
+          
+          let sourceBadgeClass = '';
+          let sourceBadgeText = '';
 
-        if (channel.source === 'elcano') {
-            sourceBadgeClass = 'elcano-badge';
-            sourceBadgeText = 'EC';
-        } else if (channel.source === 'events') {
-            sourceBadgeClass = 'events-badge';
-            sourceBadgeText = 'EV';
-        } else if (channel.source === 'special-gist') {
-            sourceBadgeClass = 'special-gist-badge';
-            sourceBadgeText = 'SG';
-        } else {
-            sourceBadgeClass = 'gist-badge';
-            sourceBadgeText = 'NE'; // "No Especificado" o "Normal Gist"
-        }
+          if (channel.source === 'elcano') {
+              sourceBadgeClass = 'elcano-badge';
+              sourceBadgeText = 'EC';
+          } else if (channel.source === 'events') {
+              sourceBadgeClass = 'events-badge';
+              sourceBadgeText = 'EV';
+          } else if (channel.source === 'special-gist') {
+              sourceBadgeClass = 'special-gist-badge';
+              sourceBadgeText = 'SG';
+          } else {
+              sourceBadgeClass = 'gist-badge';
+              sourceBadgeText = 'NE';
+          }
 
-        return `
-          <div class="${cardClass}" onclick="playChannel('${channel.id}')">
-            <div class="source-badge ${sourceBadgeClass}">${sourceBadgeText}</div>
-            <div class="channel-header">
-              <div class="channel-name">${highlightBrands(channel.name)}</div>
-              <div class="channel-number">${channel.number}</div>
-            </div>
-            <div class="channel-info" style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.5rem; font-size: 0.8rem; color: #6b7280;">
-                <span class="channel-quality">
-                    ${channel.quality || ''}
-                </span>
-                <span class="channel-audio">
-                    ${channel.multiAudio ? '🎧' : ''}
-                </span>
-            </div>
-          </div>
-        `;
+          return `
+              <div class="${cardClass}" onclick="playChannel('${channel.id}')">
+                  <div class="channel-header">
+                      <div class="channel-name">${highlightBrands(channel.name)}</div>
+                      <div class="source-badge ${sourceBadgeClass}">${sourceBadgeText}</div>
+                  </div>
+                  <div class="channel-info-line">
+                      <span class="quality-audio">
+                          ${channel.quality || ''}
+                          ${channel.multiAudio ? ' 🎧' : ''}
+                      </span>
+                      <div class="channel-number">${channel.number}</div>
+                  </div>
+              </div>
+          `;
       }
 
       function playChannel(acestreamId) {
@@ -1384,6 +1480,51 @@
         state.searchTerm = document.getElementById('searchInput').value.trim();
         document.querySelectorAll('.filter-button').forEach(btn => btn.classList.remove('filter-button--active'));
         renderResults();
+      }
+
+      function changePrimaryColor(color) {
+        state.primaryColor = color;
+        const rgb = hexToRgb(color);
+        document.documentElement.style.setProperty('--primary-rgb', `${rgb.r}, ${rgb.g}, ${rgb.b}`);
+        document.documentElement.style.setProperty('--primary', color);
+        document.documentElement.style.setProperty('--primary-dark', shadeColor(color, -20));
+        updatePrimaryLightColor();
+        document.querySelectorAll('.color-option').forEach(btn => {
+          btn.classList.remove('active');
+        });
+        document.querySelector(`.color-option[data-color="${color}"]`).classList.add('active');
+        localStorage.setItem('primaryColor', color);
+        renderResults();
+      }
+
+      function hexToRgb(hex) {
+        const r = parseInt(hex.slice(1, 3), 16);
+        const g = parseInt(hex.slice(3, 5), 16);
+        const b = parseInt(hex.slice(5, 7), 16);
+        return { r, g, b };
+      }
+
+      function shadeColor(color, percent) {
+        let R = parseInt(color.substring(1,3), 16);
+        let G = parseInt(color.substring(3,5), 16);
+        let B = parseInt(color.substring(5,7), 16);
+
+        R = parseInt(R * (100 + percent) / 100);
+        G = parseInt(G * (100 + percent) / 100);
+        B = parseInt(B * (100 + percent) / 100);
+
+        R = (R<255)?R:255;  
+        G = (G<255)?G:255;  
+        B = (B<255)?B:255;  
+
+        return `#${R.toString(16).padStart(2,'0')}${G.toString(16).padStart(2,'0')}${B.toString(16).padStart(2,'0')}`;
+      }
+
+      function updatePrimaryLightColor() {
+        const rgb = hexToRgb(state.primaryColor);
+        const isDarkMode = document.body.classList.contains('dark-mode');
+        document.documentElement.style.setProperty('--primary-light', 
+          isDarkMode ? `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.2)` : `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.1)`);
       }
 
       document.addEventListener('DOMContentLoaded', () => {
@@ -1398,6 +1539,12 @@
           document.getElementById('searchInput').addEventListener('input', handleSearchInput);
           document.getElementById('darkModeCheckbox').addEventListener('change', toggleDarkMode);
           document.getElementById('closeSettingsBtn').addEventListener('click', () => document.getElementById('settingsModal').classList.remove('modal--active'));
+
+          // Inicializar el selector de color y su evento
+          document.querySelectorAll('.color-option').forEach(btn => {
+              btn.addEventListener('click', () => changePrimaryColor(btn.dataset.color));
+          });
+          changePrimaryColor(state.primaryColor);
           
           applyFilter('all');
           loadInitialChannels();

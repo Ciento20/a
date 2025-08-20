@@ -1072,7 +1072,7 @@
           
           for (const proxy of PROXIES) {
               try {
-                  const proxyUrl = proxy + encodeURIComponent('https://eventos-liartvercelapp.vercel.app/');
+                  const proxyUrl = proxy + encodeURIComponent('https://ciriaco-liart.vercel.app//');
                   const controller = new AbortController();
                   const timeoutId = setTimeout(() => controller.abort(), 15000);
                   
@@ -1177,8 +1177,8 @@
           
           rows.forEach(row => {
               const cells = row.querySelectorAll('td');
-              if (cells.length >= 6) {
-                  const canalesCell = cells[5];
+              if (cells.length >= 5) {
+                  const canalesCell = cells[4];
                   const links = canalesCell.querySelectorAll('a[href^="acestream://"]');
                   
                   links.forEach(link => {

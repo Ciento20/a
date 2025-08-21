@@ -178,6 +178,15 @@
         border-color: var(--primary-light);
       }
 
+      /* Nuevo estilo para el modo de edición de favoritos */
+      .channel-card--favorite-mode {
+        border-style: dashed;
+        border-width: 2px;
+        border-color: var(--primary);
+        opacity: 0.8;
+        transition: all 0.3s ease;
+      }
+
       .channel-card .channel-header {
         display: flex;
         justify-content: space-between;
@@ -612,6 +621,43 @@
           font-size: 1.1rem;
         }
       }
+
+      .floating-btn {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        background-color: var(--primary);
+        color: white;
+        font-size: 1.5rem;
+        border: none;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        cursor: pointer;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        transition: all 0.3s ease;
+        z-index: 1000;
+      }
+
+      .floating-btn:hover {
+        background-color: var(--primary-dark);
+        transform: scale(1.05);
+      }
+
+      .floating-btn.active {
+        animation: pulse 1.5s infinite ease-in-out;
+        background-color: #ff544d;
+      }
+
+      @keyframes pulse {
+        0% { transform: scale(1); box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); }
+        50% { transform: scale(1.1); box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3); }
+        100% { transform: scale(1); box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); }
+      }
+
     </style>
 </head>
 <body>
@@ -714,6 +760,7 @@
           eventsRetries: 0,
           darkMode: localStorage.getItem('darkMode') !== 'false',
           primaryColor: localStorage.getItem('primaryColor') || '#2563eb',
+          isFavoriteMode: false,
       };
 
       const MAX_RETRIES = 3;
@@ -722,6 +769,17 @@
       const CHANNEL_HISTORY_KEY = 'a4v_channel_history';
       const BACKUP_EXPIRY_HOURS = 6;
       const HISTORY_EXPIRY_HOURS = 168;
+
+      function toggleFavorite(channelNumber) {
+          const index = state.favorites.indexOf(channelNumber);
+          if (index > -1) {
+              state.favorites.splice(index, 1);
+          } else {
+              state.favorites.push(channelNumber);
+          }
+          localStorage.setItem('favorites', JSON.stringify(state.favorites));
+          renderResults();
+      }
 
       function toggleDarkMode() {
         state.darkMode = !state.darkMode;
@@ -749,22 +807,7 @@
         
         renderResults();
       }
-
-      function handleClearButtonClick() {
-        const now = Date.now();
-        if (now - state.lastClearButtonClickTime > 1000) state.clearButtonClickCount = 0;
-        state.clearButtonClickCount++;
-        state.lastClearButtonClickTime = now;
-        
-        if (state.clearButtonClickCount >= 3) {
-          document.getElementById('settingsModal').classList.add('modal--active');
-          state.clearButtonClickCount = 0;
-        } else {
-          // Un solo clic en el botón 'X' ahora activa el filtro 'todos'
-          applyFilter('all');
-        }
-      }
-
+      
       function showStatusMessage(message, type = "info") {
           let statusElement = document.querySelector(".status-message");
           
@@ -1436,7 +1479,7 @@
        */
       function createChannelCard(channel) {
           const isFavorite = state.favorites.includes(channel.number);
-          const cardClass = `channel-card ${isFavorite ? 'channel-card--favorite' : ''}`;
+          const cardClass = `channel-card ${isFavorite ? 'channel-card--favorite' : ''} ${state.isFavoriteMode ? 'channel-card--favorite-mode' : ''}`;
           
           let sourceBadgeClass = '';
           let sourceBadgeText = '';
@@ -1454,9 +1497,11 @@
               sourceBadgeClass = 'gist-badge';
               sourceBadgeText = 'NE';
           }
+          
+          const onClickAction = state.isFavoriteMode ? `toggleFavorite('${channel.number}')` : `playChannel('${channel.id}')`;
 
           return `
-              <div class="${cardClass}" onclick="playChannel('${channel.id}')">
+              <div class="${cardClass}" onclick="${onClickAction}">
                   <div class="channel-header">
                       <div class="channel-name">${highlightBrands(channel.name)}</div>
                       <div class="source-badge ${sourceBadgeClass}">${sourceBadgeText}</div>
@@ -1531,11 +1576,94 @@
           document.body.classList.toggle('dark-mode', state.darkMode);
           document.getElementById('darkModeCheckbox').checked = state.darkMode;
           
-          document.getElementById('filterFavorites').addEventListener('click', () => applyFilter('favorites'));
+          let pressTimerFav;
+          const favoriteButton = document.getElementById('filterFavorites');
+          const LONG_PRESS_THRESHOLD = 500; // 500ms
+          
+          let pressTimerClear;
+          const clearButton = document.getElementById('clearEmojiFilters');
+
+          favoriteButton.addEventListener('mousedown', (e) => {
+              if (e.button !== 0) return; // Solo el botón izquierdo del ratón
+              pressTimerFav = setTimeout(() => {
+                  state.isFavoriteMode = !state.isFavoriteMode;
+                  
+                  if (state.isFavoriteMode) {
+                      showStatusMessage("Modo de selección de favoritos activado. Pulsa un canal para marcarlo/desmarcarlo.");
+                  } else {
+                      showStatusMessage("Modo de selección de favoritos desactivado.", "success");
+                  }
+                  
+                  renderResults();
+                  pressTimerFav = null; // Reinicia el temporizador
+              }, LONG_PRESS_THRESHOLD);
+          });
+
+          favoriteButton.addEventListener('mouseup', () => {
+              clearTimeout(pressTimerFav);
+              if (pressTimerFav) {
+                  // Si el temporizador aún existe, es un clic corto
+                  applyFilter('favorites');
+              }
+          });
+          
+          // Añade estos manejadores para dispositivos móviles
+          favoriteButton.addEventListener('touchstart', () => {
+              pressTimerFav = setTimeout(() => {
+                  state.isFavoriteMode = !state.isFavoriteMode;
+                  
+                  if (state.isFavoriteMode) {
+                      showStatusMessage("Modo de selección de favoritos activado. Pulsa un canal para marcarlo/desmarcarlo.");
+                  } else {
+                      showStatusMessage("Modo de selección de favoritos desactivado.", "success");
+                  }
+                  
+                  renderResults();
+                  pressTimerFav = null;
+              }, LONG_PRESS_THRESHOLD);
+          });
+
+          favoriteButton.addEventListener('touchend', () => {
+              clearTimeout(pressTimerFav);
+              if (pressTimerFav) {
+                  // Si el temporizador aún existe, es un toque corto
+                  applyFilter('favorites');
+              }
+          });
+          
+          // Lógica para el botón 'x' (clearEmojiFilters)
+          clearButton.addEventListener('mousedown', (e) => {
+              if (e.button !== 0) return;
+              pressTimerClear = setTimeout(() => {
+                  document.getElementById('settingsModal').classList.add('modal--active');
+                  pressTimerClear = null;
+              }, LONG_PRESS_THRESHOLD);
+          });
+
+          clearButton.addEventListener('mouseup', () => {
+              clearTimeout(pressTimerClear);
+              if (pressTimerClear) {
+                  applyFilter('all');
+              }
+          });
+
+          clearButton.addEventListener('touchstart', () => {
+              pressTimerClear = setTimeout(() => {
+                  document.getElementById('settingsModal').classList.add('modal--active');
+                  pressTimerClear = null;
+              }, LONG_PRESS_THRESHOLD);
+          });
+
+          clearButton.addEventListener('touchend', () => {
+              clearTimeout(pressTimerClear);
+              if (pressTimerClear) {
+                  applyFilter('all');
+              }
+          });
+
           document.getElementById('filterDAZN').addEventListener('click', () => applyFilter('dazn'));
           document.getElementById('filterMovistar').addEventListener('click', () => applyFilter('m+'));
           document.getElementById('filterEurosport').addEventListener('click', () => applyFilter('eurosport'));
-          document.getElementById('clearEmojiFilters').addEventListener('click', handleClearButtonClick);
           document.getElementById('searchInput').addEventListener('input', handleSearchInput);
           document.getElementById('darkModeCheckbox').addEventListener('change', toggleDarkMode);
           document.getElementById('closeSettingsBtn').addEventListener('click', () => document.getElementById('settingsModal').classList.remove('modal--active'));

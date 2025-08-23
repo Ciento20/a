@@ -1518,7 +1518,17 @@
       }
 
       function playChannel(acestreamId) {
-          window.location.href = `acestream://${acestreamId}`;
+          const acestreamUrl = `acestream://${acestreamId}`;
+          const newWindow = window.open(acestreamUrl, '_blank');
+          
+          setTimeout(() => {
+              if (newWindow && newWindow.closed) {
+                  // La ventana se cerró, lo que significa que el protocolo fue manejado
+              } else {
+                  // La ventana no se cerró, lo que podría significar que el navegador no soporta el protocolo
+                  alert("Tu navegador no pudo abrir el enlace con AceStream. Esto puede ocurrir si no tienes Ace Player HD instalado o si tu navegador bloquea el protocolo. Por favor, asegúrate de tener la aplicación instalada.");
+              }
+          }, 500);
       }
 
       function handleSearchInput() {

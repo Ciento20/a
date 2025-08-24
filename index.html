@@ -1102,6 +1102,14 @@
                           simplifiedName = rawName.replace('(FHD)', '').trim();
                       }
                       
+                      if (simplifiedName.includes('Eurosport')) {
+                          simplifiedName = '★' + simplifiedName.replace('Eurosport', 'EUROSPORT');
+                      }
+                      
+                      if (simplifiedName.includes('LaLiga')) {
+                          simplifiedName = simplifiedName.replace('LaLiga', 'M+ La Liga');
+                      }
+
                       const multiAudio = simplifiedName.includes('MultiAudio');
                       
                       if (simplifiedName.includes('M. LaLiga')) {
@@ -1218,6 +1226,7 @@
                       const acestreamId = link.href.split('://')[1];
                       let channelName = link.textContent.trim();
                       
+                      channelName = channelName.replace('Estable', '').replace('New Era I', '').trim();
                       channelName = channelName.replace(/\s*\(Op\d+\)/g, '');
                       
                       let simplifiedName = channelName

@@ -771,6 +771,7 @@
       const CHANNEL_HISTORY_KEY = 'a4v_channel_history';
       const BACKUP_EXPIRY_HOURS = 6;
       const HISTORY_EXPIRY_HOURS = 168;
+      const BACKUP_KEY = 'channel_backup';
 
       function toggleFavorite(channelNumber) {
           const index = state.favorites.indexOf(channelNumber);
@@ -796,10 +797,8 @@
         document.getElementById('searchInput').value = '';
         state.searchTerm = '';
         
-        // Desactiva todos los botones
         document.querySelectorAll('.filter-button').forEach(btn => btn.classList.remove('filter-button--active'));
         
-        // Activa el botón correcto
         const targetBtn = document.getElementById(`filter${filter.charAt(0).toUpperCase() + filter.slice(1)}`);
         if (targetBtn) {
             targetBtn.classList.add('filter-button--active');
@@ -827,27 +826,27 @@
           if (type === "success") statusElement.style.color = "var(--success)";
       }
 
-      function saveBackup(data, key) {
-          const backupData = {
-              timestamp: new Date().getTime(),
-              data: data
-          };
-          localStorage.setItem(key, JSON.stringify(backupData));
+      function saveBackup(data) {
+          try {
+              localStorage.setItem(BACKUP_KEY, JSON.stringify(data));
+              console.log("Copia de seguridad de canales guardada exitosamente.");
+          } catch (e) {
+              console.error("Error al guardar la copia de seguridad:", e);
+          }
       }
 
-      function loadBackup(key) {
-          const backup = localStorage.getItem(key);
-          if (!backup) return null;
-          
-          const parsedBackup = JSON.parse(backup);
-          const backupAgeHours = (new Date().getTime() - parsedBackup.timestamp) / (1000 * 60 * 60);
-          
-          if (backupAgeHours > BACKUP_EXPIRY_HOURS) {
-              localStorage.removeItem(key);
-              return null;
+      function loadBackup() {
+          try {
+              const backupData = localStorage.getItem(BACKUP_KEY);
+              if (backupData) {
+                  const channels = JSON.parse(backupData);
+                  console.log("Cargando canales desde la copia de seguridad...");
+                  return channels;
+              }
+          } catch (e) {
+              console.error("Error al cargar la copia de seguridad:", e);
           }
-          
-          return parsedBackup.data;
+          return null;
       }
       
       function saveChannelHistory(channels) {
@@ -876,7 +875,6 @@
       function mergeChannels(channelsArray) {
         const uniqueChannelsMap = new Map();
 
-        // Orden de preferencia: ElCanó, Shickat, Events, Gist
         const orderedSources = ['gist', 'events', 'shickat', 'elcano'];
 
         orderedSources.forEach(source => {
@@ -892,8 +890,16 @@
       
       async function loadInitialChannels() {
           const channelsGrid = document.getElementById("channelsGrid");
-          channelsGrid.innerHTML = '<div class="loading-container"><div class="loading-spinner"></div><span>Cargando canales...</span></div>';
           
+          const backupChannels = loadBackup();
+          if (backupChannels) {
+              state.channelsData = backupChannels;
+              renderResults();
+              showStatusMessage("Mostrando canales del historial. Buscando actualizaciones...");
+          } else {
+              channelsGrid.innerHTML = '<div class="loading-container"><div class="loading-spinner"></div><span>Cargando canales...</span></div>';
+          }
+
           try {
               const gistChannels = await loadGistChannels();
               const elcanoChannels = await loadElcanoSource();
@@ -901,20 +907,28 @@
               const shickatChannels = await loadShickatChannels();
               
               const allChannels = [...gistChannels, ...elcanoChannels, ...eventsChannels, ...shickatChannels];
-              
-              state.channelsData = mergeChannels(allChannels);
-              
+              const newChannels = mergeChannels(allChannels);
+
+              state.channelsData = newChannels;
               renderResults();
-              showStatusMessage("Todos los canales actualizados correctamente.");
+              saveBackup(newChannels);
+              showStatusMessage("Todos los canales actualizados correctamente.", "success");
               
           } catch (error) {
               console.error("Error al cargar canales iniciales:", error);
-              channelsGrid.innerHTML = `
-                  <div class="no-results">
-                      Error al cargar los canales principales.<br>
-                      <button class="retry-button" onclick="loadInitialChannels()">Reintentar</button>
-                  </div>
-              `;
+              if (!backupChannels) {
+                  channelsGrid.innerHTML = `
+                      <div class="no-results">
+                          <div class="no-results-icon">📡</div>
+                          <div class="no-results-text">Error al cargar los canales.</div>
+                          <div class="no-results-hint">Revisa tu conexión o inténtalo de nuevo.</div>
+                          <button class="retry-button" onclick="loadInitialChannels()">Reintentar</button>
+                      </div>
+                  `;
+                  showStatusMessage("Error al cargar canales. Inténtalo de nuevo.", "error");
+              } else {
+                  showStatusMessage("No se pudieron cargar nuevos canales. Mostrando el historial.", "error");
+              }
           }
       }
 
@@ -1136,16 +1150,10 @@
           return numberedChannels;
       }
 
-      /**
-       * Procesa los datos de ElCanó para normalizar los nombres de los canales.
-       * @param {Array<Object>} links - Array de objetos de enlaces de ElCanó.
-       * @returns {Array<Object>} Array de objetos de canales normalizados.
-       */
       function processElcanoData(links) {
           const numberedChannels = [];
           let currentNumber = 500;
 
-          // Objeto de mapeo para normalizar los nombres
           const nameMap = {
               'M. LaLiga': 'M+ La Liga',
               'LaLiga Smartbank': 'M+ La Liga Hypermotion',
@@ -1178,7 +1186,6 @@
                       .replace(/\s+/g, ' ')
                       .trim();
                   
-                  // Usar el mapeo para normalizar el nombre
                   for (const key in nameMap) {
                       if (simplifiedName.includes(key)) {
                           simplifiedName = simplifiedName.replace(key, nameMap[key]);
@@ -1186,7 +1193,6 @@
                       }
                   }
 
-                  // Caso especial para Eurosport
                   if (simplifiedName.includes('Eurosport')) {
                       simplifiedName = '★' + simplifiedName.replace('Eurosport', 'EUROSPORT');
                   }
@@ -1289,7 +1295,6 @@
               { name: 'Golf', class: 'golf' },
               { name: '★Eurosport \\d+', class: 'eurosport-number', regex: true },
               { name: 'Smartbank', class: 'smartbank' },
-              { name: 'La Liga Smartbank', class: 'smartbank' },
               { name: 'Plus', class: 'plus' },
               { name: 'M+ Plus', class: 'plus' }
           ];
@@ -1314,7 +1319,6 @@
         let filteredChannels = state.channelsData;
         const searchTerm = document.getElementById('searchInput').value.toLowerCase();
         
-        // Filtra según el botón activo, si existe
         let currentFilter = state.currentFilter;
         if(currentFilter !== 'all' && currentFilter !== 'favorites' && currentFilter !== 'history') {
              filteredChannels = filteredChannels.filter(channel =>
@@ -1378,7 +1382,6 @@
 
         const groups = {};
         
-        // Expresiones regulares para los grupos específicos
         const groupRegexes = {
             'DAZN F1': /DAZN F1/i,
             'DAZN 1': /DAZN 1/i,
@@ -1471,11 +1474,6 @@
         
       }
 
-      /**
-       * Crea la tarjeta HTML para un canal individual.
-       * @param {Object} channel - Objeto de canal.
-       * @returns {string} HTML de la tarjeta del canal.
-       */
       function createChannelCard(channel) {
           const isFavorite = state.favorites.includes(channel.number);
           const cardClass = `channel-card ${isFavorite ? 'channel-card--favorite' : ''} ${state.isFavoriteMode ? 'channel-card--favorite-mode' : ''}`;
@@ -1525,9 +1523,7 @@
           
           setTimeout(() => {
               if (newWindow && newWindow.closed) {
-                  // La ventana se cerró, lo que significa que el protocolo fue manejado
               } else {
-                  // La ventana no se cerró, lo que podría significar que el navegador no soporta el protocolo
                   alert("Tu navegador no pudo abrir el enlace con AceStream. Esto puede ocurrir si no tienes Ace Player HD instalado o si tu navegador bloquea el protocolo. Por favor, asegúrate de tener la aplicación instalada.");
               }
           }, 500);
@@ -1590,13 +1586,13 @@
           
           let pressTimerFav;
           const favoriteButton = document.getElementById('filterFavorites');
-          const LONG_PRESS_THRESHOLD = 500; // 500ms
+          const LONG_PRESS_THRESHOLD = 500;
           
           let pressTimerClear;
           const clearButton = document.getElementById('clearEmojiFilters');
 
           favoriteButton.addEventListener('mousedown', (e) => {
-              if (e.button !== 0) return; // Solo el botón izquierdo del ratón
+              if (e.button !== 0) return;
               pressTimerFav = setTimeout(() => {
                   state.isFavoriteMode = !state.isFavoriteMode;
                   
@@ -1607,19 +1603,17 @@
                   }
                   
                   renderResults();
-                  pressTimerFav = null; // Reinicia el temporizador
+                  pressTimerFav = null;
               }, LONG_PRESS_THRESHOLD);
           });
 
           favoriteButton.addEventListener('mouseup', () => {
               clearTimeout(pressTimerFav);
               if (pressTimerFav) {
-                  // Si el temporizador aún existe, es un clic corto
                   applyFilter('favorites');
               }
           });
           
-          // Añade estos manejadores para dispositivos móviles
           favoriteButton.addEventListener('touchstart', () => {
               pressTimerFav = setTimeout(() => {
                   state.isFavoriteMode = !state.isFavoriteMode;
@@ -1638,12 +1632,10 @@
           favoriteButton.addEventListener('touchend', () => {
               clearTimeout(pressTimerFav);
               if (pressTimerFav) {
-                  // Si el temporizador aún existe, es un toque corto
                   applyFilter('favorites');
               }
           });
           
-          // Lógica para el botón 'x' (clearEmojiFilters)
           clearButton.addEventListener('mousedown', (e) => {
               if (e.button !== 0) return;
               pressTimerClear = setTimeout(() => {
@@ -1680,7 +1672,6 @@
           document.getElementById('darkModeCheckbox').addEventListener('change', toggleDarkMode);
           document.getElementById('closeSettingsBtn').addEventListener('click', () => document.getElementById('settingsModal').classList.remove('modal--active'));
 
-          // Inicializar el selector de color y su evento
           document.querySelectorAll('.color-option').forEach(btn => {
               btn.addEventListener('click', () => changePrimaryColor(btn.dataset.color));
           });

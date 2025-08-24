@@ -1118,12 +1118,12 @@
                           simplifiedName = rawName.replace('(FHD)', '').trim();
                       }
                       
-                      if (simplifiedName.includes('Eurosport')) {
+                      if (simplifiedName.includes('Eurosport 1')) {
                           simplifiedName = '★' + simplifiedName.replace('Eurosport', 'EUROSPORT');
-                      }
-                      
-                      if (simplifiedName.includes('LaLiga')) {
-                          simplifiedName = simplifiedName.replace('LaLiga', 'M+ La Liga');
+                      } else if (simplifiedName.includes('Eurosport 2')) {
+                          simplifiedName = '★' + simplifiedName.replace('Eurosport', 'EUROSPORT');
+                      } else if (simplifiedName.includes('Eurosport')) {
+                          simplifiedName = '★' + simplifiedName.replace('Eurosport', 'EUROSPORT') + ' 1';
                       }
 
                       const multiAudio = simplifiedName.includes('MultiAudio');
@@ -1195,9 +1195,14 @@
                       }
                   }
 
-                  if (simplifiedName.includes('Eurosport')) {
-                      simplifiedName = '★' + simplifiedName.replace('Eurosport', 'EUROSPORT');
+                  if (simplifiedName.includes('Eurosport') && !simplifiedName.includes('Eurosport 1') && !simplifiedName.includes('Eurosport 2')) {
+                    simplifiedName = '★EUROSPORT 1';
+                  } else if (simplifiedName.includes('Eurosport 1')) {
+                    simplifiedName = '★EUROSPORT 1';
+                  } else if (simplifiedName.includes('Eurosport 2')) {
+                    simplifiedName = '★EUROSPORT 2';
                   }
+
 
                   numberedChannels.push({
                       id: acestreamId,
@@ -1295,7 +1300,7 @@
               { name: 'La Liga', class: 'liga' },
               { name: 'Hypermotion', class: 'hypermotion' },
               { name: 'Golf', class: 'golf' },
-              { name: '★Eurosport \\d+', class: 'eurosport-number', regex: true },
+              { name: '★EUROSPORT\\d+', class: 'eurosport-number', regex: true },
               { name: 'Smartbank', class: 'smartbank' },
               { name: 'Plus', class: 'plus' },
               { name: 'M+ Plus', class: 'plus' }
@@ -1319,7 +1324,7 @@
       
       function filterChannels() {
         let filteredChannels = state.channelsData;
-        const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+        const searchTerm = document.getElementById('searchInput').value.trim().toLowerCase();
         
         let currentFilter = state.currentFilter;
         if(currentFilter !== 'all' && currentFilter !== 'favorites' && currentFilter !== 'history') {
@@ -1404,12 +1409,10 @@
             'M+ Plus': /M\+ Plus/i,
             'M+ Golf': /M\+ Golf/i,
             'M+': /M\+/i,
+            '★EUROSPORT 1': /★EUROSPORT 1/i,
+            '★EUROSPORT 2': /★EUROSPORT 2/i,
             'Eurosport 1': /Eurosport 1/i,
             'Eurosport 2': /Eurosport 2/i,
-            'Eurosport': /Eurosport/i,
-            '★Eurosport 1': /★Eurosport 1/i,
-            '★Eurosport 2': /★Eurosport 2/i,
-            '★Eurosport': /★Eurosport/i,
             'Canales': /Canal/i
         };
 
@@ -1418,7 +1421,7 @@
             'M+ La Liga Hypermotion', 'M+ La Liga', 'M+ Champions', 
             'M+ Vamos', 'M+ Deportes', 'M+ Deportes 2', 'M+ Deportes 3', 'M+ Deportes 4', 'M+ Deportes 5', 'M+ Deportes 6',
             'M+ Plus', 'M+ Golf', 'M+',
-            '★Eurosport 1', '★Eurosport 2', 'Eurosport 1', 'Eurosport 2', '★Eurosport', 'Eurosport',
+            '★EUROSPORT 1', '★EUROSPORT 2', 'Eurosport 1', 'Eurosport 2',
             'Canales'
         ];
 

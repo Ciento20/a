@@ -915,8 +915,12 @@
               showStatusMessage("Todos los canales actualizados correctamente.", "success");
               
           } catch (error) {
-              console.error("Error al cargar canales iniciales:", error);
-              if (!backupChannels) {
+              console.error("Error al cargar nuevos canales:", error);
+              if (backupChannels) {
+                  state.channelsData = backupChannels;
+                  renderResults();
+                  showStatusMessage("No se pudieron cargar nuevos canales. Mostrando el historial.", "error");
+              } else {
                   channelsGrid.innerHTML = `
                       <div class="no-results">
                           <div class="no-results-icon">📡</div>
@@ -926,8 +930,6 @@
                       </div>
                   `;
                   showStatusMessage("Error al cargar canales. Inténtalo de nuevo.", "error");
-              } else {
-                  showStatusMessage("No se pudieron cargar nuevos canales. Mostrando el historial.", "error");
               }
           }
       }

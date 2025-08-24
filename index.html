@@ -44,6 +44,7 @@
         --elcano-source-color: #f72585;
         --special-gist-color: #9c27b0;
         --events-source-color: #f8961e;
+        --shickat-badge: #2e8b57;
         
         --player-bg: black;
         --channel-number-color: #4b5563;
@@ -565,6 +566,7 @@
       .elcano-badge { background-color: var(--elcano-source-color); color: white; }
       .special-gist-badge { background-color: var(--special-gist-color); color: white; }
       .events-badge { background-color: var(--events-source-color); color: white; }
+      .shickat-badge { background-color: var(--shickat-badge); color: white; }
 
       .retry-button {
           padding: 0.5rem 1rem;
@@ -871,46 +873,39 @@
           return parsedHistory.channels;
       }
 
-      function mergeChannels(oldChannels, newChannels) {
-          const uniqueGistChannels = oldChannels.filter(oldChan => 
-              !newChannels.some(newChan => newChan.id === oldChan.id)
-          );
-          return [...uniqueGistChannels, ...newChannels];
-      }
+      function mergeChannels(channelsArray) {
+        const uniqueChannelsMap = new Map();
 
+        // Orden de preferencia: ElCanó, Shickat, Events, Gist
+        const orderedSources = ['gist', 'events', 'shickat', 'elcano'];
+
+        orderedSources.forEach(source => {
+            channelsArray.forEach(channel => {
+                if (channel.source === source) {
+                    uniqueChannelsMap.set(channel.id, channel);
+                }
+            });
+        });
+        
+        return Array.from(uniqueChannelsMap.values());
+      }
+      
       async function loadInitialChannels() {
           const channelsGrid = document.getElementById("channelsGrid");
           channelsGrid.innerHTML = '<div class="loading-container"><div class="loading-spinner"></div><span>Cargando canales...</span></div>';
           
           try {
               const gistChannels = await loadGistChannels();
-              const historicalChannels = loadChannelHistory();
+              const elcanoChannels = await loadElcanoSource();
+              const eventsChannels = await loadEventsSource();
+              const shickatChannels = await loadShickatChannels();
               
-              if (historicalChannels && historicalChannels.length > 0) {
-                  state.channelsData = mergeChannels(gistChannels, historicalChannels);
-                  renderResults();
-                  showStatusMessage("Mostrando canales históricos mientras se actualizan...");
-              } else {
-                  const elcanoBackup = loadBackup(ELCANO_BACKUP_KEY);
-                  const eventsBackup = loadBackup(EVENTS_BACKUP_KEY);
-                  
-                  let mergedChannels = gistChannels;
-                  
-                  if (elcanoBackup && elcanoBackup.length > 0) {
-                      mergedChannels = mergeChannels(mergedChannels, elcanoBackup);
-                  }
-                  
-                  if (eventsBackup && eventsBackup.length > 0) {
-                      mergedChannels = mergeChannels(mergedChannels, eventsBackup);
-                  }
-                  
-                  state.channelsData = mergedChannels;
-                  renderResults();
-                  showStatusMessage("Cargando canales adicionales...");
-              }
+              const allChannels = [...gistChannels, ...elcanoChannels, ...eventsChannels, ...shickatChannels];
               
-              loadElcanoChannels();
-              loadEventsChannels();
+              state.channelsData = mergeChannels(allChannels);
+              
+              renderResults();
+              showStatusMessage("Todos los canales actualizados correctamente.");
               
           } catch (error) {
               console.error("Error al cargar canales iniciales:", error);
@@ -967,100 +962,6 @@
           return numberedChannels;
       }
 
-      async function loadElcanoChannels() {
-          showStatusMessage("Actualizando canales adicionales... (esto puede tomar un momento)");
-          
-          try {
-              const elcanoChannels = await loadElcanoSource();
-              const historicalChannels = loadChannelHistory() || [];
-              
-              const mergedChannels = mergeChannels(historicalChannels, elcanoChannels);
-              saveChannelHistory(mergedChannels);
-              saveBackup(elcanoChannels, ELCANO_BACKUP_KEY);
-              
-              const uniqueChannelsMap = new Map();
-              
-              state.channelsData.forEach(channel => {
-                  if (channel.source === 'gist') {
-                      uniqueChannelsMap.set(channel.id, channel);
-                  }
-              });
-              
-              mergedChannels.forEach(channel => {
-                  uniqueChannelsMap.set(channel.id, channel);
-              });
-              
-              state.channelsData = Array.from(uniqueChannelsMap.values());
-              renderResults();
-              showStatusMessage("Canales adicionales actualizados correctamente");
-              state.elcanoRetries = 0;
-              
-          } catch (error) {
-              console.error("Error al cargar ElCanó:", error);
-              state.elcanoRetries++;
-              
-              if (state.elcanoRetries <= MAX_RETRIES) {
-                  console.log(`Reintentando ElCanó (${state.elcanoRetries}/${MAX_RETRIES})...`);
-                  showStatusMessage(`Error al actualizar, reintentando... (Intento ${state.elcanoRetries}/${MAX_RETRIES})`, "error");
-                  setTimeout(loadElcanoChannels, 2000 * state.elcanoRetries);
-              } else {
-                  console.log("Máximo de reintentos alcanzado para ElCanó");
-                  showStatusMessage("No se pudieron actualizar los canales adicionales. Mostrando copia de seguridad.", "error");
-                  
-                  const historicalChannels = loadChannelHistory();
-                  if (historicalChannels && historicalChannels.length > 0) {
-                      const gistChannels = state.channelsData.filter(c => c.source === 'gist');
-                      state.channelsData = [...gistChannels, ...historicalChannels];
-                      renderResults();
-                  }
-              }
-          }
-      }
-
-      async function loadEventsChannels() {
-          showStatusMessage("Actualizando eventos deportivos... (esto puede tomar un momento)");
-          
-          try {
-              const eventsChannels = await loadEventsSource();
-              saveBackup(eventsChannels, EVENTS_BACKUP_KEY);
-              
-              const uniqueChannelsMap = new Map();
-              
-              state.channelsData.forEach(channel => {
-                  uniqueChannelsMap.set(channel.id, channel);
-              });
-              
-              eventsChannels.forEach(channel => {
-                  uniqueChannelsMap.set(channel.id, channel);
-              });
-              
-              state.channelsData = Array.from(uniqueChannelsMap.values());
-              renderResults();
-              showStatusMessage("Eventos deportivos actualizados correctamente");
-              state.eventsRetries = 0;
-              
-          } catch (error) {
-              console.error("Error al cargar eventos deportivos:", error);
-              state.eventsRetries++;
-              
-              if (state.eventsRetries <= MAX_RETRIES) {
-                  console.log(`Reintentando eventos deportivos (${state.eventsRetries}/${MAX_RETRIES})...`);
-                  showStatusMessage(`Error al actualizar eventos, reintentando... (Intento ${state.eventsRetries}/${MAX_RETRIES})`, "error");
-                  setTimeout(loadEventsChannels, 2000 * state.eventsRetries);
-              } else {
-                  console.log("Máximo de reintentos alcanzado para eventos deportivos");
-                  showStatusMessage("No se pudieron actualizar los eventos deportivos. Mostrando copia de seguridad.", "error");
-                  
-                  const eventsBackup = loadBackup(EVENTS_BACKUP_KEY);
-                  if (eventsBackup && eventsBackup.length > 0) {
-                      const otherChannels = state.channelsData.filter(c => c.source !== 'events');
-                      state.channelsData = [...otherChannels, ...eventsBackup];
-                      renderResults();
-                  }
-              }
-          }
-      }
-
       async function loadElcanoSource() {
           const PROXIES = [
               'https://api.allorigins.win/raw?url=',
@@ -1107,7 +1008,7 @@
       async function loadEventsSource() {
           const PROXIES = [
               'https://api.allorigins.win/raw?url=',
-              'https://cors-any-where.herokuapp.com/',
+              'https://cors-anywhere.herokuapp.com/',
               'https://api.codetabs.com/v1/proxy/?quest='
           ];
           
@@ -1138,6 +1039,95 @@
           throw lastError || new Error("All proxies failed");
       }
       
+      async function loadShickatChannels() {
+          const PROXIES = [
+              'https://api.allorigins.win/raw?url=',
+              'https://cors-anywhere.herokuapp.com/',
+              'https://api.codetabs.com/v1/proxy/?quest='
+          ];
+          
+          let lastError;
+          const url = 'https://shickat.me/';
+          
+          for (const proxy of PROXIES) {
+              try {
+                  const proxyUrl = proxy + encodeURIComponent(url);
+                  const controller = new AbortController();
+                  const timeoutId = setTimeout(() => controller.abort(), 15000);
+                  
+                  const response = await fetch(proxyUrl, { signal: controller.signal });
+                  
+                  clearTimeout(timeoutId);
+                  
+                  if (!response.ok) throw new Error(`Proxy ${proxy} responded with ${response.status}`);
+                  
+                  const htmlContent = await response.text();
+                  return processShickatData(htmlContent);
+                  
+              } catch (error) {
+                  lastError = error;
+                  console.warn(`Proxy ${proxy} failed:`, error);
+                  continue;
+              }
+          }
+          
+          throw lastError || new Error("All proxies failed for shickat.me");
+      }
+
+      function processShickatData(htmlContent) {
+          const numberedChannels = [];
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(htmlContent, 'text/html');
+          const cards = doc.querySelectorAll('article.canal-card');
+          
+          let currentNumber = 2000;
+          
+          cards.forEach(card => {
+              const nameElement = card.querySelector('.canal-nombre');
+              const acestreamLinkElement = card.querySelector('.acestream-link');
+              
+              if (nameElement && acestreamLinkElement) {
+                  const rawName = nameElement.textContent.trim();
+                  const acestreamId = acestreamLinkElement.textContent.trim();
+                  
+                  if (acestreamId.length === 40) {
+                      let quality = '720p';
+                      let simplifiedName = rawName;
+
+                      if (rawName.includes('(HD)')) {
+                          quality = '720p';
+                          simplifiedName = rawName.replace('(HD)', '').trim();
+                      } else if (rawName.includes('(FHD)')) {
+                          quality = '1080p';
+                          simplifiedName = rawName.replace('(FHD)', '').trim();
+                      }
+                      
+                      const multiAudio = simplifiedName.includes('MultiAudio');
+                      
+                      if (simplifiedName.includes('M. LaLiga')) {
+                          simplifiedName = simplifiedName.replace('M. LaLiga', 'M+ La Liga');
+                      } else if (simplifiedName.includes('Movistar')) {
+                          simplifiedName = simplifiedName.replace('Movistar', 'M+');
+                      }
+
+                      numberedChannels.push({
+                          id: acestreamId,
+                          number: currentNumber.toString(),
+                          name: simplifiedName,
+                          quality: quality,
+                          multiAudio: multiAudio,
+                          isKnown: true,
+                          source: 'shickat'
+                      });
+                      
+                      currentNumber++;
+                  }
+              }
+          });
+          
+          return numberedChannels;
+      }
+
       /**
        * Procesa los datos de ElCanó para normalizar los nombres de los canales.
        * @param {Array<Object>} links - Array de objetos de enlaces de ElCanó.
@@ -1493,6 +1483,9 @@
           } else if (channel.source === 'special-gist') {
               sourceBadgeClass = 'special-gist-badge';
               sourceBadgeText = 'SG';
+          } else if (channel.source === 'shickat') {
+              sourceBadgeClass = 'shickat-badge';
+              sourceBadgeText = 'SH';
           } else {
               sourceBadgeClass = 'gist-badge';
               sourceBadgeText = 'NE';

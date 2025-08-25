@@ -1248,10 +1248,8 @@
                           .replace(/1080|720|UHD|MultiAudio|Multi Audio|\(.*?\)/g, '')
                           .replace(/\s+/g, ' ')
                           .trim();
-
-                      if (simplifiedName.includes('Vamos')) {
-                          simplifiedName = simplifiedName.replace('Vamos', 'M+ Vamos');
-                      } else if (simplifiedName.includes('M ')) {
+                      
+                      if (simplifiedName.includes('M ')) {
                           simplifiedName = simplifiedName.replace('M ', 'M+ ');
                       } else if (simplifiedName.includes('LaLiga')) {
                           simplifiedName = simplifiedName.replace('LaLiga', 'La Liga');

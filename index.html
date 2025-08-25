@@ -1158,8 +1158,8 @@
 
           const nameMap = {
               'M. LaLiga': 'M+ La Liga',
-              'LaLiga Smartbank': 'M+ La Liga Hypermotion',
-              'LaLiga': 'M+ La Liga',
+              'LaLiga Smartbank': 'La Liga Hypermotion',
+              'LaLiga': 'La Liga',
               'MovistarPlus': 'M+ Plus',
               'Vamos': 'M+ Vamos',
               'Deporte': 'M+ Deportes',
@@ -1395,10 +1395,10 @@
             'DAZN 2': /DAZN 2/i,
             'DAZN 3': /DAZN 3/i,
             'DAZN 4': /DAZN 4/i,
-            'DAZN': /DAZN/i,
-            'M+ La Liga Hypermotion': /M\+ La Liga Hypermotion/i,
+            'DAZN La Liga': /DAZN La Liga/i,
             'M+ La Liga': /M\+ La Liga/i,
             'M+ Champions': /M\+ Liga de Campeones/i,
+            'La Liga Hypermotion': /La Liga Hypermotion/i,
             'M+ Vamos': /M\+ Vamos/i,
             'M+ Deportes': /M\+ Deportes/i,
             'M+ Deportes 2': /M\+ Deportes 2/i,
@@ -1411,18 +1411,14 @@
             'M+': /M\+/i,
             '★EUROSPORT 1': /★EUROSPORT 1/i,
             '★EUROSPORT 2': /★EUROSPORT 2/i,
-            'Eurosport 1': /Eurosport 1/i,
-            'Eurosport 2': /Eurosport 2/i,
-            'Canales': /Canal/i
         };
 
         const groupOrder = [
-            'DAZN F1', 'DAZN 1', 'DAZN 2', 'DAZN 3', 'DAZN 4', 'DAZN',
-            'M+ La Liga Hypermotion', 'M+ La Liga', 'M+ Champions', 
+            'DAZN F1', 'DAZN 1', 'DAZN 2', 'DAZN 3', 'DAZN 4', 'DAZN La Liga',
+            'M+ La Liga', 'M+ Champions', 'La Liga Hypermotion', 
             'M+ Vamos', 'M+ Deportes', 'M+ Deportes 2', 'M+ Deportes 3', 'M+ Deportes 4', 'M+ Deportes 5', 'M+ Deportes 6',
             'M+ Plus', 'M+ Golf', 'M+',
-            '★EUROSPORT 1', '★EUROSPORT 2', 'Eurosport 1', 'Eurosport 2',
-            'Canales'
+            '★EUROSPORT 1', '★EUROSPORT 2'
         ];
 
         sortedChannels.forEach(channel => {

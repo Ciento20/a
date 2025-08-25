@@ -1134,6 +1134,10 @@
                           simplifiedName = simplifiedName.replace('Movistar', 'M+');
                       }
 
+                      if (simplifiedName.includes('LaLiga')) {
+                          simplifiedName = simplifiedName.replace('LaLiga', 'La Liga');
+                      }
+
                       numberedChannels.push({
                           id: acestreamId,
                           number: currentNumber.toString(),

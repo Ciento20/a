@@ -1249,10 +1249,10 @@
                           .replace(/\s+/g, ' ')
                           .trim();
                       
-                      if (simplifiedName.includes('M ')) {
-                          simplifiedName = simplifiedName.replace('M ', 'M+ ');
-                      } else if (simplifiedName.includes('LaLiga')) {
-                          simplifiedName = simplifiedName.replace('LaLiga', 'La Liga');
+                      if (simplifiedName.includes('Movistar')) {
+                          simplifiedName = simplifiedName.replace('Movistar', 'M+');
+                      } else if (simplifiedName.includes('LALIGA')) {
+                          simplifiedName = simplifiedName.replace('LALIGA', 'La Liga');
                       } else if (simplifiedName.includes('Premier')) {
                           simplifiedName = simplifiedName.replace('Premier', 'Premier League');
                       }
@@ -1289,7 +1289,7 @@
               { name: '★Eurosport', class: 'eurosport' },
               { name: 'DAZN', class: 'dazn' },
               { name: 'F1', class: 'f1' },
-              { name: 'Accion', class: 'action' },
+              { name: 'Acción', class: 'action' },
               { name: 'hits', class: 'action' },
               { name: 'clasicos', class: 'action' },
               { name: 'Clásicos', class: 'classics' },

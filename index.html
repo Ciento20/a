@@ -1734,13 +1734,13 @@
           isDarkMode ? `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.2)` : `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.1)`);
       }
       
-      // Nuevas variables de estado para el gesto de arrastrar
+      // Nuevas variables de estado para el gesto de arrastrar y clic
       let startX = 0;
       let startY = 0;
-      let isDragging = false;
+      let isMoved = false;
       let currentCard = null;
-      const SWIPE_THRESHOLD = 50; // Pixeles para considerar un deslizamiento
-      let swipeTimeout = null;
+      const MOVE_THRESHOLD = 10;
+      const SWIPE_THRESHOLD = 50;
 
       // Funciones del modal de copiar
       function showCopyModal(acestreamId) {
@@ -1893,44 +1893,44 @@
           loadInitialChannels();
       });
 
-      // Event listeners para los gestos
+      // Event listeners para los gestos del ratón
       document.addEventListener('mousedown', (e) => {
           if (e.target.closest('.channel-card')) {
               currentCard = e.target.closest('.channel-card');
               startX = e.clientX;
               startY = e.clientY;
-              isDragging = true;
-              swipeTimeout = setTimeout(() => {
-                  isDragging = false;
-              }, 300);
+              isMoved = false;
           }
       });
 
       document.addEventListener('mousemove', (e) => {
-          if (!isDragging || !currentCard) return;
+          if (!currentCard) return;
+
           const diffX = e.clientX - startX;
           const diffY = e.clientY - startY;
+
+          if (Math.abs(diffX) > MOVE_THRESHOLD || Math.abs(diffY) > MOVE_THRESHOLD) {
+              isMoved = true;
+          }
 
           if (Math.abs(diffX) > SWIPE_THRESHOLD && Math.abs(diffX) > Math.abs(diffY)) {
               e.preventDefault();
               showCopyModal(currentCard.dataset.id);
-              isDragging = false;
-              clearTimeout(swipeTimeout);
               currentCard = null;
           }
       });
 
       document.addEventListener('mouseup', () => {
-          if (isDragging) {
-              if (currentCard && !state.isFavoriteMode) {
-                  playChannel(currentCard.dataset.id);
-              } else if (currentCard && state.isFavoriteMode) {
-                  toggleFavorite(currentCard.dataset.number);
+          if (currentCard) {
+              if (!isMoved) {
+                  if (!state.isFavoriteMode) {
+                      playChannel(currentCard.dataset.id);
+                  } else {
+                      toggleFavorite(currentCard.dataset.number);
+                  }
               }
           }
-          isDragging = false;
           currentCard = null;
-          clearTimeout(swipeTimeout);
       });
 
       // Event listeners para dispositivos móviles
@@ -1940,39 +1940,38 @@
               const touch = e.touches[0];
               startX = touch.clientX;
               startY = touch.clientY;
-              isDragging = true;
-              swipeTimeout = setTimeout(() => {
-                  isDragging = false;
-              }, 300);
+              isMoved = false;
           }
       });
 
       document.addEventListener('touchmove', (e) => {
-          if (!isDragging || !currentCard) return;
+          if (!currentCard) return;
           const touch = e.touches[0];
           const diffX = touch.clientX - startX;
           const diffY = touch.clientY - startY;
 
+          if (Math.abs(diffX) > MOVE_THRESHOLD || Math.abs(diffY) > MOVE_THRESHOLD) {
+              isMoved = true;
+          }
+
           if (Math.abs(diffX) > SWIPE_THRESHOLD && Math.abs(diffX) > Math.abs(diffY)) {
               e.preventDefault();
               showCopyModal(currentCard.dataset.id);
-              isDragging = false;
-              clearTimeout(swipeTimeout);
               currentCard = null;
           }
       });
 
       document.addEventListener('touchend', () => {
-          if (isDragging) {
-              if (currentCard && !state.isFavoriteMode) {
-                  playChannel(currentCard.dataset.id);
-              } else if (currentCard && state.isFavoriteMode) {
-                  toggleFavorite(currentCard.dataset.number);
+          if (currentCard) {
+              if (!isMoved) {
+                  if (!state.isFavoriteMode) {
+                      playChannel(currentCard.dataset.id);
+                  } else {
+                      toggleFavorite(currentCard.dataset.number);
+                  }
               }
           }
-          isDragging = false;
           currentCard = null;
-          clearTimeout(swipeTimeout);
       });
     </script>
 </body>

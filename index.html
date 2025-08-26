@@ -616,6 +616,16 @@
         white-space: nowrap;
         color: var(--channel-number-color);
       }
+      
+      /* Estilos para el nuevo botón de cancelar */
+      .modal__btn--cancel {
+          background: #ccc;
+          color: #333;
+      }
+      
+      .modal__btn--cancel:hover {
+          background: #bbb;
+      }
 
       @keyframes spin {
         to { transform: rotate(360deg); }
@@ -688,7 +698,98 @@
         -webkit-text-fill-color: transparent;
         font-weight: bold;
       }
+      
+      /* Estilos para el modal de copiar URL */
+      .copy-modal {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-md);
+        padding: 1.5rem;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        z-index: 2000;
+        width: 90%;
+        max-width: 320px;
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        animation: fadeIn 0.3s ease-out;
+      }
+      
+      .copy-modal.active {
+        display: flex;
+      }
 
+      .copy-modal-icon {
+        font-size: 2.5rem;
+        margin-bottom: 0.8rem;
+      }
+
+      .copy-modal-text {
+        font-size: 0.95rem;
+        color: var(--text);
+        margin-bottom: 1rem;
+      }
+
+      .copy-modal-button {
+        padding: 0.6rem 1.2rem;
+        background: var(--primary);
+        color: white;
+        border: none;
+        border-radius: var(--radius-sm);
+        cursor: pointer;
+        font-size: 0.9rem;
+        font-weight: 600;
+        transition: background 0.2s;
+        margin-bottom: 0.5rem;
+      }
+
+      .copy-modal-button:hover {
+        background: var(--primary-dark);
+      }
+
+      .copy-modal-url {
+        background-color: var(--bg-light);
+        color: var(--text);
+        padding: 0.5rem;
+        margin-bottom: 1rem;
+        border-radius: var(--radius-sm);
+        font-family: monospace;
+        word-break: break-all;
+        font-size: 0.85rem;
+      }
+      
+      body.dark-mode .copy-modal-url {
+        background-color: var(--border-color);
+      }
+
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translate(-50%, -60%); }
+        to { opacity: 1; transform: translate(-50%, -50%); }
+      }
+
+      .copy-message {
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: var(--primary);
+        color: white;
+        padding: 0.6rem 1.2rem;
+        border-radius: var(--radius-sm);
+        font-size: 0.9rem;
+        z-index: 2001;
+        opacity: 0;
+        transition: opacity 0.4s ease-in-out;
+      }
+
+      .copy-message.show {
+        opacity: 1;
+      }
     </style>
 </head>
 <body>
@@ -775,6 +876,17 @@
             </div>
         </div>
     </div>
+    
+    <div class="copy-modal" id="copyModal">
+        <div class="copy-modal-icon">🔗</div>
+        <div class="copy-modal-text">¿Quieres copiar la URL de este canal?</div>
+        <p id="copyUrlDisplay" class="copy-modal-url"></p>
+        <button class="copy-modal-button" id="confirmCopyBtn">Copiar enlace</button>
+        <button class="modal__btn modal__btn--cancel" id="cancelCopyBtn">Cancelar</button>
+    </div>
+
+    <div class="copy-message" id="copyMessage">URL copiada con éxito!</div>
+    
     <script>
       const state = {
           allChannels: [],
@@ -1541,10 +1653,13 @@
               sourceBadgeText = 'NE';
           }
           
-          const onClickAction = state.isFavoriteMode ? `toggleFavorite('${channel.number}')` : `playChannel('${channel.id}')`;
+          const onClickAction = state.isFavoriteMode ? `toggleFavorite('${channel.number}')` : ``;
 
           return `
-              <div class="${cardClass}" onclick="${onClickAction}">
+              <div class="${cardClass}"
+                   data-id="${channel.id}"
+                   data-number="${channel.number}"
+                   onclick="${onClickAction}">
                   <div class="channel-header">
                       <div class="channel-name">${highlightBrands(channel.name)}</div>
                       <div class="source-badge ${sourceBadgeClass}">${sourceBadgeText}</div>
@@ -1618,6 +1733,51 @@
         document.documentElement.style.setProperty('--primary-light', 
           isDarkMode ? `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.2)` : `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.1)`);
       }
+      
+      // Nuevas variables de estado para el gesto de arrastrar
+      let startX = 0;
+      let startY = 0;
+      let isDragging = false;
+      let currentCard = null;
+      const SWIPE_THRESHOLD = 50; // Pixeles para considerar un deslizamiento
+      let swipeTimeout = null;
+
+      // Funciones del modal de copiar
+      function showCopyModal(acestreamId) {
+          const url = `acestream://${acestreamId}`;
+          const copyModal = document.getElementById('copyModal');
+          const confirmBtn = document.getElementById('confirmCopyBtn');
+          const urlDisplay = document.getElementById('copyUrlDisplay');
+
+          urlDisplay.textContent = url;
+          
+          confirmBtn.onclick = () => copyUrlToClipboard(acestreamId);
+          copyModal.classList.add('active');
+      }
+
+      function hideCopyModal() {
+          document.getElementById('copyModal').classList.remove('active');
+      }
+
+      function showCopySuccessMessage() {
+          const messageElement = document.getElementById('copyMessage');
+          messageElement.classList.add('show');
+          setTimeout(() => {
+              messageElement.classList.remove('show');
+          }, 2000);
+      }
+
+      async function copyUrlToClipboard(acestreamId) {
+          const url = `acestream://${acestreamId}`;
+          try {
+              await navigator.clipboard.writeText(url);
+              hideCopyModal();
+              showCopySuccessMessage();
+          } catch (err) {
+              console.error('Error al copiar el texto: ', err);
+              alert('No se pudo copiar la URL. Por favor, hazlo manualmente.');
+          }
+      }
 
       document.addEventListener('DOMContentLoaded', () => {
           document.body.classList.toggle('dark-mode', state.darkMode);
@@ -1629,6 +1789,8 @@
           
           let pressTimerClear;
           const clearButton = document.getElementById('clearEmojiFilters');
+          const copyModal = document.getElementById('copyModal');
+          const cancelCopyBtn = document.getElementById('cancelCopyBtn');
 
           favoriteButton.addEventListener('mousedown', (e) => {
               if (e.button !== 0) return;
@@ -1703,6 +1865,17 @@
                   applyFilter('all');
               }
           });
+          
+          if(cancelCopyBtn) {
+              cancelCopyBtn.addEventListener('click', hideCopyModal);
+          }
+          
+          window.addEventListener('click', (event) => {
+              if (event.target === copyModal) {
+                  hideCopyModal();
+              }
+          });
+
 
           document.getElementById('filterDAZN').addEventListener('click', () => applyFilter('dazn'));
           document.getElementById('filterMovistar').addEventListener('click', () => applyFilter('m+'));
@@ -1718,6 +1891,88 @@
           
           applyFilter('all');
           loadInitialChannels();
+      });
+
+      // Event listeners para los gestos
+      document.addEventListener('mousedown', (e) => {
+          if (e.target.closest('.channel-card')) {
+              currentCard = e.target.closest('.channel-card');
+              startX = e.clientX;
+              startY = e.clientY;
+              isDragging = true;
+              swipeTimeout = setTimeout(() => {
+                  isDragging = false;
+              }, 300);
+          }
+      });
+
+      document.addEventListener('mousemove', (e) => {
+          if (!isDragging || !currentCard) return;
+          const diffX = e.clientX - startX;
+          const diffY = e.clientY - startY;
+
+          if (Math.abs(diffX) > SWIPE_THRESHOLD && Math.abs(diffX) > Math.abs(diffY)) {
+              e.preventDefault();
+              showCopyModal(currentCard.dataset.id);
+              isDragging = false;
+              clearTimeout(swipeTimeout);
+              currentCard = null;
+          }
+      });
+
+      document.addEventListener('mouseup', () => {
+          if (isDragging) {
+              if (currentCard && !state.isFavoriteMode) {
+                  playChannel(currentCard.dataset.id);
+              } else if (currentCard && state.isFavoriteMode) {
+                  toggleFavorite(currentCard.dataset.number);
+              }
+          }
+          isDragging = false;
+          currentCard = null;
+          clearTimeout(swipeTimeout);
+      });
+
+      // Event listeners para dispositivos móviles
+      document.addEventListener('touchstart', (e) => {
+          if (e.target.closest('.channel-card')) {
+              currentCard = e.target.closest('.channel-card');
+              const touch = e.touches[0];
+              startX = touch.clientX;
+              startY = touch.clientY;
+              isDragging = true;
+              swipeTimeout = setTimeout(() => {
+                  isDragging = false;
+              }, 300);
+          }
+      });
+
+      document.addEventListener('touchmove', (e) => {
+          if (!isDragging || !currentCard) return;
+          const touch = e.touches[0];
+          const diffX = touch.clientX - startX;
+          const diffY = touch.clientY - startY;
+
+          if (Math.abs(diffX) > SWIPE_THRESHOLD && Math.abs(diffX) > Math.abs(diffY)) {
+              e.preventDefault();
+              showCopyModal(currentCard.dataset.id);
+              isDragging = false;
+              clearTimeout(swipeTimeout);
+              currentCard = null;
+          }
+      });
+
+      document.addEventListener('touchend', () => {
+          if (isDragging) {
+              if (currentCard && !state.isFavoriteMode) {
+                  playChannel(currentCard.dataset.id);
+              } else if (currentCard && state.isFavoriteMode) {
+                  toggleFavorite(currentCard.dataset.number);
+              }
+          }
+          isDragging = false;
+          currentCard = null;
+          clearTimeout(swipeTimeout);
       });
     </script>
 </body>

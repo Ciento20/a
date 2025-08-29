@@ -1,1791 +1,2078 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=0.8, maximum-scale=0.8, user-scalable=no">
-  <title>📺 DaddyLiveHD</title>
-  <style>
-    :root {
-      --primary: #2563eb;
-      --primary-light: rgba(37, 99, 235, 0.1);
-      --primary-dark: #1e50c7;
-      --bg-light: #f1f5f9;
-      --card-bg: #ffffff;
-      --text: #1e293b;
-      --border-color: #e2e8f0;
-      --white: #ffffff;
-      --radius-md: 10px;
-      --radius-sm: 6px;
-      --shadow-sm: 0 1px 3px rgba(0,0,0,0.1);
-    }
-    
-    body.dark-mode {
-      --bg-light: #131313;
-      --card-bg: #333436;
-      --text: #f8fafc;
-      --border-color: #555555;
-      --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
-      --primary-light: rgba(var(--primary-rgb), 0.2);
-    }
-    
-    body {
-      background: var(--bg-light);
-      color: var(--text);
-      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-      line-height: 1.6;
-      margin: 0;
-      padding: 0;
-      transition: all 0.3s;
-    }
-    
-    .main-container {
-      max-width: 1400px;
-      margin: 1rem auto;
-      padding: 0 1rem;
-    }
-    
-    .search-filters {
-      background: var(--card-bg);
-      border-radius: var(--radius-md);
-      padding: 1rem;
-      margin-bottom: 1rem;
-      box-shadow: var(--shadow-sm);
-    }
-    
-    .search-box {
-      position: relative;
-      margin-bottom: 0.8rem;
-    }
-    
-    .search-box input {
-      width: 100%;
-      padding: 0.6rem 1rem 0.6rem 2.2rem;
-      border: 1px solid var(--border-color);
-      border-radius: var(--radius-sm);
-      font-size: 0.9rem;
-      background-color: var(--card-bg);
-      color: var(--text);
-      box-sizing: border-box;
-    }
-    
-    .search-box::before {
-      content: "🔍";
-      position: absolute;
-      left: 0.8rem;
-      top: 50%;
-      transform: translateY(-50%);
-      color: var(--text);
-      font-size: 0.9rem;
-    }
-    
-    .filter-buttons {
-      display: flex;
-      gap: 0.6rem;
-      margin-top: 0.8rem;
-    }
-    
-    .filter-button {
-      flex: 1;
-      padding: 0.5rem;
-      border: 1px solid var(--border-color);
-      border-radius: var(--radius-sm);
-      background: var(--card-bg);
-      color: var(--text);
-      cursor: pointer;
-      font-size: 0.8rem;
-      font-weight: 500;
-      transition: all 0.2s;
-    }
-    
-    .filter-button:hover {
-      border-color: var(--primary);
-    }
-    
-    .filter-button--active {
-      background: var(--primary);
-      color: white;
-      border-color: var(--primary);
-    }
-    
-    .filter-button--favorites, .filter-button--clear {
-      flex: 0 0 auto;
-      width: 36px;
-      min-width: 36px;
-      padding: 0.5rem 0;
-    }
-    
-    .emoji-filters {
-      display: flex;
-      justify-content: center;
-      gap: 8px;
-      margin-top: 8px;
-      flex-wrap: wrap;
-    }
-    
-    .emoji-filter-btn {
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-      border: 1px solid var(--border-color);
-      background: var(--card-bg);
-      font-size: 18px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: all 0.2s;
-    }
-    
-    .emoji-filter-btn:hover {
-      border-color: var(--primary);
-    }
-    
-    .emoji-filter-btn--active {
-      background: var(--primary);
-      color: white;
-      border-color: var(--primary);
-    }
-    
-    .channels-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-      gap: 1rem;
-    }
-    
-    .channel-card {
-      background: var(--card-bg);
-      border: 1px solid var(--border-color);
-      border-radius: var(--radius-md);
-      padding: 1rem;
-      cursor: pointer;
-      box-shadow: var(--shadow-sm);
-      transition: all 0.2s;
-    }
-    
-    .channel-card:hover {
-      transform: translateY(-3px);
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-      border-color: var(--primary-light);
-    }
-    
-    .channel-header {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 0.5rem;
-    }
-    
-    .channel-name {
-      font-weight: 600;
-      flex-grow: 1;
-      padding: 0 0.5rem;
-      text-align: center;
-      font-size: 0.95rem;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 5px;
-    }
-    
-    .channel-number {
-      color: var(--primary);
-      font-weight: 600;
-      font-size: 0.75rem;
-    }
-    
-    .channel-time {
-      font-size: 0.75rem;
-      display: flex;
-      align-items: center;
-      gap: 5px;
-    }
-    
-    .channel-time--live::before, .channel-name--live::before {
-      content: "";
-      display: inline-block;
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background-color: #dc2626;
-      animation: pulse 1.5s infinite;
-    }
-    
-    .channel-event {
-      font-size: 0.8rem;
-      margin-top: 0.5rem;
-    }
-    
-    .channel-sport {
-      font-size: 0.7rem;
-      color: var(--primary);
-      margin-top: 0.2rem;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    
-    .player-container {
-      background: black;
-      border-radius: var(--radius-md);
-      overflow: hidden;
-      width: 100%;
-      height: calc(57vw + 40px);
-      max-height: 85vh;
-      display: none;
-    }
-    
-    .player-container--active {
-      display: block;
-    }
-    
-    #videoFrame {
-      width: 100%;
-      height: 100%;
-      border: none;
-    }
-
-    .zoomed-player {
-      transform: scale(1.25);
-      transform-origin: top center;
-    }
-    
-    .player-controls {
-      display: none;
-      gap: 10px;
-      justify-content: center;
-      padding: 10px;
-      background: var(--card-bg);
-      border-radius: var(--radius-md);
-      box-shadow: var(--shadow-sm);
-      position: relative;
-      margin-bottom: 10px;
-    }
-    
-    .player-controls--active {
-      display: flex;
-    }
-    
-    .control-btn {
-      background: var(--primary);
-      border: none;
-      color: white;
-      cursor: pointer;
-      width: 28px;
-      height: 28px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: all 0.2s;
-    }
-    
-    .control-btn:hover {
-      background: var(--primary-dark);
-    }
-    
-    .control-btn--active {
-      background: var(--primary-dark);
-    }
-    
-    .channel-info {
-      position: absolute;
-      left: 10px;
-      top: 50%;
-      transform: translateY(-50%);
-      font-size: 0.9rem;
-      font-weight: 600;
-      max-width: 150px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    
-    .channel-number-display {
-      position: absolute;
-      right: 10px;
-      top: 50%;
-      transform: translateY(-50%);
-      font-size: 0.9rem;
-      font-weight: 600;
-    }
-    
-    .modal {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(0,0,0,0.5);
-      display: none;
-      justify-content: center;
-      align-items: center;
-      z-index: 1001;
-    }
-    
-    .modal--active {
-      display: flex;
-    }
-    
-    .modal__content {
-      background: var(--card-bg);
-      border-radius: var(--radius-md);
-      padding: 1.2rem;
-      width: 90%;
-      max-width: 350px;
-      box-shadow: var(--shadow-sm);
-    }
-    
-    .modal__title {
-      margin-bottom: 0.8rem;
-      color: var(--text);
-      font-size: 1.1rem;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    
-    .modal__actions {
-      display: flex;
-      justify-content: flex-end;
-      gap: 0.6rem;
-      margin-top: 1rem;
-    }
-    
-    .modal__btn {
-      padding: 0.5rem 0.8rem;
-      border: none;
-      border-radius: var(--radius-sm);
-      cursor: pointer;
-      font-weight: 500;
-      font-size: 0.9rem;
-      transition: all 0.2s;
-    }
-    
-    .modal__btn--primary {
-      background: var(--primary);
-      color: white;
-    }
-    
-    .modal__btn--primary:hover {
-      background: var(--primary-dark);
-    }
-    
-    .settings-section {
-      margin-bottom: 1.2rem;
-      padding-bottom: 1rem;
-      border-bottom: 1px solid var(--border-color);
-    }
-    
-    .settings-section:last-child {
-      border-bottom: none;
-      margin-bottom: 0;
-      padding-bottom: 0;
-    }
-    
-    .settings-section__title {
-      font-size: 0.9rem;
-      color: var(--primary);
-      margin-bottom: 0.8rem;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    
-    .settings-item {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 0.8rem;
-      padding: 0.5rem;
-      border-radius: var(--radius-sm);
-      transition: background 0.2s;
-    }
-    
-    .settings-item:hover {
-      background: var(--primary-light);
-    }
-    
-    .settings-item__info {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      flex: 1;
-    }
-    
-    .settings-icon {
-      font-size: 1.2rem;
-    }
-    
-    .settings-label {
-      font-size: 0.9rem;
-      color: var(--text);
-      font-weight: 500;
-      display: block;
-    }
-    
-    .settings-description {
-      font-size: 0.75rem;
-      color: var(--text);
-      opacity: 0.7;
-      display: block;
-      margin-top: 2px;
-    }
-    
-    .settings-switch {
-      position: relative;
-      display: inline-block;
-      width: 50px;
-      height: 24px;
-    }
-    
-    .settings-switch input {
-      opacity: 0;
-      width: 0;
-      height: 0;
-    }
-    
-    .settings-slider {
-      position: absolute;
-      cursor: pointer;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background-color: #ccc;
-      transition: .4s;
-      border-radius: 24px;
-    }
-    
-    .settings-slider:before {
-      position: absolute;
-      content: "";
-      height: 16px;
-      width: 16px;
-      left: 4px;
-      bottom: 4px;
-      background-color: white;
-      transition: .4s;
-      border-radius: 50%;
-    }
-    
-    input:checked + .settings-slider {
-      background-color: var(--primary);
-    }
-    
-    input:checked + .settings-slider:before {
-      transform: translateX(26px);
-    }
-    
-    .color-picker {
-      display: flex;
-      gap: 6px;
-    }
-    
-    .color-option {
-      width: 24px;
-      height: 24px;
-      border-radius: 50%;
-      border: 2px solid transparent;
-      cursor: pointer;
-      transition: transform 0.2s;
-    }
-    
-    .color-option:hover {
-      transform: scale(1.1);
-    }
-    
-    .color-option.active {
-      border-color: var(--text);
-      transform: scale(1.1);
-    }
-    
-    .domain-select-container {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-top: 5px;
-    }
-    
-    .domain-select {
-      flex: 1;
-      padding: 0.5rem;
-      border: 1px solid var(--border-color);
-      border-radius: var(--radius-sm);
-      background-color: var(--card-bg);
-      color: var(--text);
-      font-size: 0.9rem;
-    }
-    
-    .channel-group {
-      background: var(--card-bg);
-      border: 1px solid var(--border-color);
-      border-radius: var(--radius-md);
-      padding: 0;
-      margin-bottom: 1rem;
-      box-shadow: var(--shadow-sm);
-    }
-    
-    .channel-group__header {
-      padding: 0.8rem 1rem;
-      background: var(--primary-light);
-      border-bottom: 1px solid var(--border-color);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    
-    .channel-group__title {
-      font-weight: 600;
-      color: var(--text);
-    }
-    
-    .channel-group__sport {
-      font-size: 0.8rem;
-      color: var(--primary);
-      margin-top: 0.2rem;
-    }
-    
-    .channel-group__content {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-      gap: 0.8rem;
-      padding: 0.8rem;
-    }
-    
-    .channel-group__content--single {
-      grid-template-columns: 1fr;
-    }
-    
-    .offline-message {
-      background: #fef2f2;
-      color: #dc2626;
-      padding: 0.5rem;
-      border-radius: var(--radius-sm);
-      margin-bottom: 1rem;
-      text-align: center;
-    }
-    
-    .update-notification {
-      background: #dbeafe;
-      color: var(--primary);
-      padding: 0.5rem;
-      border-radius: var(--radius-sm);
-      margin-bottom: 1rem;
-      text-align: center;
-      font-weight: 600;
-      max-height: 0;
-      overflow: hidden;
-      transition: max-height 0.5s ease, opacity 0.5s ease, margin 0.5s ease;
-      opacity: 0;
-      margin: 0;
-    }
-    
-    .update-notification--show {
-      max-height: 100px;
-      opacity: 1;
-      margin-bottom: 1rem;
-    }
-    
-    .player-section--sticky {
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      background: var(--bg-light);
-    }
-    
-    .channel-card--favorite {
-      border: 2px solid var(--primary);
-    }
-    
-    .loading-spinner {
-      display: inline-block;
-      width: 20px;
-      height: 20px;
-      border: 3px solid rgba(0, 0, 0, 0.1);
-      border-radius: 50%;
-      border-top-color: var(--primary);
-      animation: spin 1s ease-in-out infinite;
-      margin-left: 10px;
-    }
-    
-    .loading-container {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 10px;
-      padding: 10px;
-      background: var(--card-bg);
-      border-radius: var(--radius-sm);
-      margin-bottom: 1rem;
-    }
-    
-    .no-results {
-      grid-column: 1 / -1;
-      text-align: center;
-      padding: 2rem;
-      background: var(--card-bg);
-      border-radius: var(--radius-md);
-      box-shadow: var(--shadow-sm);
-      margin-top: 1rem;
-    }
-    
-    .no-results-icon {
-      font-size: 3rem;
-      margin-bottom: 1rem;
-      opacity: 0.5;
-    }
-    
-    .no-results-text {
-      font-size: 1.1rem;
-      color: var(--text);
-      margin-bottom: 0.5rem;
-    }
-    
-    .no-results-hint {
-      font-size: 0.9rem;
-      color: var(--text);
-      opacity: 0.7;
-    }
-    
-    .fecha-container {
-      background: var(--card-bg);
-      padding: 15px;
-      border-radius: var(--radius-md);
-      margin-bottom: 1rem;
-      text-align: center;
-      box-shadow: var(--shadow-sm);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 10px;
-    }
-    
-    .fecha-titulo {
-      font-size: 14px;
-      color: var(--text);
-      opacity: 0.7;
-      margin-bottom: 5px;
-    }
-    
-    .fecha-valor {
-      font-size: 20px;
-      font-weight: bold;
-      color: var(--primary);
-    }
-    
-    .debug-info {
-      font-size: 12px;
-      color: var(--text);
-      opacity: 0.5;
-      margin-top: 5px;
-    }
-    
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-    
-    @keyframes pulse {
-      0% { opacity: 1; }
-      50% { opacity: 0.3; }
-      100% { opacity: 1; }
-    }
-    
-    @media (max-width: 768px) {
-      .channels-grid {
-        grid-template-columns: 1fr;
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=0.8, maximum-scale=0.8, user-scalable=no">
+    <title>🅰️</title>
+    <style>
+      /* Variables CSS del primer HTML para unificar el estilo */
+      :root {
+        --primary: #2563eb;
+        --primary-light: rgba(37, 99, 235, 0.1);
+        --primary-dark: #1e50c7;
+        --bg-light: #f1f5f9;
+        --card-bg: #ffffff;
+        --text: #1e293b;
+        --border-color: #e2e8f0;
+        --white: #ffffff;
+        --radius-md: 10px;
+        --radius-sm: 6px;
+        --shadow-sm: 0 1px 3px rgba(0,0,0,0.1);
+        --primary-rgb: 37, 99, 235;
+        
+        /* Colores del segundo HTML para los nombres de canales */
+        --secondary: #f72585;
+        --success: #4cc9f0;
+        --warning: #f8961e;
+        --info: #4895ef;
+        --movistar-blue: #0085C1;
+        --eurosport-blue: #5e17eb;
+        --dazn-black: #000000;
+        --f1-red:#ff3535;
+        --channel-name-color: #888888;
+        --action-red: #ff544d;
+        --classics-red: #fa3732;
+        --sports-green: #11a45b;
+        --vamos-green: #1fc23d;
+        --copadelrey-green: #449653;
+        --champions-teal: #52c29c;
+        --liga-teal: #21ffb8;
+        --hypermotion-cyan: #04d2d7;
+        --golf-teal: #4ee1b0;
+        --eurosport-number-red: #ff3535;
+        --gist-source-color: #4cc9f0;
+        --elcano-source-color: #f72585;
+        --special-gist-color: #9c27b0;
+        --events-source-color: #f8961e;
+        --shickat-badge: #2e8b57;
+        --player-bg: black;
+        --channel-number-color: #4b5563;
+        
+        --plus-blue: #3399ff;
+        --western-red: #e60000;
+        --documentary-purple: #a06cf5;
+        --originals-blue: #3985b0;
+        --hits-red: #fa3732;
+        --premieres-red: #fa3934;
+        --indie-red: #fa3732;
+        --spanish-film-red: #fa3732;
+        --drama-red: #fa3732;
+        --ellas-green: #35fd9b;
+        --series-orange: #ff8c1f;
       }
       
-      .filter-buttons {
-        flex-wrap: nowrap;
+      body.dark-mode {
+        --bg-light: #131313;
+        --card-bg: #333436;
+        --text: #f8fafc;
+        --border-color: #555555;
+        --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
+        --primary-light: rgba(var(--primary-rgb), 0.2);
+        --channel-name-color: #e2e2ff;
+        --player-bg: #1e1e1e;
+        --channel-number-color: #b0b0b0;
       }
       
-      .channel-group__content {
-        grid-template-columns: 1fr;
+      body {
+        background: var(--bg-light);
+        color: var(--text);
+        font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        line-height: 1.6;
+        margin: 0;
+        padding: 0;
+        transition: all 0.3s;
       }
       
-      .channel-info, .channel-number-display {
-        position: static;
-        transform: none;
-        font-size: 0.75rem;
-        max-width: 30%;
+      .main-container {
+        max-width: 1400px;
+        margin: 1rem auto;
+        padding: 0 1rem;
       }
       
-      .channel-info {
-        text-align: left;
-        flex: 1;
+      .search-filters {
+        background: var(--card-bg);
+        border-radius: var(--radius-md);
+        padding: 1rem;
+        margin-bottom: 1rem;
+        box-shadow: var(--shadow-sm);
+        display: flex;
+        flex-direction: column;
       }
       
-      .channel-number-display {
-        text-align: right;
-        margin-left: auto;
-      }
-    }
-    
-    @media (min-width: 768px) {
-      .channels-grid {
-        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+      .search-box {
+        position: relative;
+        margin-bottom: 0.8rem;
       }
       
-      .channel-name {
-        font-size: 1rem;
+      .search-box input {
+        width: 100%;
+        padding: 0.6rem 1rem 0.6rem 2.2rem;
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-sm);
+        font-size: 0.9rem;
+        background-color: var(--card-bg);
+        color: var(--text);
+        box-sizing: border-box;
       }
       
-      .channel-event {
+      .search-box::before {
+        content: "🔍";
+        position: absolute;
+        left: 0.8rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--text);
         font-size: 0.9rem;
       }
       
-      .channel-sport {
-        font-size: 0.8rem;
+      .filter-buttons {
+        display: flex;
+        gap: 0.6rem;
+        margin-top: 0.8rem;
+        flex-wrap: wrap;
       }
-    }
-  </style>
+      
+      .filter-button {
+        flex: 1;
+        padding: 0.5rem;
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-sm);
+        background: var(--card-bg);
+        color: var(--text);
+        cursor: pointer;
+        font-size: 0.8rem;
+        font-weight: 500;
+        transition: all 0.2s;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-basis: auto;
+      }
+      
+      .filter-button:hover {
+        border-color: var(--primary);
+      }
+      
+      .filter-button--active {
+        background: var(--primary);
+        color: white;
+        border-color: var(--primary);
+      }
+      
+      .filter-button--favorites, .filter-button--clear {
+        flex: 0 0 auto;
+        width: 36px;
+        min-width: 36px;
+        padding: 0.5rem 0;
+      }
+      
+      .channels-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 1rem;
+      }
+      
+      .channel-card {
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-md);
+        padding: 1rem;
+        cursor: pointer;
+        box-shadow: var(--shadow-sm);
+        transition: all 0.2s;
+        position: relative;
+        overflow: hidden;
+      }
+      
+      .channel-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        border-color: var(--primary-light);
+      }
+
+      /* Nuevo estilo para el modo de edición de favoritos */
+      .channel-card--favorite-mode {
+        border-style: dashed;
+        border-width: 2px;
+        border-color: var(--primary);
+        opacity: 0.8;
+        transition: all 0.3s ease;
+      }
+
+      .channel-card .channel-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .channel-name {
+        font-weight: 600;
+        flex-grow: 1;
+        padding: 0 0.5rem;
+        text-align: left;
+        font-size: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      /* Estilos adicionales para unificar el aspecto */
+      .channel-info-line {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-top: 0.5rem;
+          font-size: 0.8rem;
+          color: #6b7280;
+      }
+      
+      body.dark-mode .channel-info-line {
+          color: #a0a0a0;
+      }
+      
+      .channel-card--favorite {
+        border: 2px solid var(--primary);
+      }
+
+      .channel-group {
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-md);
+        padding: 0;
+        margin-bottom: 1rem;
+        box-shadow: var(--shadow-sm);
+      }
+      
+      .channel-group__header {
+        padding: 0.8rem 1rem;
+        background: var(--primary-light);
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      
+      .channel-group__title {
+        font-weight: 600;
+        color: var(--text);
+        font-size: 1rem;
+      }
+      
+      .channel-group__content {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 0.8rem;
+        padding: 0.8rem;
+      }
+      
+      .offline-message {
+        background: #fef2f2;
+        color: #dc2626;
+        padding: 0.5rem;
+        border-radius: var(--radius-sm);
+        margin-bottom: 1rem;
+        text-align: center;
+      }
+      
+      .update-notification {
+        background: #dbeafe;
+        color: var(--primary);
+        padding: 0.5rem;
+        border-radius: var(--radius-sm);
+        margin-bottom: 1rem;
+        text-align: center;
+        font-weight: 600;
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.5s ease, opacity 0.5s ease, margin 0.5s ease;
+        opacity: 0;
+        margin: 0;
+      }
+      
+      .update-notification--show {
+        max-height: 100px;
+        opacity: 1;
+        margin-bottom: 1rem;
+      }
+      
+      .loading-spinner {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border: 3px solid rgba(0, 0, 0, 0.1);
+        border-radius: 50%;
+        border-top-color: var(--primary);
+        animation: spin 1s ease-in-out infinite;
+        margin-left: 10px;
+      }
+      
+      .loading-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 10px;
+        padding: 10px;
+        background: var(--card-bg);
+        border-radius: var(--radius-sm);
+        margin-bottom: 1rem;
+      }
+      
+      .no-results {
+        grid-column: 1 / -1;
+        text-align: center;
+        padding: 2rem;
+        background: var(--card-bg);
+        border-radius: var(--radius-md);
+        box-shadow: var(--shadow-sm);
+        margin-top: 1rem;
+      }
+      
+      .no-results-icon {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+        opacity: 0.5;
+      }
+      
+      .no-results-text {
+        font-size: 1.1rem;
+        color: var(--text);
+        margin-bottom: 0.5rem;
+      }
+      
+      .no-results-hint {
+        font-size: 0.9rem;
+        color: var(--text);
+        opacity: 0.7;
+      }
+
+      .modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.5);
+        display: none;
+        justify-content: center;
+        align-items: center;
+        z-index: 1001;
+      }
+      
+      .modal--active {
+        display: flex;
+      }
+      
+      .modal__content {
+        background: var(--card-bg);
+        border-radius: var(--radius-md);
+        padding: 1.2rem;
+        width: 90%;
+        max-width: 350px;
+        box-shadow: var(--shadow-sm);
+      }
+      
+      .modal__title {
+        margin-bottom: 0.8rem;
+        color: var(--text);
+        font-size: 1.1rem;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      
+      .modal__actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.6rem;
+        margin-top: 1rem;
+      }
+      
+      .modal__btn {
+        padding: 0.5rem 0.8rem;
+        border: none;
+        border-radius: var(--radius-sm);
+        cursor: pointer;
+        font-weight: 500;
+        font-size: 0.9rem;
+        transition: all 0.2s;
+      }
+      
+      .modal__btn--primary {
+        background: var(--primary);
+        color: white;
+      }
+      
+      .modal__btn--primary:hover {
+        background: var(--primary-dark);
+      }
+
+      .settings-section {
+        margin-bottom: 1.2rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid var(--border-color);
+      }
+      
+      .settings-section:last-child {
+        border-bottom: none;
+        margin-bottom: 0;
+        padding-bottom: 0;
+      }
+      
+      .settings-section__title {
+        font-size: 0.9rem;
+        color: var(--primary);
+        margin-bottom: 0.8rem;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      
+      .settings-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.8rem;
+        padding: 0.5rem;
+        border-radius: var(--radius-sm);
+        transition: background 0.2s;
+      }
+      
+      .settings-item:hover {
+        background: var(--primary-light);
+      }
+      
+      .settings-item__info {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex: 1;
+      }
+      
+      .settings-icon {
+        font-size: 1.2rem;
+      }
+      
+      .settings-label {
+        font-size: 0.9rem;
+        color: var(--text);
+        font-weight: 500;
+        display: block;
+      }
+      
+      .settings-description {
+        font-size: 0.75rem;
+        color: var(--text);
+        opacity: 0.7;
+        display: block;
+        margin-top: 2px;
+      }
+      
+      .settings-switch {
+        position: relative;
+        display: inline-block;
+        width: 50px;
+        height: 24px;
+      }
+      
+      .settings-switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+      }
+      
+      .settings-slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #ccc;
+        transition: .4s;
+        border-radius: 24px;
+      }
+      
+      .settings-slider:before {
+        position: absolute;
+        content: "";
+        height: 16px;
+        width: 16px;
+        left: 4px;
+        bottom: 4px;
+        background-color: white;
+        transition: .4s;
+        border-radius: 50%;
+      }
+      
+      input:checked + .settings-slider {
+        background-color: var(--primary);
+      }
+      
+      input:checked + .settings-slider:before {
+        transform: translateX(26px);
+      }
+
+      /* Estilos para el selector de color */
+      .color-picker {
+        display: flex;
+        gap: 6px;
+      }
+      
+      .color-option {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        border: 2px solid transparent;
+        cursor: pointer;
+        transition: transform 0.2s;
+      }
+      
+      .color-option:hover {
+        transform: scale(1.1);
+      }
+      
+      .color-option.active {
+        border-color: var(--text);
+        transform: scale(1.1);
+      }
+
+      /* Ocultar el header del segundo HTML para mantener la estética */
+      .header {
+        display: none;
+      }
+
+      /* Estilos para los nombres de los canales */
+      .movistar { color: var(--movistar-blue) !important; }
+      .eurosport { color: var(--eurosport-blue) !important; }
+      .dazn { color: var(--dazn-black) !important; }
+      .f1 { color: var(--f1-red) !important; }
+      .action { color: var(--action-red) !important; }
+      .classics { color: var(--classics-red) !important; }
+      .sports { color: var(--sports-green) !important; }
+      .vamos { color: var(--vamos-green) !important; }
+      .copadelrey { color: var(--copadelrey-green) !important; }
+      .champions { color: var(--champions-teal) !important; }
+      .liga { color: var(--liga-teal) !important; }
+      .hypermotion { color: var(--hypermotion-cyan) !important; }
+      .golf { color: var(--golf-teal) !important; }
+      .eurosport-number { color: var(--eurosport-number-red) !important; }
+      .smartbank { color: var(--smartbank-red) !important; }
+      .plus { color: var(--plus-blue) !important; }
+      .western { color: var(--western-red) !important; }
+      .documentary { color: var(--documentary-purple) !important; }
+      .originals { color: var(--originals-blue) !important; }
+      .hits { color: var(--hits-red) !important; }
+      .premieres { color: var(--premieres-red) !important; }
+      .indie { color: var(--indie-red) !important; }
+      .spanish-film { color: var(--spanish-film-red) !important; }
+      .drama { color: var(--drama-red) !important; }
+      .ellas { color: var(--ellas-green) !important; }
+      .series { color: var(--series-orange) !important; }
+
+      .source-badge {
+          position: absolute;
+          top: 5px;
+          right: 5px;
+          font-size: 0.6rem;
+          font-weight: bold;
+          padding: 0.2rem 0.4rem;
+          border-radius: 3px;
+          z-index: 1;
+      }
+      
+      .gist-badge { background-color: var(--gist-source-color); color: white; }
+      .elcano-badge { background-color: var(--elcano-source-color); color: white; }
+      .special-gist-badge { background-color: var(--special-gist-color); color: white; }
+      .events-badge { background-color: var(--events-source-color); color: white; }
+      .shickat-badge { background-color: var(--shickat-badge); color: white; }
+
+      .retry-button {
+          padding: 0.5rem 1rem;
+          margin-top: 10px;
+          background-color: var(--warning);
+          color: white;
+          border: none;
+          border-radius: var(--radius-sm);
+          cursor: pointer;
+      }
+
+      .status-message {
+          grid-column: 1 / -1;
+          text-align: center;
+          padding: 0.5rem;
+          color: var(--success);
+          font-size: 0.85rem;
+          background-color: rgba(76, 201, 240, 0.1);
+          border-radius: var(--radius-sm);
+          margin-bottom: 0.5rem;
+      }
+      
+      .channel-number {
+        font-weight: 600;
+        font-size: 0.95rem;
+        white-space: nowrap;
+        color: var(--channel-number-color);
+      }
+      
+      /* Estilos para el nuevo botón de cancelar */
+      .modal__btn--cancel {
+          background: #ccc;
+          color: #333;
+      }
+      
+      .modal__btn--cancel:hover {
+          background: #bbb;
+      }
+
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+
+      @media (max-width: 768px) {
+        .channels-grid {
+          grid-template-columns: 1fr;
+        }
+        
+        .filter-buttons {
+          flex-wrap: wrap;
+        }
+        
+        .channel-group__content {
+          grid-template-columns: 1fr;
+        }
+      }
+      
+      @media (min-width: 768px) {
+        .channels-grid {
+          grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+        }
+        
+        .channel-name {
+          font-size: 1.1rem;
+        }
+      }
+
+      .floating-btn {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        background-color: var(--primary);
+        color: white;
+        font-size: 1.5rem;
+        border: none;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        cursor: pointer;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        transition: all 0.3s ease;
+        z-index: 1000;
+      }
+
+      .floating-btn:hover {
+        background-color: var(--primary-dark);
+        transform: scale(1.05);
+      }
+
+      .floating-btn.active {
+        animation: pulse 1.5s infinite ease-in-out;
+        background-color: #ff544d;
+      }
+
+      @keyframes pulse {
+        0% { transform: scale(1); box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); }
+        50% { transform: scale(1.1); box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3); }
+        100% { transform: scale(1); box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); }
+      }
+
+      /* Estilo del degradado para la palabra "Comedia" */
+      .degradado-comedia {
+        background-image: linear-gradient(to right, #ff3c3c, #ffa500);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        font-weight: bold;
+      }
+      
+      /* Estilos para el modal de copiar URL */
+      .copy-modal {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-md);
+        padding: 1.5rem;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        z-index: 2000;
+        width: 90%;
+        max-width: 320px;
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        animation: fadeIn 0.3s ease-out;
+      }
+      
+      .copy-modal.active {
+        display: flex;
+      }
+
+      .copy-modal-icon {
+        font-size: 2.5rem;
+        margin-bottom: 0.8rem;
+      }
+
+      .copy-modal-text {
+        font-size: 0.95rem;
+        color: var(--text);
+        margin-bottom: 1rem;
+      }
+
+      .copy-modal-button {
+        padding: 0.6rem 1.2rem;
+        background: var(--primary);
+        color: white;
+        border: none;
+        border-radius: var(--radius-sm);
+        cursor: pointer;
+        font-size: 0.9rem;
+        font-weight: 600;
+        transition: background 0.2s;
+        margin-bottom: 0.5rem;
+      }
+
+      .copy-modal-button:hover {
+        background: var(--primary-dark);
+      }
+
+      .copy-modal-url {
+        background-color: var(--bg-light);
+        color: var(--text);
+        padding: 0.5rem;
+        margin-bottom: 1rem;
+        border-radius: var(--radius-sm);
+        font-family: monospace;
+        word-break: break-all;
+        font-size: 0.85rem;
+      }
+      
+      body.dark-mode .copy-modal-url {
+        background-color: var(--border-color);
+      }
+
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translate(-50%, -60%); }
+        to { opacity: 1; transform: translate(-50%, -50%); }
+      }
+
+      .copy-message {
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: var(--primary);
+        color: white;
+        padding: 0.6rem 1.2rem;
+        border-radius: var(--radius-sm);
+        font-size: 0.9rem;
+        z-index: 2001;
+        opacity: 0;
+        transition: opacity 0.4s ease-in-out;
+      }
+
+      .copy-message.show {
+        opacity: 1;
+      }
+
+      .rating-stars {
+          position: absolute;
+          bottom: 5px;
+          left: 1rem;
+          font-size: 0.9rem;
+      }
+
+      .half-star {
+        background: linear-gradient(to right, gold 50%, gray 50%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        display: inline-block;
+      }
+    </style>
 </head>
 <body>
-  <div class="main-container">
-    <div class="player-section" id="playerSection">
-      <div class="player-container" id="playerContainer">
-        <iframe id="videoFrame" allowfullscreen></iframe>
-      </div>
-      <div class="player-controls" id="playerControls">
-        <span class="channel-info" id="channelInfo"></span>
-        <button class="control-btn" id="prevChannelBtn" title="Canal anterior">◄</button>
-        <button class="control-btn" id="nextChannelBtn" title="Canal siguiente">►</button>
-        <button class="control-btn" id="toggleStickyBtn" title="Fijar reproductor">⛊</button>
-        <button class="control-btn" id="favoriteBtn" title="Guardar favorito">★</button>
-        <button class="control-btn" id="closePlayerBtn" title="Cerrar">×</button>
-        <span class="channel-number-display" id="channelNumberDisplay"></span>
-      </div>
+    <div class="main-container">
+        <div class="player-section" id="playerSection" style="display: none;">
+            <div class="player-container" id="playerContainer">
+                <iframe id="videoFrame" allowfullscreen></iframe>
+                <iframe id="scheduleFrame" allowfullscreen></iframe>
+            </div>
+            <div class="player-controls" id="playerControls">
+                <span class="channel-info" id="channelInfo"></span>
+                <button class="control-btn" id="prevChannelBtn" title="Canal anterior">◄</button>
+                <button class="control-btn" id="nextChannelBtn" title="Canal siguiente">►</button>
+                <button class="control-btn" id="toggleStickyBtn" title="Fijar reproductor">⛊</button>
+                <button class="control-btn" id="favoriteBtn" title="Guardar favorito">★</button>
+                <button class="control-btn" id="closePlayerBtn" title="Cerrar">×</button>
+                <span class="channel-number-display" id="channelNumberDisplay"></span>
+            </div>
+        </div>
+        
+        <div class="search-filters">
+            <div class="search-box">
+                <input type="text" id="searchInput" placeholder="Buscar canales, número (ej: #123)" autofocus>
+            </div>
+            <div class="filter-buttons">
+                <button class="filter-button filter-button--favorites" id="filterFavorites">★</button>
+                <button class="filter-button" id="filterDAZN">DAZN</button>
+                <button class="filter-button" id="filterMovistar">M+</button>
+                <button class="filter-button" id="filterEurosport">Eurosport</button>
+                <button class="filter-button filter-button--clear" id="clearEmojiFilters">x</button>
+            </div>
+        </div>
+
+        <div id="offlineMessage" class="offline-message" style="display: none;">Modo offline: mostrando canales del historial</div>
+        <div id="updateNotification" class="update-notification"></div>
+        <div class="channels-grid" id="channelsGrid">
+            <div class="loading-container">
+                <div class="loading-spinner"></div>
+                <span>Cargando canales...</span>
+            </div>
+        </div>
     </div>
     
-    <div class="search-filters">
-      <div class="search-box">
-        <input type="text" id="searchInput" placeholder="Buscar canales, número (ej: #123) o hora (ej: 15:30)">
-      </div>
-      <div class="filter-buttons">
-        <button class="filter-button filter-button--favorites" id="filterFavorites">★</button>
-        <button class="filter-button filter-button--active" id="filterAll">Todos</button>
-        <button class="filter-button" id="filterLive">Directo</button>
-        <button class="filter-button" id="filterHistory">Historial</button>
-        <button class="filter-button filter-button--clear" id="clearEmojiFilters">x</button>
-      </div>
-      <div class="emoji-filters" id="emojiFilters">
-        <button class="emoji-filter-btn" data-filter="TV Shows" title="TV Shows">📺</button>
-        <button class="emoji-filter-btn" data-filter="Fútbol" title="Fútbol">⚽</button>
-        <button class="emoji-filter-btn" data-filter="Baloncesto" title="Baloncesto">🏀</button>
-        <button class="emoji-filter-btn" data-filter="Tenis" title="Tenis">🎾</button>
-        <button class="emoji-filter-btn" data-filter="MMA" title="MMA">👊</button>
-        <button class="emoji-filter-btn" data-filter="Boxeo" title="Boxeo">🥊</button>
-        <button class="emoji-filter-btn" data-filter="Motorsport" title="Motorsport">🏁</button>
-        <button class="emoji-filter-btn" data-filter="Formula 1" title="Formula 1">🏎️</button>
-        <button class="emoji-filter-btn" data-filter="Spain ES Movistar M+" title="España">🇪🇸</button>
-      </div>
-    </div>
-    
-    <div class="fecha-container" id="fechaContainer">
-      <div id="fecha" class="fecha-valor"></div>
-      <div class="loading-spinner" id="loadingSpinner" style="display: none;"></div>
-    </div>
-    
-    <div id="offlineMessage" class="offline-message" style="display: none;">Modo offline: mostrando canales del historial</div>
-    <div id="updateNotification" class="update-notification"></div>
-    <div class="channels-grid" id="results"></div>
-  </div>
-  <div class="modal" id="settingsModal">
-    <div class="modal__content">
-      <h3 class="modal__title">⚙️ Ajustes</h3>
-      
-      <div class="settings-section">
-        <h4 class="settings-section__title">🎨 Apariencia</h4>
-        
-        <div class="settings-item">
-          <div class="settings-item__info">
-            <span class="settings-icon">🌓</span>
-            <div>
-              <span class="settings-label">Modo oscuro</span>
-              <span class="settings-description">Cambia entre tema claro y oscuro</span>
-            </div>
-          </div>
-          <label class="settings-switch">
-            <input type="checkbox" id="darkModeToggle">
-            <span class="settings-slider"></span>
-          </label>
-        </div>
-        
-        <div class="settings-item">
-          <div class="settings-item__info">
-            <span class="settings-icon">🎨</span>
-            <div>
-              <span class="settings-label">Color principal</span>
-              <span class="settings-description">Elige un color para la interfaz</span>
-            </div>
-          </div>
-          <div class="color-picker">
-            <button class="color-option active" data-color="#2563eb" style="background:#2563eb"></button>
-            <button class="color-option" data-color="#dc2626" style="background:#dc2626"></button>
-            <button class="color-option" data-color="#16a34a" style="background:#16a34a"></button>
-            <button class="color-option" data-color="#9333ea" style="background:#9333ea"></button>
-          </div>
-        </div>
-      </div>
-      
-      <div class="settings-section">
-        <h4 class="settings-section__title">📺 Canales</h4>
-        
-        <div class="settings-item">
-          <div class="settings-item__info">
-            <span class="settings-icon">🔗</span>
-            <div>
-              <span class="settings-label">Dominio del reproductor</span>
-              <span class="settings-description">Elige la fuente de los canales</span>
-            </div>
-          </div>
-          <div class="domain-select-container">
-            <select id="baseDomainSelect" class="domain-select">
-              <option value="watchit.my">watchit.my</option>
-              <option value="thedaddy.top">thedaddy.top</option>
-              <option value="daddylivestream.com">daddylivestream.com</option>
-            </select>
-          </div>
-        </div>
-        
-        <div class="settings-item">
-          <div class="settings-item__info">
-            <span class="settings-icon">🌐</span>
-            <div>
-              <span class="settings-label">Filtrar internacionales</span>
-              <span class="settings-description">Oculta canales no españoles</span>
-            </div>
-          </div>
-          <label class="settings-switch">
-            <input type="checkbox" id="internationalFilterToggle">
-            <span class="settings-slider"></span>
-          </label>
-        </div>
-        
-        <div class="settings-item">
-          <div class="settings-item__info">
-            <span class="settings-icon">🗂</span>
-            <div>
-              <span class="settings-label">Agrupar canales</span>
-              <span class="settings-description">Organiza por eventos similares</span>
-            </div>
-          </div>
-          <label class="settings-switch">
-            <input type="checkbox" id="groupChannelsToggle">
-            <span class="settings-slider"></span>
-          </label>
-        </div>
-        
-        <div class="settings-item">
-          <div class="settings-item__info">
-            <span class="settings-icon">⏱️</span>
-            <div>
-              <span class="settings-label">Ordenar por hora</span>
-              <span class="settings-description">Muestra primero los próximos</span>
-            </div>
-          </div>
-          <label class="settings-switch">
-            <input type="checkbox" id="sortByTimeToggle">
-            <span class="settings-slider"></span>
-          </label>
-        </div>
-      </div>
-      
-      <div class="modal__actions">
-        <button class="modal__btn modal__btn--primary" id="closeSettingsBtn">Cerrar</button>
-      </div>
-    </div>
-  </div>
-  <div class="modal" id="favoriteModal">
-    <div class="modal__content">
-      <h3 class="modal__title">Guardar Favorito</h3>
-      <input class="modal__input" id="favoriteNameInput" placeholder="Nombre personalizado" type="text"/>
-      <div class="modal__actions">
-        <button class="modal__btn modal__btn--secondary" id="cancelFavoriteBtn">Cancelar</button>
-        <button class="modal__btn modal__btn--primary" id="saveFavoriteBtn">Guardar</button>
-      </div>
-    </div>
-  </div>
-  <script>
-    const state = {
-      channels: JSON.parse(localStorage.getItem('channelsCache')) || [],
-      currentFilter: 'all',
-      searchTerm: '',
-      activeEmojiFilters: [],
-      favorites: JSON.parse(localStorage.getItem('favorites')) || [],
-      channelHistory: JSON.parse(localStorage.getItem('channelHistory')) || {},
-      currentChannel: null,
-      baseDomain: localStorage.getItem('baseDomain') || 'watchit.my',
-      clearButtonClickCount: 0,
-      lastClearButtonClickTime: 0,
-      internationalFilter: localStorage.getItem('internationalFilter') === 'true',
-      groupChannels: localStorage.getItem('groupChannels') === 'true',
-      sortByTime: localStorage.getItem('sortByTime') === 'true',
-      darkMode: localStorage.getItem('darkMode') === 'true',
-      isOnline: navigator.onLine,
-      filteredKeywords: [
-        "Cricket", "Russia", "France", "Golf", "IT", "PL", "Slovakia", "Sweden", 
-        "Bulgaria", "NZ", "BR", "Morocco", "Hungary", "Tennis", "DE", "NL", 
-        "Poland", "Malaysia", "Serbia", "Cyprus", "Croatia", "Israel", "Football", 
-        "SE", "Italy", "Greece", "Brazil", "Portugal", "Czech", "MLB", "Denmark", 
-        "MENA", "Romania", "Disney", "NICK JR", "Turkey", "LOITV", "Bosnia", 
-        "zwei", "Finland", "Estonia", "Belgium", "Albania", "Slovenia", "Norway", 
-        "Slovenia", "CZ", "Brasil", "Arabic", "Afrique", "Optus", "PSL"
-      ]
-    };
-
-    const sportTranslations = {
-      'Football': 'Fútbol', 'Soccer': 'Fútbol', 'Futbol': 'Fútbol', 'Foot': 'Fútbol',
-      'Basketball': 'Baloncesto', 'Basket': 'Baloncesto', 'Baloncesto': 'Baloncesto',
-      'Boxing': 'Boxeo', 'Boxeo': 'Boxeo', 'Box': 'Boxeo',
-      'Tennis': 'Tenis', 'Tenis': 'Tenis',
-      'Baseball': 'Béisbol', 'Beisbol': 'Béisbol',
-      'Handball': 'Balonmano', 'Balonmano': 'Balonmano',
-      'Cycling': 'Ciclismo', 'Ciclismo': 'Ciclismo',
-      'Swimming': 'Natación', 'Natacion': 'Natación',
-      'Athletics': 'Atletismo', 'Atletismo': 'Atletismo',
-      'Darts': 'Dardos', 'Dardos': 'Dardos',
-      'MotorSport': 'Motorsport', 'Motorsport': 'Motorsport',
-      'Formula 1': 'Fórmula 1', 'F1': 'Fórmula 1', 'Formula1': 'Fórmula 1'
-    };
-
-    const dayTranslations = {
-      'Mon': 'Lunes', 'Tue': 'Martes', 'Wed': 'Miércoles', 'Thu': 'Jueves',
-      'Fri': 'Viernes', 'Sat': 'Sábado', 'Sun': 'Domingo',
-      'Monday': 'Lunes', 'Tuesday': 'Martes', 'Wednesday': 'Miércoles', 'Thursday': 'Jueves',
-      'Friday': 'Viernes', 'Saturday': 'Sábado', 'Sunday': 'Domingo'
-    };
-
-    const monthTranslations = {
-      'Jan': 'Enero', 'Feb': 'Febrero', 'Mar': 'Marzo', 'Apr': 'Abril',
-      'May': 'Mayo', 'Jun': 'Junio', 'Jul': 'Julio', 'Aug': 'Agosto',
-      'Sep': 'Septiembre', 'Oct': 'Octubre', 'Nov': 'Noviembre', 'Dec': 'Diciembre',
-      'January': 'Enero', 'February': 'Febrero', 'March': 'Marzo', 'April': 'Abril',
-      'May': 'Mayo', 'June': 'Junio', 'July': 'Julio', 'August': 'Agosto',
-      'September': 'Septiembre', 'October': 'Octubre', 'November': 'Noviembre', 'December': 'Diciembre'
-    };
-
-    function toggleDarkMode() {
-      state.darkMode = !state.darkMode;
-      localStorage.setItem('darkMode', state.darkMode);
-      document.body.classList.toggle('dark-mode', state.darkMode);
-      document.getElementById('darkModeToggle').checked = state.darkMode;
-    }
-
-    function translateSport(sport) {
-      return sportTranslations[sport] || sport;
-    }
-
-    function translateDate(dateStr) {
-      const parts = dateStr.split(' ');
-      if (parts.length < 3) return dateStr;
-      
-      const dayName = dayTranslations[parts[0]] || parts[0];
-      const month = monthTranslations[parts[1]] || parts[1];
-      const day = parts[2];
-      const year = parts[3];
-      
-      return `${dayName} ${day} de ${month} de ${year}`;
-    }
-
-    function adjustTime(time) {
-      if (!time || time === 'LIVE') return time;
-      const [hours, minutes] = time.split(':').map(Number);
-      const adjustedHours = (hours + 1) % 24;
-      return `${String(adjustedHours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
-    }
-
-    function getEventDuration(channel) {
-      const sport = channel.sport?.toLowerCase() || '';
-      const event = (channel.event?.toLowerCase() || '').replace(/[^\w\sáéíóúüñ]/gi, '');
-      const name = channel.name.toLowerCase();
-
-      if (/(fútbol|soccer|football)/.test(sport)) {
-        if (/amistoso|friendly/.test(event)) return 115;
-        if (/champions|europa league|libertadores/.test(event)) return 150;
-        if (/mundial|world cup|eurocopa|copa américa/.test(event)) return 135;
-        if (/partido|vs\.|vs |contra/.test(event)) return 105;
-        return 120;
-      } else if (/(baloncesto|basketball)/.test(sport)) {
-        if (/nba/.test(name)) return 150;
-        if (/euroleague|eurocup/.test(name)) return 130;
-        if (/acb|liga endesa/.test(name)) return 120;
-        return 100;
-      } else if (/(béisbol|baseball)/.test(sport)) {
-        if (/mlb|grandes ligas/.test(name)) return 210;
-        return 180;
-      } else if (/(balonmano|handball)/.test(sport)) {
-        return 90;
-      } else if (/(rugby)/.test(sport)) {
-        return 120;
-      } else if (/(hockey|hielo)/.test(sport)) {
-        if (/nhl/.test(name)) return 150;
-        return 120;
-      } else if (/(tenis|tennis)/.test(sport)) {
-        if (/grand slam|wimbledon|open|final/.test(event)) return 300;
-        if (/doble|dobles|double/.test(event)) return 180;
-        return 150;
-      } else if (/(golf)/.test(sport)) {
-        if (/final|última ronda|last round/.test(event)) return 360;
-        return 480;
-      } else if (/(motorsport|fórmula|formula)/.test(sport)) {
-        if (/f1|gran premio|grand prix/.test(event)) return 180;
-        if (/moto gp|motogp/.test(event)) return 120;
-        if (/24h|24 horas|le mans/.test(event)) return 1440;
-        return 240;
-      } else if (/(ciclismo|cycling)/.test(sport)) {
-        if (/etapa|stage/.test(event)) return 300;
-        if (/clásica|monumento/.test(event)) return 240;
-        if (/contrarreloj|time trial/.test(event)) return 180;
-        return 360;
-      } else if (/(boxeo|boxing)/.test(sport)) {
-        if (/main event|combate principal/.test(event)) return 60;
-        if (/pelea|fight|preliminar/.test(event)) return 30;
-        return 180;
-      } else if (/(mma|ufc)/.test(sport)) {
-        if (/main event|combate principal/.test(event)) return 75;
-        if (/co-main|coestelar/.test(event)) return 50;
-        if (/pelea|fight|preliminar/.test(event)) return 15;
-        return 240;
-      } else if (/(esports|videojuegos)/.test(sport)) {
-        if (/torneo|tournament/.test(event)) return 240;
-        if (/final|championship/.test(event)) return 120;
-        if (/partida|match|mejor de/.test(event)) return 90;
-        return 180;
-      } else if (/(atletismo|athletics)/.test(sport)) {
-        if (/maratón|marathon/.test(event)) return 480;
-        if (/decatlón|heptatlón/.test(event)) return 360;
-        return 120;
-      } else if (/(natación|swimming)/.test(sport)) {
-        return 120;
-      } else if (/(tv shows|tv show)/.test(sport)) {
-        return 60;
-      } else if (/(reality)/.test(sport)) {
-        return 90;
-      } else if (/(documental|documentary)/.test(sport)) {
-        return 120;
-      } else if (/(especial|special)/.test(sport)) {
-        return 180;
-      }
-      
-      return 120;
-    }
-
-    function getEventIdentifier(channel) {
-      return `${channel.time}|${channel.event}|${channel.sport}`;
-    }
-
-    function findConflictedEvents() {
-      const eventGroups = {};
-      const channelToEventsMap = {};
-      
-      state.channels.forEach(channel => {
-        const eventId = getEventIdentifier(channel);
-        
-        if (!eventGroups[eventId]) {
-          eventGroups[eventId] = {
-            channels: [],
-            time: channel.time === 'LIVE' ? '9999:99' : channel.time,
-            isLive: false
-          };
-        }
-        eventGroups[eventId].channels.push(channel);
-        
-        if (!channelToEventsMap[channel.number]) {
-          channelToEventsMap[channel.number] = [];
-        }
-        channelToEventsMap[channel.number].push(eventId);
-      });
-      
-      const conflictedEvents = new Set();
-      
-      Object.entries(eventGroups).forEach(([eventId, eventData]) => {
-        eventData.channels.forEach(channel => {
-          const allEventsForThisChannel = channelToEventsMap[channel.number] || [];
-          
-          const hasNewerEvent = allEventsForThisChannel.some(otherEventId => {
-            if (otherEventId === eventId) return false;
+    <div class="modal" id="settingsModal">
+        <div class="modal__content">
+            <h3 class="modal__title">⚙️ Ajustes</h3>
             
-            const otherEvent = eventGroups[otherEventId];
-            return otherEvent.time > eventData.time;
-          });
+            <div class="settings-section">
+                <h4 class="settings-section__title">🎨 Apariencia</h4>
+                
+                <div class="settings-item">
+                    <div class="settings-item__info">
+                        <span class="settings-icon">🌓</span>
+                        <div>
+                            <span class="settings-label">Modo oscuro</span>
+                            <span class="settings-description">Cambia entre tema claro y oscuro</span>
+                        </div>
+                    </div>
+                    <label class="settings-switch">
+                        <input type="checkbox" id="darkModeCheckbox">
+                        <span class="settings-slider"></span>
+                    </label>
+                </div>
+                
+                <div class="settings-item">
+                    <div class="settings-item__info">
+                        <span class="settings-icon">🎨</span>
+                        <div>
+                            <span class="settings-label">Color principal</span>
+                            <span class="settings-description">Elige un color para la interfaz</span>
+                        </div>
+                    </div>
+                    <div class="color-picker">
+                        <button class="color-option" data-color="#2563eb" style="background:#2563eb"></button>
+                        <button class="color-option" data-color="#dc2626" style="background:#dc2626"></button>
+                        <button class="color-option" data-color="#16a34a" style="background:#16a34a"></button>
+                        <button class="color-option" data-color="#9333ea" style="background:#9333ea"></button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="settings-section">
+                <h4 class="settings-section__title">🔧 Datos</h4>
+                
+                <div class="settings-item">
+                    <div class="settings-item__info">
+                        <span class="settings-icon">⭐</span>
+                        <div>
+                            <span class="settings-label">Restablecer puntuaciones</span>
+                            <span class="settings-description">Borra la puntuación de estabilidad de todos los canales</span>
+                        </div>
+                    </div>
+                    <button class="modal__btn" onclick="resetRatings()">Reiniciar</button>
+                </div>
+            </div>
+            
+            <div class="modal__actions">
+                <button class="modal__btn modal__btn--primary" id="closeSettingsBtn">Cerrar</button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="copy-modal" id="copyModal">
+        <div class="copy-modal-icon">🔗</div>
+        <div class="copy-modal-text">¿Quieres copiar la URL de este canal?</div>
+        <p id="copyUrlDisplay" class="copy-modal-url"></p>
+        <button class="copy-modal-button" id="confirmCopyBtn">Copiar enlace</button>
+        <button class="modal__btn modal__btn--cancel" id="cancelCopyBtn">Cancelar</button>
+    </div>
+
+    <div class="copy-message" id="copyMessage">URL copiada con éxito!</div>
+    
+    <script>
+      const state = {
+          allChannels: [],
+          channelsData: [],
+          currentFilter: 'all',
+          searchTerm: '',
+          favorites: JSON.parse(localStorage.getItem('favorites')) || [],
+          channelHistory: JSON.parse(localStorage.getItem('channelHistory')) || {},
+          currentChannel: null,
+          clearButtonClickCount: 0,
+          lastClearButtonClickTime: 0,
+          isOnline: navigator.onLine,
+          elcanoRetries: 0,
+          eventsRetries: 0,
+          darkMode: localStorage.getItem('darkMode') !== 'false',
+          primaryColor: localStorage.getItem('primaryColor') || '#2563eb',
+          isFavoriteMode: false,
           
-          if (hasNewerEvent) {
-            conflictedEvents.add(eventId);
-          }
-        });
-      });
-      
-      return conflictedEvents;
-    }
+          channelRatings: JSON.parse(localStorage.getItem('channelRatings')) || {},
+          lastChannelPlay: JSON.parse(localStorage.getItem('lastChannelPlay')) || null,
+      };
 
-    function isChannelLive(channel) {
-      if (state.currentFilter === 'history') return false;
-      
-      if (!state._conflictedEvents) {
-        state._conflictedEvents = findConflictedEvents();
-      }
-      
-      const currentEventKey = getEventIdentifier(channel);
-      if (state._conflictedEvents.has(currentEventKey)) {
-        return false;
-      }
+      const MAX_RETRIES = 3;
+      const ELCANO_BACKUP_KEY = 'a4v_elcano_backup';
+      const EVENTS_BACKUP_KEY = 'a4v_events_backup';
+      const CHANNEL_HISTORY_KEY = 'a4v_channel_history';
+      const BACKUP_EXPIRY_HOURS = 6;
+      const HISTORY_EXPIRY_HOURS = 168;
+      const BACKUP_KEY = 'channel_backup';
 
-      if (!channel.time || channel.time === 'LIVE') return true;
-      
-      const now = new Date();
-      const currentHours = now.getHours();
-      const currentMinutes = now.getMinutes();
-      const currentTimeInMinutes = currentHours * 60 + currentMinutes;
-      
-      const [eventHours, eventMinutes] = channel.time.split(':').map(Number);
-      const adjustedEventHours = (eventHours + 1) % 24;
-      const eventTimeInMinutes = adjustedEventHours * 60 + eventMinutes;
-      
-      const duration = getEventDuration(channel);
-      const margin = 15;
-      
-      const startTime = eventTimeInMinutes - margin;
-      const endTime = eventTimeInMinutes + duration + margin;
-      
-      return currentTimeInMinutes >= startTime && currentTimeInMinutes <= endTime;
-    }
-
-    function syncChannelHistory() {
-      const currentChannelsMap = {};
-      state.channels.forEach(channel => {
-        currentChannelsMap[channel.number] = {
-          name: channel.name,
-          event: channel.event || '',
-          sport: channel.sport || ''
-        };
-      });
-
-      Object.keys(currentChannelsMap).forEach(number => {
-        if (!state.channelHistory[number]) {
-          state.channelHistory[number] = {
-            names: [currentChannelsMap[number].name],
-            event: currentChannelsMap[number].event,
-            sport: currentChannelsMap[number].sport,
-            lastUpdated: new Date().toISOString()
-          };
-        } else {
-          const historyEntry = state.channelHistory[number];
-          const currentName = currentChannelsMap[number].name;
-          
-          if (historyEntry.names[0] !== currentName) {
-            historyEntry.names.unshift(currentName);
-            historyEntry.names = historyEntry.names.slice(0, 3);
-          }
-          
-          if (currentChannelsMap[number].event) historyEntry.event = currentChannelsMap[number].event;
-          if (currentChannelsMap[number].sport) historyEntry.sport = currentChannelsMap[number].sport;
-          historyEntry.lastUpdated = new Date().toISOString();
-        }
-      });
-
-      localStorage.setItem('channelHistory', JSON.stringify(state.channelHistory));
-    }
-
-    function playChannel(channel) {
-      state.currentChannel = channel;
-      
-      if (!state.channelHistory[channel.number] || 
-          state.channelHistory[channel.number].names[0] !== channel.name) {
-        syncChannelHistory();
-      }
-      
-      document.getElementById('playerContainer').classList.add('player-container--active');
-      document.getElementById('playerControls').classList.add('player-controls--active');
-      document.getElementById('channelInfo').textContent = channel.name;
-      document.getElementById('channelNumberDisplay').textContent = `CH-${channel.number}`;
-      document.getElementById('favoriteBtn').classList.toggle('control-btn--active', state.favorites.includes(channel.number));
-      
-      const videoFrame = document.getElementById('videoFrame');
-      
-      if (state.isOnline) {
-        videoFrame.src = `https://${state.baseDomain}/embed/stream-${channel.number}.php`;
-      }
-
-      if (state.baseDomain === 'watchit.my') {
-        videoFrame.classList.add('zoomed-player');
-      } else {
-        videoFrame.classList.remove('zoomed-player');
-      }
-    }
-
-    function playChannelByNumber(number) {
-      const channelNumber = String(number);
-      const existingChannel = state.channels.find(c => c.number === channelNumber);
-      
-      if (existingChannel) {
-        playChannel(existingChannel);
-      } else {
-        const historyEntry = state.channelHistory[channelNumber];
-        const channel = {
-          number: channelNumber,
-          name: historyEntry?.names?.[0] || `Canal ${channelNumber}`,
-          time: '',
-          event: historyEntry?.event || '',
-          sport: historyEntry?.sport || ''
-        };
-        playChannel(channel);
-      }
-    }
-
-    function closePlayer() {
-      document.getElementById('playerContainer').classList.remove('player-container--active');
-      document.getElementById('playerControls').classList.remove('player-controls--active');
-      document.getElementById('videoFrame').src = '';
-      document.getElementById('channelInfo').textContent = '';
-      document.getElementById('channelNumberDisplay').textContent = '';
-      state.currentChannel = null;
-    }
-
-    function navigateChannel(direction) {
-      if (!state.currentChannel) return;
-      let newNumber = direction === 'next' ? parseInt(state.currentChannel.number) + 1 : parseInt(state.currentChannel.number) - 1;
-      newNumber = Math.max(1, newNumber);
-      playChannelByNumber(newNumber);
-    }
-
-    function toggleStickyPlayer() {
-      state.stickyPlayer = !state.stickyPlayer;
-      localStorage.setItem('stickyPlayer', state.stickyPlayer);
-      const playerSection = document.getElementById('playerSection');
-      const stickyBtn = document.getElementById('toggleStickyBtn');
-      if (state.stickyPlayer) {
-        playerSection.classList.add('player-section--sticky');
-        stickyBtn.innerHTML = '⛉';
-        stickyBtn.title = "Liberar reproductor";
-      } else {
-        playerSection.classList.remove('player-section--sticky');
-        stickyBtn.innerHTML = '⛊';
-        stickyBtn.title = "Fijar reproductor";
-      }
-    }
-
-    function showFavoriteModal() {
-      if (!state.currentChannel) return;
-      document.getElementById('favoriteNameInput').value = state.currentChannel.name;
-      document.getElementById('favoriteModal').classList.add('modal--active');
-    }
-
-    function hideFavoriteModal() {
-      document.getElementById('favoriteModal').classList.remove('modal--active');
-    }
-
-    function saveFavorite() {
-      if (!state.currentChannel) return;
-      const channelNumber = state.currentChannel.number;
-      
-      if (!state.favorites.includes(channelNumber)) {
-        state.favorites.push(channelNumber);
-        localStorage.setItem('favorites', JSON.stringify(state.favorites));
-        document.getElementById('favoriteBtn').classList.add('control-btn--active');
-      }
-      
-      hideFavoriteModal();
-      if (state.currentFilter === 'favorites') renderResults();
-    }
-
-    function removeFavorite() {
-      if (!state.currentChannel) return;
-      const channelNumber = state.currentChannel.number;
-      state.favorites = state.favorites.filter(num => num !== channelNumber);
-      localStorage.setItem('favorites', JSON.stringify(state.favorites));
-      document.getElementById('favoriteBtn').classList.remove('control-btn--active');
-      if (state.currentFilter === 'favorites') renderResults();
-    }
-
-    function handleFavoriteClick() {
-      if (!state.currentChannel) return;
-      const isFavorite = state.favorites.includes(state.currentChannel.number);
-      if (isFavorite) {
-        removeFavorite();
-      } else {
-        showFavoriteModal();
-      }
-    }
-
-    function applyFilter(filter) {
-      state.currentFilter = filter;
-      document.getElementById('filterAll').classList.remove('filter-button--active');
-      document.getElementById('filterLive').classList.remove('filter-button--active');
-      document.getElementById('filterFavorites').classList.remove('filter-button--active');
-      document.getElementById('filterHistory').classList.remove('filter-button--active');
-      document.getElementById(`filter${filter.charAt(0).toUpperCase() + filter.slice(1)}`).classList.add('filter-button--active');
-      renderResults();
-    }
-
-    function toggleEmojiFilter(filter, button) {
-      button.classList.toggle('emoji-filter-btn--active');
-      const index = state.activeEmojiFilters.indexOf(filter);
-      if (index === -1) state.activeEmojiFilters.push(filter);
-      else state.activeEmojiFilters.splice(index, 1);
-      renderResults();
-    }
-
-    function clearEmojiFilters() {
-      state.activeEmojiFilters = [];
-      document.getElementById('searchInput').value = '';
-      state.searchTerm = '';
-      document.querySelectorAll('.emoji-filter-btn').forEach(btn => btn.classList.remove('emoji-filter-btn--active'));
-      renderResults();
-    }
-
-    function toggleInternationalFilter() {
-      state.internationalFilter = !state.internationalFilter;
-      localStorage.setItem('internationalFilter', state.internationalFilter);
-      document.getElementById('internationalFilterToggle').checked = state.internationalFilter;
-      renderResults();
-    }
-
-    function toggleGroupChannels() {
-      state.groupChannels = !state.groupChannels;
-      localStorage.setItem('groupChannels', state.groupChannels);
-      document.getElementById('groupChannelsToggle').checked = state.groupChannels;
-      renderResults();
-    }
-
-    function toggleSortByTime() {
-      state.sortByTime = !state.sortByTime;
-      localStorage.setItem('sortByTime', state.sortByTime);
-      document.getElementById('sortByTimeToggle').checked = state.sortByTime;
-      renderResults();
-    }
-
-    function filterHistoryChannels() {
-      return Object.entries(state.channelHistory).map(([number, data]) => {
-        const currentChannel = state.channels.find(c => c.number === number);
-        return {
-          number,
-          name: currentChannel?.name || data.names[0] || `Canal ${number}`,
-          time: currentChannel?.time || '',
-          event: currentChannel?.event || data.event || '',
-          sport: currentChannel?.sport || data.sport || ''
-        };
-      });
-    }
-
-    function filterChannels() {
-      if (state.currentFilter === 'history') {
-        return filterHistoryChannels();
-      }
-
-      let filteredChannels = (state.isOnline ? state.channels : []).filter(channel => {
-        if (state.currentFilter === 'favorites' && !state.favorites.includes(channel.number)) return false;
-        if (state.currentFilter === 'live' && !isChannelLive(channel)) return false;
-        if (state.searchTerm) {
-          const term = state.searchTerm.toLowerCase();
-          if (/^#?\d+$/.test(term)) {
-            const channelNumber = term.replace('#', '');
-            if (channel.number !== channelNumber) return false;
+      function toggleFavorite(channelNumber) {
+          const index = state.favorites.indexOf(channelNumber);
+          if (index > -1) {
+              state.favorites.splice(index, 1);
           } else {
-            const translatedSport = translateSport(channel.sport).toLowerCase();
-            if (!channel.name.toLowerCase().includes(term) && 
-                !channel.event.toLowerCase().includes(term) && 
-                !channel.sport.toLowerCase().includes(term) &&
-                !translatedSport.includes(term)) {
-              return false;
-            }
+              state.favorites.push(channelNumber);
           }
-        }
-        if (state.internationalFilter) {
-          const channelName = channel.name;
-          if (state.filteredKeywords.some(keyword => new RegExp(`(^|\\s|\\W)${keyword}(\\s|\\W|$)`, 'g').test(channelName))) return false;
-        }
-        if (state.activeEmojiFilters.length > 0) {
-          const matchesFilter = state.activeEmojiFilters.some(filter => {
-            if (channel.sport.includes(filter) || channel.event.includes(filter)) {
-              return true;
-            }
-            
-            const translatedSport = translateSport(channel.sport);
-            if (translatedSport.includes(filter)) {
-              return true;
-            }
-            
-            if (filter === "Fútbol") {
-              return /fútbol|futbol|football|soccer|foot/i.test(channel.sport + channel.event);
-            }
-            if (filter === "Baloncesto") {
-              return /baloncesto|basketball|basket/i.test(channel.sport + channel.event);
-            }
-            if (filter === "Boxeo") {
-              return /boxeo|boxing|box/i.test(channel.sport + channel.event);
-            }
-            if (filter === "Tenis") {
-              return /tenis|tennis/i.test(channel.sport + channel.event);
-            }
-            if (filter === "Formula 1") {
-              return /formula 1|fórmula 1|f1|grand prix|gran premio/i.test(channel.sport + channel.event);
-            }
-            if (filter === "Spain ES Movistar M+") {
-              return /spain|españa|espana|es |movistar|m\+/i.test(channel.name);
-            }
-            
-            return false;
-          });
-          if (!matchesFilter) return false;
-        }
-        return true;
-      });
+          localStorage.setItem('favorites', JSON.stringify(state.favorites));
+          renderResults();
+      }
 
-      filteredChannels.sort((a, b) => {
-        const aIsFavorite = state.favorites.includes(a.number);
-        const bIsFavorite = state.favorites.includes(b.number);
-        
-        if (aIsFavorite && !bIsFavorite) return -1;
-        if (!aIsFavorite && bIsFavorite) return 1;
-        
-        if (state.currentFilter === 'live' || (state.sortByTime && state.currentFilter === 'all')) {
-          if (a.time === 'LIVE' && b.time !== 'LIVE') return -1;
-          if (a.time !== 'LIVE' && b.time === 'LIVE') return 1;
-          if (a.time === 'LIVE' && b.time === 'LIVE') return 0;
-          
-          const timeA = a.time ? a.time.split(':').map(Number) : [23, 59];
-          const timeB = b.time ? b.time.split(':').map(Number) : [23, 59];
-          
-          const adjustedHoursA = (timeA[0] + 18) % 24;
-          const adjustedHoursB = (timeB[0] + 18) % 24;
-          
-          if (adjustedHoursA !== adjustedHoursB) return adjustedHoursA - adjustedHoursB;
-          return timeA[1] - timeB[1];
-        }
-        
-        return 0;
-      });
-
-      return filteredChannels;
-    }
-
-    function renderResults() {
-      delete state._conflictedEvents;
-      const filteredChannels = filterChannels();
-      const resultsDiv = document.getElementById('results');
-      document.getElementById('offlineMessage').style.display = state.isOnline ? 'none' : 'block';
-      
-      if (filteredChannels.length === 0) {
-        resultsDiv.innerHTML = `
-          <div class="no-results">
-            <div class="no-results-icon">📡</div>
-            <div class="no-results-text">No se encontraron canales</div>
-            <div class="no-results-hint">Prueba con otros filtros o términos de búsqueda</div>
-          </div>
-        `;
-        return;
+      function toggleDarkMode() {
+        state.darkMode = !state.darkMode;
+        localStorage.setItem('darkMode', state.darkMode);
+        document.body.classList.toggle('dark-mode', state.darkMode);
+        document.getElementById('darkModeCheckbox').checked = state.darkMode;
+        updatePrimaryLightColor();
       }
       
-      if (state.groupChannels && state.currentFilter !== 'history') {
-        renderGroupedResults(filteredChannels, resultsDiv);
-      } else {
-        renderUngroupedResults(filteredChannels, resultsDiv);
-      }
-    }
-
-    function renderUngroupedResults(channels, container) {
-      container.innerHTML = channels.map(channel => createChannelCard(channel)).join('');
-    }
-
-    function renderGroupedResults(channels, container) {
-      const groups = {};
-      channels.forEach(channel => {
-        const groupKey = `${adjustTime(channel.time)}|${channel.event}|${channel.sport}`;
-        if (!groups[groupKey]) groups[groupKey] = [];
-        groups[groupKey].push(channel);
-      });
-      
-      container.innerHTML = '';
-      
-      Object.entries(groups).forEach(([groupKey, groupChannels]) => {
-        const [time, event, sport] = groupKey.split('|');
-        const groupElement = document.createElement('div');
-        groupElement.className = 'channel-group';
-        groupElement.innerHTML = `
-          <div class="channel-group__header">
-            <div class="channel-group__title">
-              ${state.currentFilter !== 'history' ? `<span class="channel-time ${time === 'LIVE' ? 'channel-time--live' : ''}">${time}</span>` : `<span class="channel-time">${time}</span>`}
-              ${event}
-            </div>
-            <div class="channel-group__sport">${translateSport(sport.replace(/\(\d+\)/g, '').trim())}</div>
-          </div>
-          <div class="channel-group__content ${groupChannels.length === 1 ? 'channel-group__content--single' : ''}">
-            ${groupChannels.map(channel => createChannelCard(channel)).join('')}
-          </div>
-        `;
-        container.appendChild(groupElement);
-      });
-    }
-
-    function createChannelCard(channel) {
-      const isFavorite = state.favorites.includes(channel.number);
-      const isLive = isChannelLive(channel);
-      const adjustedTime = adjustTime(channel.time);
-      const cleanSport = channel.sport.replace(/\(\d+\)/g, '').trim();
-      
-      return `
-        <div class="channel-card ${isFavorite ? 'channel-card--favorite' : ''}" onclick="playChannel(${JSON.stringify(channel).replace(/"/g, '&quot;')})">
-          <div class="channel-header">
-            ${!state.groupChannels || state.currentFilter === 'history' ? `<div class="channel-time">${adjustedTime}</div>` : ''}
-            <div class="channel-name ${isLive && state.currentFilter !== 'history' ? 'channel-name--live' : ''}">${channel.name}</div>
-            <div class="channel-number">${channel.number}</div>
-          </div>
-          ${!state.groupChannels || state.currentFilter === 'history' ? `<div class="channel-event">${channel.event}</div>` : ''}
-          ${!state.groupChannels || state.currentFilter === 'history' ? `<div class="channel-sport">${translateSport(cleanSport)}</div>` : ''}
-        </div>
-      `;
-    }
-
-    function handleSearchInput() {
-      state.searchTerm = document.getElementById('searchInput').value.trim();
-      renderResults();
-    }
-
-    function handleSearchEnter() {
-      const value = document.getElementById('searchInput').value.trim();
-      state.searchTerm = value;
-      
-      if (/^#?\d+$/.test(value)) {
-        const channelNumber = value.replace('#', '');
+      function applyFilter(filter) {
+        state.currentFilter = filter;
+        document.getElementById('searchInput').value = '';
+        state.searchTerm = '';
         
-        if (state.currentFilter === 'history') {
-          if (state.channelHistory[channelNumber]) {
-            playChannel({
-              number: channelNumber,
-              name: state.channelHistory[channelNumber].names[0],
-              time: '',
-              event: '',
-              sport: ''
-            });
-          }
-          return;
+        document.querySelectorAll('.filter-button').forEach(btn => btn.classList.remove('filter-button--active'));
+        
+        const targetBtn = document.getElementById(`filter${filter.charAt(0).toUpperCase() + filter.slice(1)}`);
+        if (targetBtn) {
+            targetBtn.classList.add('filter-button--active');
+        } else if (filter === 'all') {
+            document.getElementById('clearEmojiFilters').classList.add('filter-button--active');
         }
         
-        const channel = state.channels.find(c => c.number === channelNumber);
-        if (channel) {
-          playChannel(channel);
-        } else {
-          playChannelByNumber(channelNumber);
-        }
-        return;
-      }
-      
-      renderResults();
-    }
-
-    async function scrape() {
-      document.getElementById('loadingSpinner').style.display = 'inline-block';
-      document.getElementById('fecha').textContent = 'Cargando...';
-      
-      if (state.channels.length > 0) {
         renderResults();
       }
+      
+      function showStatusMessage(message, type = "info") {
+          let statusElement = document.querySelector(".status-message");
+          
+          if (!statusElement) {
+              statusElement = document.createElement("div");
+              statusElement.className = "status-message";
+              const channelsGrid = document.getElementById("channelsGrid");
+              channelsGrid.prepend(statusElement);
+          }
+          
+          statusElement.textContent = message;
+          statusElement.style.color = type === "error" ? "#dc2626" : "#4cc9f0";
+          statusElement.style.backgroundColor = type === "error" ? "rgba(247, 37, 133, 0.1)" : "rgba(76, 201, 240, 0.1)";
+          if (type === "error") statusElement.style.color = "var(--secondary)";
+          if (type === "success") statusElement.style.color = "var(--success)";
+      }
 
-      try {
-        if (!state.isOnline) {
-          document.getElementById('loadingSpinner').style.display = 'none';
-          renderResults();
+      function saveBackup(data) {
+          try {
+              localStorage.setItem(BACKUP_KEY, JSON.stringify(data));
+              console.log("Copia de seguridad de canales guardada exitosamente.");
+          } catch (e) {
+              console.error("Error al guardar la copia de seguridad:", e);
+          }
+      }
+
+      function loadBackup() {
+          try {
+              const backupData = localStorage.getItem(BACKUP_KEY);
+              if (backupData) {
+                  const channels = JSON.parse(backupData);
+                  console.log("Cargando canales desde la copia de seguridad...");
+                  return channels;
+              }
+          } catch (e) {
+              console.error("Error al cargar la copia de seguridad:", e);
+          }
+          return null;
+      }
+      
+      function saveChannelHistory(channels) {
+          const history = {
+              timestamp: new Date().getTime(),
+              channels: channels
+          };
+          localStorage.setItem(CHANNEL_HISTORY_KEY, JSON.stringify(history));
+      }
+
+      function loadChannelHistory() {
+          const history = localStorage.getItem(CHANNEL_HISTORY_KEY);
+          if (!history) return null;
+          
+          const parsedHistory = JSON.parse(history);
+          const backupAgeHours = (new Date().getTime() - parsedHistory.timestamp) / (1000 * 60 * 60);
+          
+          if (backupAgeHours > HISTORY_EXPIRY_HOURS) {
+              localStorage.removeItem(CHANNEL_HISTORY_KEY);
+              return null;
+          }
+          
+          return parsedHistory.channels;
+      }
+
+      function mergeChannels(channelsArray) {
+        const uniqueChannelsMap = new Map();
+
+        const orderedSources = ['gist', 'events', 'shickat', 'elcano'];
+
+        orderedSources.forEach(source => {
+            channelsArray.forEach(channel => {
+                if (channel.source === source) {
+                    uniqueChannelsMap.set(channel.id, channel);
+                }
+            });
+        });
+        
+        return Array.from(uniqueChannelsMap.values());
+      }
+      
+      async function loadInitialChannels() {
+          const channelsGrid = document.getElementById("channelsGrid");
+          
+          const backupChannels = loadBackup();
+          if (backupChannels) {
+              state.channelsData = backupChannels;
+              renderResults();
+              showStatusMessage("Mostrando canales del historial. Buscando actualizaciones...");
+          } else {
+              channelsGrid.innerHTML = '<div class="loading-container"><div class="loading-spinner"></div><span>Cargando canales...</span></div>';
+          }
+
+          try {
+              const gistChannels = await loadGistChannels();
+              const elcanoChannels = await loadElcanoSource();
+              const eventsChannels = await loadEventsSource();
+              const shickatChannels = await loadShickatChannels();
+              
+              const allChannels = [...gistChannels, ...elcanoChannels, ...eventsChannels, ...shickatChannels];
+              const newChannels = mergeChannels(allChannels);
+
+              state.channelsData = newChannels;
+              renderResults();
+              saveBackup(newChannels);
+              showStatusMessage("Todos los canales actualizados correctamente.", "success");
+              
+          } catch (error) {
+              console.error("Error al cargar nuevos canales:", error);
+              if (backupChannels) {
+                  state.channelsData = backupChannels;
+                  renderResults();
+                  showStatusMessage("No se pudieron cargar nuevos canales. Mostrando el historial.", "error");
+              } else {
+                  channelsGrid.innerHTML = `
+                      <div class="no-results">
+                          <div class="no-results-icon">📡</div>
+                          <div class="no-results-text">Error al cargar los canales.</div>
+                          <div class="no-results-hint">Revisa tu conexión o inténtalo de nuevo.</div>
+                          <button class="retry-button" onclick="loadInitialChannels()">Reintentar</button>
+                      </div>
+                  `;
+                  showStatusMessage("Error al cargar canales. Inténtalo de nuevo.", "error");
+              }
+          }
+      }
+
+      function normalizeChannelName(name) {
+          if (name.includes('Eurosport 1')) {
+              return '★EUROSPORT 1';
+          } else if (name.includes('Eurosport 2')) {
+              return '★EUROSPORT 2';
+          } else if (name.includes('Eurosport')) {
+              return '★EUROSPORT 1';
+          }
+          return name;
+      }
+
+      async function loadGistChannels() {
+          const infoGistUrl = "https://gist.githubusercontent.com/Ciento20/f7847e86d06e5011706fa76f2dab90be/raw";
+          const infoResponse = await fetch(infoGistUrl);
+          
+          if (!infoResponse.ok) throw new Error("Error al obtener la info de canales Gist");
+          const infoContent = await infoResponse.text();
+          
+          return processGistData(infoContent);
+      }
+
+      function processGistData(infoCanales) {
+          const numberedChannels = [];
+          
+          infoCanales.split('\n').forEach(linea => {
+              linea = linea.trim();
+              if (!linea) return;
+              
+              const parts = linea.split(',').map(part => part.trim());
+              
+              if (parts.length >= 5) {
+                  const num = parts[0];
+                  const nombre = normalizeChannelName(parts[1]); 
+                  const calidad = parts[2] === 'N/A' ? '720p' : (parts[2] === '1080' ? '1080p' : parts[2]);
+                  const multiaudio = parts[3] === 'Sí' || parts[3] === 'Sí,' || parts[3] === 'Yes';
+                  const acestreamId = parts[4].match(/acestream:\/\/([a-fA-F0-9]+)/)?.[1] || 
+                                     parts[4].match(/([a-fA-F0-9]{40})/)?.[1];
+                  
+                  if (acestreamId) {
+                      numberedChannels.push({
+                          id: acestreamId,
+                          number: num,
+                          name: nombre,
+                          quality: calidad,
+                          multiAudio: multiaudio,
+                          isKnown: true,
+                          source: 'gist'
+                      });
+                  }
+              }
+          });
+          
+          return numberedChannels;
+      }
+
+      async function loadElcanoSource() {
+          const PROXIES = [
+              'https://api.allorigins.win/raw?url=',
+              'https://cors-anywhere.herokuapp.com/',
+              'https://api.codetabs.com/v1/proxy/?quest='
+          ];
+          
+          let lastError;
+          
+          for (const proxy of PROXIES) {
+              try {
+                  const proxyUrl = proxy + encodeURIComponent('https://ipfs.io/ipns/elcano.top');
+                  const controller = new AbortController();
+                  const timeoutId = setTimeout(() => controller.abort(), 15000);
+                  
+                  const response = await fetch(proxyUrl, { signal: controller.signal });
+                  
+                  clearTimeout(timeoutId);
+                  
+                  if (!response.ok) throw new Error(`Proxy ${proxy} responded with ${response.status}`);
+                  
+                  const htmlContent = await response.text();
+                  const jsonMatch = htmlContent.match(/const linksData\s*=\s*({[\s\S]*?});/);
+                  
+                  if (!jsonMatch) throw new Error("Data format changed");
+                  
+                  const linksData = JSON.parse(jsonMatch[1]
+                      .replace(/\s*\/\/.*(?:\n|$)/g, '')
+                      .replace(/,\s*}/g, '}')
+                      .replace(/,\s*]/g, ']'));
+                      
+                  return processElcanoData(linksData.links || []);
+                  
+              } catch (error) {
+                  lastError = error;
+                  console.warn(`Proxy ${proxy} failed:`, error);
+                  continue;
+              }
+          }
+          
+          throw lastError || new Error("All proxies failed");
+      }
+
+      async function loadEventsSource() {
+          const PROXIES = [
+              'https://api.allorigins.win/raw?url=',
+              'https://cors-anywhere.herokuapp.com/',
+              'https://api.codetabs.com/v1/proxy/?quest='
+          ];
+          
+          let lastError;
+          
+          for (const proxy of PROXIES) {
+              try {
+                  const proxyUrl = proxy + encodeURIComponent('https://ciriaco-liart.vercel.app//');
+                  const controller = new AbortController();
+                  const timeoutId = setTimeout(() => controller.abort(), 15000);
+                  
+                  const response = await fetch(proxyUrl, { signal: controller.signal });
+                  
+                  clearTimeout(timeoutId);
+                  
+                  if (!response.ok) throw new Error(`Proxy ${proxy} responded with ${response.status}`);
+                  
+                  const htmlContent = await response.text();
+                  return processEventsData(htmlContent);
+                  
+              } catch (error) {
+                  lastError = error;
+                  console.warn(`Proxy ${proxy} failed:`, error);
+                  continue;
+              }
+          }
+          
+          throw lastError || new Error("All proxies failed");
+      }
+      
+      async function loadShickatChannels() {
+          const PROXIES = [
+              'https://api.allorigins.win/raw?url=',
+              'https://cors-anywhere.herokuapp.com/',
+              'https://api.codetabs.com/v1/proxy/?quest='
+          ];
+          
+          let lastError;
+          const url = 'https://shickat.me/';
+          
+          for (const proxy of PROXIES) {
+              try {
+                  const proxyUrl = proxy + encodeURIComponent(url);
+                  const controller = new AbortController();
+                  const timeoutId = setTimeout(() => controller.abort(), 15000);
+                  
+                  const response = await fetch(proxyUrl, { signal: controller.signal });
+                  
+                  clearTimeout(timeoutId);
+                  
+                  if (!response.ok) throw new Error(`Proxy ${proxy} responded with ${response.status}`);
+                  
+                  const htmlContent = await response.text();
+                  return processShickatData(htmlContent);
+                  
+              } catch (error) {
+                  lastError = error;
+                  console.warn(`Proxy ${proxy} failed:`, error);
+                  continue;
+              }
+          }
+          
+          throw lastError || new Error("All proxies failed for shickat.me");
+      }
+
+      function processShickatData(htmlContent) {
+          const numberedChannels = [];
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(htmlContent, 'text/html');
+          const cards = doc.querySelectorAll('article.canal-card');
+          
+          let currentNumber = 2000;
+          
+          cards.forEach(card => {
+              const nameElement = card.querySelector('.canal-nombre');
+              const acestreamLinkElement = card.querySelector('.acestream-link');
+              
+              if (nameElement && acestreamLinkElement) {
+                  const rawName = nameElement.textContent.trim();
+                  const acestreamId = acestreamLinkElement.textContent.trim();
+                  
+                  if (acestreamId.length === 40) {
+                      let quality = '720p';
+                      let simplifiedName = rawName;
+
+                      if (rawName.includes('(HD)')) {
+                          quality = '720p';
+                          simplifiedName = rawName.replace('(HD)', '').trim();
+                      } else if (rawName.includes('(FHD)')) {
+                          quality = '1080p';
+                          simplifiedName = rawName.replace('(FHD)', '').trim();
+                      }
+                      
+                      const multiAudio = simplifiedName.includes('MultiAudio');
+                      
+                      if (simplifiedName.includes('M. LaLiga')) {
+                          simplifiedName = simplifiedName.replace('M. LaLiga', 'M+ La Liga');
+                      } else if (simplifiedName.includes('Movistar')) {
+                          simplifiedName = simplifiedName.replace('Movistar', 'M+');
+                      }
+
+                      if (simplifiedName.includes('LaLiga')) {
+                          simplifiedName = simplifiedName.replace('LaLiga', 'La Liga');
+                      }
+                      
+                      simplifiedName = normalizeChannelName(simplifiedName);
+
+                      numberedChannels.push({
+                          id: acestreamId,
+                          number: currentNumber.toString(),
+                          name: simplifiedName,
+                          quality: quality,
+                          multiAudio: multiAudio,
+                          isKnown: true,
+                          source: 'shickat'
+                      });
+                      
+                      currentNumber++;
+                  }
+              }
+          });
+          
+          return numberedChannels;
+      }
+
+      function processElcanoData(links) {
+          const numberedChannels = [];
+          let currentNumber = 500;
+
+          const nameMap = {
+              'M. LaLiga': 'M+ La Liga',
+              'LaLiga Smartbank': 'La Liga Hypermotion',
+              'LaLiga': 'La Liga',
+              'MovistarPlus': 'M+ Plus',
+              'Vamos': 'M+ Vamos',
+              'Deporte': 'M+ Deportes',
+              'Dedporte': 'M+ Deportes',
+              'Dazn': 'DAZN',
+              'Campeones': 'M+ Liga de Campeones'
+          };
+
+          links.forEach(link => {
+              if (link.url && link.url.startsWith('acestream://')) {
+                  const acestreamId = link.url.split('://')[1];
+
+                  let quality = '720p';
+                  let multiAudio = false;
+
+                  if (link.name.includes('1080')) quality = '1080p';
+                  if (link.name.includes('720')) quality = '720p';
+                  if (link.name.includes('UHD')) quality = 'UHD';
+
+                  multiAudio = link.name.includes('MultiAudio') ||
+                               link.name.includes('Multi Audio') ||
+                               link.name.toLowerCase().includes('multi');
+
+                  let simplifiedName = link.name
+                      .replace(/1080|720|UHD|MultiAudio|Multi Audio|\(.*?\)/g, '')
+                      .replace(/\s+/g, ' ')
+                      .trim();
+                  
+                  for (const key in nameMap) {
+                      if (simplifiedName.includes(key)) {
+                          simplifiedName = simplifiedName.replace(key, nameMap[key]);
+                          break; 
+                      }
+                  }
+
+                  simplifiedName = normalizeChannelName(simplifiedName);
+
+                  numberedChannels.push({
+                      id: acestreamId,
+                      number: currentNumber.toString(),
+                      name: simplifiedName,
+                      quality: quality,
+                      multiAudio: multiAudio,
+                      isKnown: true,
+                      source: 'elcano'
+                  });
+
+                  currentNumber++;
+              }
+          });
+
+          return numberedChannels;
+      }
+
+      function processEventsData(htmlContent) {
+          const numberedChannels = [];
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(htmlContent, 'text/html');
+          const rows = doc.querySelectorAll('table tbody tr');
+          
+          let currentNumber = 1000;
+          
+          rows.forEach(row => {
+              const cells = row.querySelectorAll('td');
+              if (cells.length >= 5) {
+                  const canalesCell = cells[4];
+                  const links = canalesCell.querySelectorAll('a[href^="acestream://"]');
+                  
+                  links.forEach(link => {
+                      const acestreamId = link.href.split('://')[1];
+                      let channelName = link.textContent.trim();
+                      
+                      channelName = channelName.replace('Estable', '').replace('New Era I', '').trim();
+                      channelName = channelName.replace(/\s*\(Op\d+\)/g, '');
+                      
+                      let simplifiedName = channelName
+                          .replace(/1080|720|UHD|MultiAudio|Multi Audio|\(.*?\)/g, '')
+                          .replace(/\s+/g, ' ')
+                          .trim();
+                      
+                      if (simplifiedName.includes('Movistar')) {
+                          simplifiedName = simplifiedName.replace('Movistar', 'M+');
+                      } else if (simplifiedName.includes('LALIGA')) {
+                          simplifiedName = simplifiedName.replace('LALIGA', 'La Liga');
+                      } else if (simplifiedName.includes('Premier')) {
+                          simplifiedName = simplifiedName.replace('Premier', 'Premier League');
+                      }
+
+                      simplifiedName = normalizeChannelName(simplifiedName);
+                      
+                      let quality = '720p';
+                      if (channelName.includes('1080')) quality = '1080p';
+                      if (channelName.includes('UHD')) quality = 'UHD';
+                      
+                      const multiAudio = false;
+                      
+                      numberedChannels.push({
+                          id: acestreamId,
+                          number: currentNumber.toString(),
+                          name: simplifiedName,
+                          quality: quality,
+                          multiAudio: multiAudio,
+                          isKnown: true,
+                          source: 'events'
+                      });
+                      
+                      currentNumber++;
+                  });
+              }
+          });
+          
+          return numberedChannels;
+      }
+
+      function highlightBrands(text) {
+          const brands = [
+              { name: 'M+', class: 'movistar' },
+              { name: '★Eurosport', class: 'eurosport' },
+              { name: 'DAZN', class: 'dazn' },
+              { name: 'F1', class: 'f1' },
+              { name: 'Acción', class: 'action' },
+              { name: 'hits', class: 'action' },
+              { name: 'clasicos', class: 'action' },
+              { name: 'Clásicos', class: 'classics' },
+              { name: 'Deportes', class: 'sports' },
+              { name: 'Vamos', class: 'vamos' },
+              { name: 'Copa del Rey', class: 'copadelrey' },
+              { name: 'Liga de Campeones', class: 'champions' },
+              { name: 'La Liga', class: 'liga' },
+              { name: 'Hypermotion', class: 'hypermotion' },
+              { name: 'Golf', class: 'golf' },
+              { name: '★EUROSPORT\\d+', class: 'eurosport-number', regex: true },
+              { name: 'Smartbank', class: 'smartbank' },
+              { name: 'Plus', class: 'plus' },
+              { name: 'Western', class: 'western' },
+              { name: 'Documentales', class: 'documentary' },
+              { name: 'Originales', class: 'originals' },
+              { name: 'Hits', class: 'hits' },
+              { name: 'Estrenos', class: 'premieres' },
+              { name: 'Indie', class: 'indie' },
+              { name: 'Cine Español', class: 'spanish-film' },
+              { name: 'Drama', class: 'drama' },
+              { name: 'Ellas', class: 'ellas' },
+              { name: 'Series', class: 'series' }
+          ];
+
+          let result = text;
+
+          brands.forEach(brand => {
+              if (brand.regex) {
+                  const regex = new RegExp(`(${brand.name})`, 'gi');
+                  result = result.replace(regex, `<span class="${brand.class}">$1</span>`);
+              } else {
+                  const escapedName = brand.name.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+                  const regex = new RegExp(`(${escapedName})`, 'gi');
+                  result = result.replace(regex, `<span class="${brand.class}">$1</span>`);
+              }
+          });
+          
+          const comediaRegex = /(comedia)/gi;
+          result = result.replace(comediaRegex, '<span class="degradado-comedia">Comedia</span>');
+
+
+          return result;
+      }
+      
+      function filterChannels() {
+        let filteredChannels = state.channelsData;
+        const searchTerm = document.getElementById('searchInput').value.trim().toLowerCase();
+        
+        let currentFilter = state.currentFilter;
+        if(currentFilter !== 'all' && currentFilter !== 'favorites' && currentFilter !== 'history') {
+             filteredChannels = filteredChannels.filter(channel =>
+                channel.name.toLowerCase().includes(currentFilter.toLowerCase())
+            );
+        }
+
+        if (state.currentFilter === 'favorites') {
+            filteredChannels = filteredChannels.filter(c => state.favorites.includes(c.number));
+        } else if (state.currentFilter === 'history') {
+            const historyChannels = Object.entries(state.channelHistory).map(([number, data]) => {
+                return {
+                    id: data.id,
+                    number,
+                    name: data.names[0] || `Canal ${number}`,
+                    quality: 'N/A',
+                    multiAudio: false,
+                    isKnown: true,
+                    source: 'history'
+                };
+            });
+            filteredChannels = historyChannels;
+        }
+
+        if (searchTerm) {
+          filteredChannels = filteredChannels.filter(channel => 
+              channel.name.toLowerCase().includes(searchTerm) || 
+              (channel.number && channel.number.includes(searchTerm.replace('#', '')))
+          );
+        }
+
+        return filteredChannels;
+      }
+
+      function renderResults() {
+        const filteredChannels = filterChannels();
+        const channelsGrid = document.getElementById('channelsGrid');
+        
+        channelsGrid.innerHTML = '';
+        
+        if (filteredChannels.length === 0) {
+          channelsGrid.innerHTML = `
+              <div class="no-results">
+                  <div class="no-results-icon">📡</div>
+                  <div class="no-results-text">No se encontraron canales</div>
+                  <div class="no-results-hint">Prueba con otros filtros o términos de búsqueda</div>
+              </div>
+          `;
           return;
         }
-        
-        const proxyUrl = "https://api.allorigins.win/raw?url=" + encodeURIComponent("https://watchit.my/");
-        const response = await fetch(proxyUrl);
-        
-        if (!response.ok) throw new Error(`Error HTTP: ${response.status}`);
-        
-        const html = await response.text();
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(html, "text/html");
-        
-        const scheduleTitle = doc.querySelector(".daddy-schedule-title");
-        let fechaExtraida = "";
-        
-        if (scheduleTitle) {
-          const titleText = scheduleTitle.textContent.split('–')[0].trim();
-          fechaExtraida = titleText;
-        }
-        
-        if (fechaExtraida) {
-          document.getElementById('fecha').textContent = translateDate(fechaExtraida);
-        } else {
-          document.getElementById('fecha').textContent = "Fecha no reconocida";
-        }
-        
-        const newChannels = [];
-        const matchSections = doc.querySelectorAll(".match-section");
 
-        matchSections.forEach(section => {
-          const timeElement = section.querySelector(".time");
-          const matchNameElement = section.querySelector(".match-name");
-          const linksContainer = section.querySelector(".links");
-          
-          if (!timeElement || !matchNameElement || !linksContainer) return;
-          
-          const time = timeElement.textContent.split(' ')[0].trim();
-          const matchName = matchNameElement.textContent.trim();
-          const links = linksContainer.querySelectorAll(".link-button");
-          
-          if (links.length === 0) return;
-          
-          links.forEach(link => {
-            const canalTexto = link.textContent.trim();
-            const canalMatch = canalTexto.match(/(.+?)\s*\(CH-(\d+)\)/i);
-            if (canalMatch) {
-              const nombreCanal = canalMatch[1].trim();
-              const numero = canalMatch[2];
-              const url = link.href.startsWith("http") ? link.href : "https://watchit.my/" + link.getAttribute("href");
-
-              newChannels.push({ 
-                number: numero, 
-                name: nombreCanal, 
-                url, 
-                time: time, 
-                event: matchName, 
-                sport: ""
-              });
-            }
-          });
+        const sortedChannels = [...filteredChannels].sort((a, b) => {
+            const aIsOff = a.name.includes('OFF');
+            const bIsOff = b.name.includes('OFF');
+            
+            if (aIsOff && !bIsOff) return 1;
+            if (!aIsOff && bIsOff) return -1;
+            
+            return a.name.localeCompare(b.name);
         });
 
-        if (newChannels.length > 0) {
-          state.channels = newChannels;
-          localStorage.setItem('channelsCache', JSON.stringify(newChannels));
-          syncChannelHistory();
-        }
+        const groups = {};
         
-        renderResults();
-      } catch (err) {
-        console.error('Error al cargar datos:', err);
-        renderResults();
-      } finally {
-        document.getElementById('loadingSpinner').style.display = 'none';
-      }
-    }
+        const groupRegexes = {
+            'DAZN F1': /DAZN F1/i,
+            'DAZN 1': /DAZN 1/i,
+            'DAZN 2': /DAZN 2/i,
+            'DAZN 3': /DAZN 3/i,
+            'DAZN 4': /DAZN 4/i,
+            'DAZN La Liga': /DAZN La Liga/i,
+            'M+ La Liga': /M\+ La Liga/i,
+            'M+ Champions': /M\+ Liga de Campeones/i,
+            'La Liga Hypermotion': /La Liga Hypermotion/i,
+            'M+ Vamos': /M\+ Vamos/i,
+            'M+ Deportes': /M\+ Deportes/i,
+            'M+ Deportes 2': /M\+ Deportes 2/i,
+            'M+ Deportes 3': /M\+ Deportes 3/i,
+            'M+ Deportes 4': /M\+ Deportes 4/i,
+            'M+ Deportes 5': /M\+ Deportes 5/i,
+            'M+ Deportes 6': /M\+ Deportes 6/i,
+            'M+ Plus': /M\+ Plus/i,
+            'M+ Golf': /M\+ Golf/i,
+            'M+': /M\+/i,
+            '★EUROSPORT 1': /★EUROSPORT 1/i,
+            '★EUROSPORT 2': /★EUROSPORT 2/i,
+        };
 
-    function handleClearButtonClick() {
-      const now = Date.now();
-      if (now - state.lastClearButtonClickTime > 1000) state.clearButtonClickCount = 0;
-      state.clearButtonClickCount++;
-      state.lastClearButtonClickTime = now;
-      
-      if (state.clearButtonClickCount >= 3) {
-        document.getElementById('settingsModal').classList.add('modal--active');
-        state.clearButtonClickCount = 0;
-      } else {
-        clearEmojiFilters();
-      }
-    }
+        const groupOrder = [
+            'DAZN F1', 'DAZN 1', 'DAZN 2', 'DAZN 3', 'DAZN 4', 'DAZN La Liga',
+            'M+ La Liga', 'M+ Champions', 'La Liga Hypermotion', 
+            'M+ Vamos', 'M+ Deportes', 'M+ Deportes 2', 'M+ Deportes 3', 'M+ Deportes 4', 'M+ Deportes 5', 'M+ Deportes 6',
+            'M+ Plus', 'M+ Golf', 'M+',
+            '★EUROSPORT 1', '★EUROSPORT 2'
+        ];
 
-    function handleOnlineStatusChange() {
-      state.isOnline = navigator.onLine;
-      state.isOnline ? scrape() : renderResults();
-    }
-
-    function changePrimaryColor(color) {
-      const rgb = hexToRgb(color);
-      const isDarkMode = document.body.classList.contains('dark-mode');
-      
-      document.documentElement.style.setProperty('--primary-rgb', `${rgb.r}, ${rgb.g}, ${rgb.b}`);
-      document.documentElement.style.setProperty('--primary', color);
-      document.documentElement.style.setProperty('--primary-dark', shadeColor(color, -20));
-      document.documentElement.style.setProperty('--primary-light', 
-        isDarkMode ? `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.2)` : `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.1)`);
-      
-      document.querySelectorAll('.color-option').forEach(btn => {
-        btn.classList.remove('active');
-      });
-      document.querySelector(`.color-option[data-color="${color}"]`).classList.add('active');
-      localStorage.setItem('primaryColor', color);
-    }
-
-    function hexToRgb(hex) {
-      const r = parseInt(hex.slice(1, 3), 16);
-      const g = parseInt(hex.slice(3, 5), 16);
-      const b = parseInt(hex.slice(5, 7), 16);
-      return { r, g, b };
-    }
-
-    function shadeColor(color, percent) {
-      let R = parseInt(color.substring(1,3), 16);
-      let G = parseInt(color.substring(3,5), 16);
-      let B = parseInt(color.substring(5,7), 16);
-
-      R = parseInt(R * (100 + percent) / 100);
-      G = parseInt(G * (100 + percent) / 100);
-      B = parseInt(B * (100 + percent) / 100);
-
-      R = (R<255)?R:255;  
-      G = (G<255)?G:255;  
-      B = (B<255)?B:255;  
-
-      return `#${R.toString(16).padStart(2,'0')}${G.toString(16).padStart(2,'0')}${B.toString(16).padStart(2,'0')}`;
-    }
-
-    document.addEventListener('DOMContentLoaded', () => {
-      document.body.classList.toggle('dark-mode', state.darkMode);
-      
-      if (state.channels.length > 0 || Object.keys(state.channelHistory).length > 0) {
-        renderResults();
-      }
-      
-      document.getElementById('filterAll').addEventListener('click', () => applyFilter('all'));
-      document.getElementById('filterLive').addEventListener('click', () => applyFilter('live'));
-      document.getElementById('filterFavorites').addEventListener('click', () => applyFilter('favorites'));
-      document.getElementById('filterHistory').addEventListener('click', () => applyFilter('history'));
-      document.getElementById('clearEmojiFilters').addEventListener('click', handleClearButtonClick);
-      document.querySelectorAll('.emoji-filter-btn').forEach(btn => btn.addEventListener('click', () => toggleEmojiFilter(btn.dataset.filter, btn)));
-      document.getElementById('searchInput').addEventListener('input', handleSearchInput);
-      document.getElementById('searchInput').addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') handleSearchEnter();
-      });
-      document.getElementById('prevChannelBtn').addEventListener('click', () => navigateChannel('prev'));
-      document.getElementById('nextChannelBtn').addEventListener('click', () => navigateChannel('next'));
-      document.getElementById('closePlayerBtn').addEventListener('click', closePlayer);
-      document.getElementById('toggleStickyBtn').addEventListener('click', toggleStickyPlayer);
-      document.getElementById('favoriteBtn').addEventListener('click', handleFavoriteClick);
-      document.getElementById('closeSettingsBtn').addEventListener('click', () => document.getElementById('settingsModal').classList.remove('modal--active'));
-      document.getElementById('saveFavoriteBtn').addEventListener('click', saveFavorite);
-      document.getElementById('cancelFavoriteBtn').addEventListener('click', hideFavoriteModal);
-      document.getElementById('darkModeToggle').addEventListener('change', toggleDarkMode);
-      document.getElementById('darkModeToggle').checked = state.darkMode;
-      document.getElementById('internationalFilterToggle').addEventListener('change', toggleInternationalFilter);
-      document.getElementById('internationalFilterToggle').checked = state.internationalFilter;
-      document.getElementById('groupChannelsToggle').addEventListener('change', toggleGroupChannels);
-      document.getElementById('groupChannelsToggle').checked = state.groupChannels;
-      document.getElementById('sortByTimeToggle').addEventListener('change', toggleSortByTime);
-      document.getElementById('sortByTimeToggle').checked = state.sortByTime;
-      
-      if (state.stickyPlayer) {
-        document.getElementById('playerSection').classList.add('player-section--sticky');
-        document.getElementById('toggleStickyBtn').innerHTML = '⛉';
-        document.getElementById('toggleStickyBtn').title = "Liberar reproductor";
-      } else {
-        document.getElementById('toggleStickyBtn').innerHTML = '⛊';
-        document.getElementById('toggleStickyBtn').title = "Fijar reproductor";
-      }
-      
-      document.querySelectorAll('.color-option').forEach(btn => {
-        btn.addEventListener('click', () => changePrimaryColor(btn.dataset.color));
-      });
-      
-      const savedColor = localStorage.getItem('primaryColor') || '#2563eb';
-      changePrimaryColor(savedColor);
-      
-      const baseDomainSelect = document.getElementById('baseDomainSelect');
-      baseDomainSelect.value = state.baseDomain;
-      baseDomainSelect.addEventListener('change', (e) => {
-        state.baseDomain = e.target.value;
-        localStorage.setItem('baseDomain', state.baseDomain);
-        if (state.currentChannel) {
-          playChannel(state.currentChannel);
+        sortedChannels.forEach(channel => {
+            let groupFound = false;
+            for (const groupName of groupOrder) {
+                if (groupRegexes[groupName] && groupRegexes[groupName].test(channel.name)) {
+                    if (!groups[groupName]) {
+                        groups[groupName] = { name: groupName, channels: [] };
+                    }
+                    groups[groupName].channels.push(channel);
+                    groupFound = true;
+                    break;
+                }
+            }
+            if (!groupFound) {
+                if (!groups['Otros']) {
+                    groups['Otros'] = { name: 'Otros', channels: [] };
+                }
+                groups['Otros'].channels.push(channel);
+            }
+        });
+        
+        const sortedGroupKeys = Object.keys(groups).sort((a, b) => {
+            const indexA = groupOrder.indexOf(a);
+            const indexB = groupOrder.indexOf(b);
+            
+            if (indexA === -1 && indexB === -1) {
+                return a.localeCompare(b);
+            }
+            if (indexA === -1) return 1;
+            if (indexB === -1) return -1;
+            
+            return indexA - indexB;
+        });
+        
+        if (groups['Otros']) {
+            sortedGroupKeys.push(sortedGroupKeys.splice(sortedGroupKeys.indexOf('Otros'), 1)[0]);
         }
+
+        sortedGroupKeys.forEach(groupKey => {
+          const group = groups[groupKey];
+          const groupElement = document.createElement('div');
+          groupElement.className = 'channel-group';
+          groupElement.innerHTML = `
+            <div class="channel-group__header">
+              <div class="channel-group__title">${group.name}</div>
+            </div>
+            <div class="channel-group__content">
+              ${group.channels.map(channel => createChannelCard(channel)).join('')}
+            </div>
+          `;
+          channelsGrid.appendChild(groupElement);
+        });
+        
+      }
+
+      function createChannelCard(channel) {
+          const isFavorite = state.favorites.includes(channel.number);
+          const cardClass = `channel-card ${isFavorite ? 'channel-card--favorite' : ''} ${state.isFavoriteMode ? 'channel-card--favorite-mode' : ''}`;
+          
+          const rating = state.channelRatings[channel.id] !== undefined ? state.channelRatings[channel.id] : 2.5;
+
+          let sourceBadgeClass = '';
+          let sourceBadgeText = '';
+
+          if (channel.source === 'elcano') {
+              sourceBadgeClass = 'elcano-badge';
+              sourceBadgeText = 'EC';
+          } else if (channel.source === 'events') {
+              sourceBadgeClass = 'events-badge';
+              sourceBadgeText = 'EV';
+          } else if (channel.source === 'special-gist') {
+              sourceBadgeClass = 'special-gist-badge';
+              sourceBadgeText = 'SG';
+          } else if (channel.source === 'shickat') {
+              sourceBadgeClass = 'shickat-badge';
+              sourceBadgeText = 'SH';
+          } else {
+              sourceBadgeClass = 'gist-badge';
+              sourceBadgeText = 'NE';
+          }
+          
+          const onClickAction = state.isFavoriteMode ? `toggleFavorite('${channel.number}')` : `handleChannelPlay(${JSON.stringify(channel).replace(/"/g, "'")})`;
+
+          return `
+              <div class="${cardClass}"
+                   data-id="${channel.id}"
+                   data-number="${channel.number}"
+                   onclick="${onClickAction}">
+                  <div class="channel-header">
+                      <div class="channel-name">${highlightBrands(channel.name)}</div>
+                      <div class="source-badge ${sourceBadgeClass}">${sourceBadgeText}</div>
+                  </div>
+                  <div class="channel-info-line">
+                      <span class="quality-audio">
+                          ${channel.quality || ''}
+                          ${channel.multiAudio ? ' 🎧' : ''}
+                      </span>
+                      <div class="channel-number">${channel.number}</div>
+                  </div>
+                  <div class="rating-stars">${getStarRating(rating)}</div>
+              </div>
+          `;
+      }
+
+      function playChannel(acestreamId) {
+          const acestreamUrl = `acestream://${acestreamId}`;
+          const newWindow = window.open(acestreamUrl, '_blank');
+          
+          setTimeout(() => {
+              if (newWindow && newWindow.closed) {
+              } else {
+                  alert("Tu navegador no pudo abrir el enlace con AceStream. Esto puede ocurrir si no tienes Ace Player HD instalado o si tu navegador bloquea el protocolo. Por favor, asegúrate de tener la aplicación instalada.");
+              }
+          }, 500);
+      }
+      
+      function handleChannelPlay(channel) {
+          const now = new Date().getTime();
+          
+          if (state.lastChannelPlay) {
+              const previousChannelId = state.lastChannelPlay.channelId;
+              const duration = (now - state.lastChannelPlay.timestamp) / 1000;
+              
+              const rating = state.channelRatings[previousChannelId] || 2.5;
+              let newRating = rating;
+
+              if (duration >= 10) {
+                  if (duration >= (30 * 60)) { 
+                      newRating += 1.5;
+                  } else if (duration >= (15 * 60)) { 
+                      newRating -= 0.5;
+                  } else if (duration >= (5 * 60)) { 
+                      newRating -= 1;
+                  } else { 
+                      newRating -= 1.5;
+                  }
+              }
+
+              state.channelRatings[previousChannelId] = Math.max(1, Math.min(5, newRating));
+              saveRatings();
+              renderResults();
+          }
+
+          state.lastChannelPlay = {
+              channelId: channel.id,
+              timestamp: now
+          };
+          localStorage.setItem('lastChannelPlay', JSON.stringify(state.lastChannelPlay));
+          
+          playChannel(channel.id);
+      }
+
+      function handleSearchInput() {
+        state.searchTerm = document.getElementById('searchInput').value.trim();
+        document.querySelectorAll('.filter-button').forEach(btn => btn.classList.remove('filter-button--active'));
+        renderResults();
+      }
+
+      function changePrimaryColor(color) {
+        state.primaryColor = color;
+        const rgb = hexToRgb(color);
+        document.documentElement.style.setProperty('--primary-rgb', `${rgb.r}, ${rgb.g}, ${rgb.b}`);
+        document.documentElement.style.setProperty('--primary', color);
+        document.documentElement.style.setProperty('--primary-dark', shadeColor(color, -20));
+        updatePrimaryLightColor();
+        document.querySelectorAll('.color-option').forEach(btn => {
+          btn.classList.remove('active');
+        });
+        document.querySelector(`.color-option[data-color="${color}"]`).classList.add('active');
+        localStorage.setItem('primaryColor', color);
+        renderResults();
+      }
+
+      function hexToRgb(hex) {
+        const r = parseInt(hex.slice(1, 3), 16);
+        const g = parseInt(hex.slice(3, 5), 16);
+        const b = parseInt(hex.slice(5, 7), 16);
+        return { r, g, b };
+      }
+
+      function shadeColor(color, percent) {
+        let R = parseInt(color.substring(1,3), 16);
+        let G = parseInt(color.substring(3,5), 16);
+        let B = parseInt(color.substring(5,7), 16);
+
+        R = (R<255)?R:255;  
+        G = (G<255)?G:255;  
+        B = (B<255)?B:255;  
+
+        return `#${R.toString(16).padStart(2,'0')}${G.toString(16).padStart(2,'0')}${B.toString(16).padStart(2,'0')}`;
+      }
+
+      function updatePrimaryLightColor() {
+        const rgb = hexToRgb(state.primaryColor);
+        const isDarkMode = document.body.classList.contains('dark-mode');
+        document.documentElement.style.setProperty('--primary-light', 
+          isDarkMode ? `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.2)` : `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.1)`);
+      }
+
+      function saveRatings() {
+          localStorage.setItem('channelRatings', JSON.stringify(state.channelRatings));
+      }
+
+      function resetRatings() {
+          if (confirm('¿Estás seguro de que quieres restablecer todas las puntuaciones de los canales?')) {
+              localStorage.removeItem('channelRatings');
+              state.channelRatings = {};
+              renderResults();
+              showStatusMessage("Puntuaciones de canales restablecidas.", "success");
+              document.getElementById('settingsModal').classList.remove('modal--active');
+          }
+      }
+
+      function getStarRating(score) {
+          const fullStars = Math.floor(score);
+          const hasHalfStar = score % 1 >= 0.5;
+          let stars = '★'.repeat(fullStars);
+          if (hasHalfStar) {
+              stars += '<span class="half-star">★</span>';
+          }
+          const emptyStars = '☆'.repeat(5 - fullStars - (hasHalfStar ? 1 : 0));
+          return `<span style="color: gold;">${stars}</span><span style="color: gray;">${emptyStars}</span>`;
+      }
+      
+      let startX = 0;
+      let startY = 0;
+      let isMoved = false;
+      let currentCard = null;
+      const MOVE_THRESHOLD = 10;
+      const SWIPE_THRESHOLD = 50;
+
+      function showCopyModal(acestreamId) {
+          const url = `acestream://${acestreamId}`;
+          const copyModal = document.getElementById('copyModal');
+          const confirmBtn = document.getElementById('confirmCopyBtn');
+          const urlDisplay = document.getElementById('copyUrlDisplay');
+
+          urlDisplay.textContent = url;
+          
+          confirmBtn.onclick = () => copyUrlToClipboard(acestreamId);
+          copyModal.classList.add('active');
+      }
+
+      function hideCopyModal() {
+          document.getElementById('copyModal').classList.remove('active');
+      }
+
+      function showCopySuccessMessage() {
+          const messageElement = document.getElementById('copyMessage');
+          messageElement.classList.add('show');
+          setTimeout(() => {
+              messageElement.classList.remove('show');
+          }, 2000);
+      }
+
+      async function copyUrlToClipboard(acestreamId) {
+          const url = `acestream://${acestreamId}`;
+          try {
+              await navigator.clipboard.writeText(url);
+              hideCopyModal();
+              showCopySuccessMessage();
+          } catch (err) {
+              console.error('Error al copiar el texto: ', err);
+              alert('No se pudo copiar la URL. Por favor, hazlo manualmente.');
+          }
+      }
+
+      document.addEventListener('DOMContentLoaded', () => {
+          document.body.classList.toggle('dark-mode', state.darkMode);
+          document.getElementById('darkModeCheckbox').checked = state.darkMode;
+          
+          let pressTimerFav;
+          const favoriteButton = document.getElementById('filterFavorites');
+          const LONG_PRESS_THRESHOLD = 500;
+          
+          let pressTimerClear;
+          const clearButton = document.getElementById('clearEmojiFilters');
+          const copyModal = document.getElementById('copyModal');
+          const cancelCopyBtn = document.getElementById('cancelCopyBtn');
+
+          favoriteButton.addEventListener('mousedown', (e) => {
+              if (e.button !== 0) return;
+              pressTimerFav = setTimeout(() => {
+                  state.isFavoriteMode = !state.isFavoriteMode;
+                  
+                  if (state.isFavoriteMode) {
+                      showStatusMessage("Modo de selección de favoritos activado. Pulsa un canal para marcarlo/desmarcarlo.");
+                  } else {
+                      showStatusMessage("Modo de selección de favoritos desactivado.", "success");
+                  }
+                  
+                  renderResults();
+                  pressTimerFav = null;
+              }, LONG_PRESS_THRESHOLD);
+          });
+
+          favoriteButton.addEventListener('mouseup', () => {
+              clearTimeout(pressTimerFav);
+              if (pressTimerFav) {
+                  applyFilter('favorites');
+              }
+          });
+          
+          favoriteButton.addEventListener('touchstart', () => {
+              pressTimerFav = setTimeout(() => {
+                  state.isFavoriteMode = !state.isFavoriteMode;
+                  
+                  if (state.isFavoriteMode) {
+                      showStatusMessage("Modo de selección de favoritos activado. Pulsa un canal para marcarlo/desmarcarlo.");
+                  } else {
+                      showStatusMessage("Modo de selección de favoritos desactivado.", "success");
+                  }
+                  
+                  renderResults();
+                  pressTimerFav = null;
+              }, LONG_PRESS_THRESHOLD);
+          });
+
+          favoriteButton.addEventListener('touchend', () => {
+              clearTimeout(pressTimerFav);
+              if (pressTimerFav) {
+                  applyFilter('favorites');
+              }
+          });
+          
+          clearButton.addEventListener('mousedown', (e) => {
+              if (e.button !== 0) return;
+              pressTimerClear = setTimeout(() => {
+                  document.getElementById('settingsModal').classList.add('modal--active');
+                  pressTimerClear = null;
+              }, LONG_PRESS_THRESHOLD);
+          });
+
+          clearButton.addEventListener('mouseup', () => {
+              clearTimeout(pressTimerClear);
+              if (pressTimerClear) {
+                  applyFilter('all');
+              }
+          });
+
+          clearButton.addEventListener('touchstart', () => {
+              pressTimerClear = setTimeout(() => {
+                  document.getElementById('settingsModal').classList.add('modal--active');
+                  pressTimerClear = null;
+              }, LONG_PRESS_THRESHOLD);
+          });
+
+          clearButton.addEventListener('touchend', () => {
+              clearTimeout(pressTimerClear);
+              if (pressTimerClear) {
+                  applyFilter('all');
+              }
+          });
+          
+          if(cancelCopyBtn) {
+              cancelCopyBtn.addEventListener('click', hideCopyModal);
+          }
+          
+          window.addEventListener('click', (event) => {
+              if (event.target === copyModal) {
+                  hideCopyModal();
+              }
+          });
+
+
+          document.getElementById('filterDAZN').addEventListener('click', () => applyFilter('dazn'));
+          document.getElementById('filterMovistar').addEventListener('click', () => applyFilter('m+'));
+          document.getElementById('filterEurosport').addEventListener('click', () => applyFilter('eurosport'));
+          document.getElementById('searchInput').addEventListener('input', handleSearchInput);
+          document.getElementById('darkModeCheckbox').addEventListener('change', toggleDarkMode);
+          document.getElementById('closeSettingsBtn').addEventListener('click', () => document.getElementById('settingsModal').classList.remove('modal--active'));
+
+          document.querySelectorAll('.color-option').forEach(btn => {
+              btn.addEventListener('click', () => changePrimaryColor(btn.dataset.color));
+          });
+          changePrimaryColor(state.primaryColor);
+          
+          applyFilter('all');
+          loadInitialChannels();
       });
-      
-      window.addEventListener('online', handleOnlineStatusChange);
-      window.addEventListener('offline', handleOnlineStatusChange);
-      
-      scrape();
-    });
-  </script>
+
+      document.addEventListener('mousedown', (e) => {
+          if (e.target.closest('.channel-card')) {
+              currentCard = e.target.closest('.channel-card');
+              startX = e.clientX;
+              startY = e.clientY;
+              isMoved = false;
+          }
+      });
+
+      document.addEventListener('mousemove', (e) => {
+          if (!currentCard) return;
+
+          const diffX = e.clientX - startX;
+          const diffY = e.clientY - startY;
+
+          if (Math.abs(diffX) > MOVE_THRESHOLD || Math.abs(diffY) > MOVE_THRESHOLD) {
+              isMoved = true;
+          }
+
+          if (Math.abs(diffX) > SWIPE_THRESHOLD && Math.abs(diffX) > Math.abs(diffY)) {
+              e.preventDefault();
+              showCopyModal(currentCard.dataset.id);
+              currentCard = null;
+          }
+      });
+
+      document.addEventListener('mouseup', () => {
+          if (currentCard) {
+              if (!isMoved) {
+                  if (!state.isFavoriteMode) {
+                      const channelId = currentCard.dataset.id;
+                      const channelData = state.channelsData.find(c => c.id === channelId);
+                      if (channelData) {
+                          handleChannelPlay(channelData);
+                      }
+                  } else {
+                      toggleFavorite(currentCard.dataset.number);
+                  }
+              }
+          }
+          currentCard = null;
+      });
+
+      document.addEventListener('touchstart', (e) => {
+          if (e.target.closest('.channel-card')) {
+              currentCard = e.target.closest('.channel-card');
+              const touch = e.touches[0];
+              startX = touch.clientX;
+              startY = touch.clientY;
+              isMoved = false;
+          }
+      });
+
+      document.addEventListener('touchmove', (e) => {
+          if (!currentCard) return;
+          const touch = e.touches[0];
+          const diffX = touch.clientX - startX;
+          const diffY = touch.clientY - startY;
+
+          if (Math.abs(diffX) > MOVE_THRESHOLD || Math.abs(diffY) > MOVE_THRESHOLD) {
+              isMoved = true;
+          }
+
+          if (Math.abs(diffX) > SWIPE_THRESHOLD && Math.abs(diffX) > Math.abs(diffY)) {
+              e.preventDefault();
+              showCopyModal(currentCard.dataset.id);
+              currentCard = null;
+          }
+      });
+
+      document.addEventListener('touchend', () => {
+          if (currentCard) {
+              if (!isMoved) {
+                  if (!state.isFavoriteMode) {
+                      const channelId = currentCard.dataset.id;
+                      const channelData = state.channelsData.find(c => c.id === channelId);
+                      if (channelData) {
+                          handleChannelPlay(channelData);
+                      }
+                  } else {
+                      toggleFavorite(currentCard.dataset.number);
+                  }
+              }
+          }
+          currentCard = null;
+      });
+    </script>
 </body>
 </html>

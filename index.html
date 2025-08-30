@@ -1789,7 +1789,6 @@
           setTimeout(() => {
               if (newWindow && newWindow.closed) {
               } else {
-                  alert("Tu navegador no pudo abrir el enlace con AceStream. Esto puede ocurrir si no tienes Ace Player HD instalado o si tu navegador bloquea el protocolo. Por favor, asegúrate de tener la aplicación instalada.");
               }
           }, 500);
       }
@@ -1798,9 +1797,9 @@
       let startX = 0;
       let startY = 0;
       let currentCard = null;
-      let isSwiping = false; // Nueva variable para controlar si se está deslizando
-      const SWIPE_THRESHOLD = 80; // Aumentar el umbral para evitar activaciones accidentales
-      const VERTICAL_TOLERANCE = 40; // Umbral de movimiento vertical para considerarlo un swipe horizontal
+      let isSwiping = false;
+      const SWIPE_THRESHOLD = 80;
+      const VERTICAL_TOLERANCE = 40;
       let longPressTimer;
       let isLongPress = false;
 
@@ -2088,7 +2087,7 @@
               currentCard = e.target.closest('.channel-card');
               startX = e.clientX;
               startY = e.clientY;
-              isSwiping = false; // Resetear el estado de swipe
+              isSwiping = false;
           }
       });
 

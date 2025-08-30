@@ -40,11 +40,11 @@
         --hypermotion-cyan: #04d2d7;
         --golf-teal: #4ee1b0;
         --eurosport-number-red: #ff3535;
-        --gist-source-color: #4cc9f0;
-        --elcano-source-color: #f72585;
+        --gist-source-color: #2d077d;
+        --elcano-source-color: #7d070e;
         --special-gist-color: #9c27b0;
-        --events-source-color: #f8961e;
-        --shickat-badge: #2e8b57;
+        --events-source-color: #074f7d;
+        --shickat-badge: #077b3b;
         --player-bg: black;
         --channel-number-color: #4b5563;
         
@@ -165,7 +165,7 @@
         min-width: 36px;
         padding: 0.5rem 0;
       }
-      
+
       .channels-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -173,50 +173,53 @@
       }
       
       .channel-card {
-        background: var(--card-bg);
-        border: 1px solid var(--border-color);
-        border-radius: var(--radius-md);
-        padding: 1rem;
-        cursor: pointer;
-        box-shadow: var(--shadow-sm);
-        transition: all 0.2s;
-        position: relative;
-        overflow: hidden;
+          background: var(--card-bg);
+          border: 1px solid var(--border-color);
+          border-radius: var(--radius-md);
+          padding: 0.5rem 1rem 1rem 1rem;
+          cursor: pointer;
+          box-shadow: var(--shadow-sm);
+          transition: all 0.2s;
+          position: relative;
+          overflow: hidden;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          text-align: center;
       }
       
       .channel-card:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        border-color: var(--primary-light);
+          transform: translateY(-3px);
+          box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+          border-color: var(--primary-light);
       }
 
       /* Nuevo estilo para el modo de edición de favoritos */
       .channel-card--favorite-mode {
-        border-style: dashed;
-        border-width: 2px;
-        border-color: var(--primary);
-        opacity: 0.8;
-        transition: all 0.3s ease;
+          border-style: dashed;
+          border-width: 2px;
+          border-color: var(--primary);
+          opacity: 0.8;
+          transition: all 0.3s ease;
       }
 
       .channel-card .channel-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          margin-bottom: 0.5rem;
+          width: 100%;
       }
 
       .channel-name {
-        font-weight: 600;
-        flex-grow: 1;
-        padding: 0 0.5rem;
-        text-align: left;
-        font-size: 1rem;
-        display: flex;
-        align-items: center;
-        gap: 5px;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
+          font-weight: 600;
+          flex-grow: 1;
+          text-align: center;
+          font-size: 1rem;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          padding: 0 0.5rem;
       }
 
       /* Estilos adicionales para unificar el aspecto */
@@ -571,11 +574,26 @@
       .drama { color: var(--drama-red) !important; }
       .ellas { color: var(--ellas-green) !important; }
       .series { color: var(--series-orange) !important; }
+      
+      /* Nuevo estilo para la calidad y la fuente */
+      .channel-meta {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          font-size: 0.8rem;
+          color: var(--text);
+          opacity: 0.7;
+          position: absolute;
+          bottom: 5px;
+          right: 1rem;
+          z-index: 10;
+      }
+
+      .channel-meta .quality-audio {
+          white-space: nowrap;
+      }
 
       .source-badge {
-          position: absolute;
-          top: 5px;
-          right: 5px;
           font-size: 0.6rem;
           font-weight: bold;
           padding: 0.2rem 0.4rem;
@@ -588,6 +606,50 @@
       .special-gist-badge { background-color: var(--special-gist-color); color: white; }
       .events-badge { background-color: var(--events-source-color); color: white; }
       .shickat-badge { background-color: var(--shickat-badge); color: white; }
+      
+      /* Nuevos estilos para el badge del número y la fuente */
+      .channel-number-badge {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        right: 10px;
+        padding: 4px;
+        border-radius: 20%;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        line-height: 1;
+        transition: background-color 0.3s ease;
+        
+        width: 30px;
+        height: 30px;
+      }
+
+      .channel-number-badge .channel-number {
+        font-weight: 600;
+        white-space: nowrap;
+        color: var(--text);
+        font-size: 0.75rem;
+      }
+
+      .channel-number-badge .source-initials {
+        font-size: 0.6rem;
+        font-weight: bold;
+        color: white;
+        margin-top: 2px;
+      }
+      
+      .channel-number-badge.gist-badge { background-color: var(--gist-source-color); }
+      .channel-number-badge.elcano-badge { background-color: var(--elcano-source-color); }
+      .channel-number-badge.special-gist-badge { background-color: var(--special-gist-color); }
+      .channel-number-badge.events-badge { background-color: var(--events-source-color); }
+      .channel-number-badge.shickat-badge { background-color: var(--shickat-badge); }
+      
+      body.dark-mode .channel-number-badge .channel-number {
+        color: white;
+      }
 
       .retry-button {
           padding: 0.5rem 1rem;
@@ -610,23 +672,6 @@
           margin-bottom: 0.5rem;
       }
       
-      .channel-number {
-        font-weight: 600;
-        font-size: 0.95rem;
-        white-space: nowrap;
-        color: var(--channel-number-color);
-      }
-      
-      /* Estilos para el nuevo botón de cancelar */
-      .modal__btn--cancel {
-          background: #ccc;
-          color: #333;
-      }
-      
-      .modal__btn--cancel:hover {
-          background: #bbb;
-      }
-
       @keyframes spin {
         to { transform: rotate(360deg); }
       }
@@ -804,6 +849,19 @@
         -webkit-text-fill-color: transparent;
         display: inline-block;
       }
+
+      .channel-card__quality {
+          font-size: 0.8rem;
+          font-weight: 600;
+          color: var(--primary);
+          background: var(--primary-light);
+          padding: 0.2rem 0.6rem;
+          border-radius: var(--radius-sm);
+          position: absolute;
+          top: 5px;
+          left: 5px;
+          z-index: 10;
+      }
     </style>
 </head>
 <body>
@@ -936,6 +994,13 @@
           
           channelRatings: JSON.parse(localStorage.getItem('channelRatings')) || {},
           lastChannelPlay: JSON.parse(localStorage.getItem('lastChannelPlay')) || null,
+      };
+
+      const RANGES = {
+          NE: { start: 1, end: 249, source: 'gist' },
+          EC: { start: 250, end: 499, source: 'elcano' },
+          EV: { start: 500, end: 749, source: 'events' },
+          SH: { start: 750, end: 999, source: 'shickat' }
       };
 
       const MAX_RETRIES = 3;
@@ -1280,7 +1345,7 @@
           const doc = parser.parseFromString(htmlContent, 'text/html');
           const cards = doc.querySelectorAll('article.canal-card');
           
-          let currentNumber = 2000;
+          let currentNumber = RANGES.SH.start;
           
           cards.forEach(card => {
               const nameElement = card.querySelector('.canal-nombre');
@@ -1336,7 +1401,7 @@
 
       function processElcanoData(links) {
           const numberedChannels = [];
-          let currentNumber = 500;
+          let currentNumber = RANGES.EC.start;
 
           const nameMap = {
               'M. LaLiga': 'M+ La Liga',
@@ -1402,7 +1467,7 @@
           const doc = parser.parseFromString(htmlContent, 'text/html');
           const rows = doc.querySelectorAll('table tbody tr');
           
-          let currentNumber = 1000;
+          let currentNumber = RANGES.EV.start;
           
           rows.forEach(row => {
               const cells = row.querySelectorAll('td');
@@ -1669,24 +1734,32 @@
 
           let sourceBadgeClass = '';
           let sourceBadgeText = '';
+          const channelNumber = parseInt(channel.number, 10);
 
-          if (channel.source === 'elcano') {
-              sourceBadgeClass = 'elcano-badge';
-              sourceBadgeText = 'EC';
-          } else if (channel.source === 'events') {
-              sourceBadgeClass = 'events-badge';
-              sourceBadgeText = 'EV';
-          } else if (channel.source === 'special-gist') {
-              sourceBadgeClass = 'special-gist-badge';
-              sourceBadgeText = 'SG';
-          } else if (channel.source === 'shickat') {
-              sourceBadgeClass = 'shickat-badge';
-              sourceBadgeText = 'SH';
-          } else {
-              sourceBadgeClass = 'gist-badge';
-              sourceBadgeText = 'NE';
+          for (const key in RANGES) {
+              if (channelNumber >= RANGES[key].start && channelNumber <= RANGES[key].end) {
+                  switch (key) {
+                      case 'NE':
+                          sourceBadgeClass = 'gist-badge';
+                          sourceBadgeText = 'NE';
+                          break;
+                      case 'EC':
+                          sourceBadgeClass = 'elcano-badge';
+                          sourceBadgeText = 'EC';
+                          break;
+                      case 'EV':
+                          sourceBadgeClass = 'events-badge';
+                          sourceBadgeText = 'EV';
+                          break;
+                      case 'SH':
+                          sourceBadgeClass = 'shickat-badge';
+                          sourceBadgeText = 'SH';
+                          break;
+                  }
+                  break;
+              }
           }
-          
+
           const onClickAction = state.isFavoriteMode ? `toggleFavorite('${channel.number}')` : `handleChannelPlay(${JSON.stringify(channel).replace(/"/g, "'")})`;
 
           return `
@@ -1694,18 +1767,18 @@
                    data-id="${channel.id}"
                    data-number="${channel.number}"
                    onclick="${onClickAction}">
+                  <div class="channel-card__quality">
+                      ${channel.quality || ''}
+                  </div>
                   <div class="channel-header">
                       <div class="channel-name">${highlightBrands(channel.name)}</div>
-                      <div class="source-badge ${sourceBadgeClass}">${sourceBadgeText}</div>
                   </div>
-                  <div class="channel-info-line">
-                      <span class="quality-audio">
-                          ${channel.quality || ''}
-                          ${channel.multiAudio ? ' 🎧' : ''}
-                      </span>
-                      <div class="channel-number">${channel.number}</div>
+                  <div class="channel-number-badge ${sourceBadgeClass}">
+                      <span class="channel-number">${channel.number}</span>
+                      <span class="source-initials">${sourceBadgeText}</span>
                   </div>
                   <div class="rating-stars">${getStarRating(rating)}</div>
+                  ${channel.multiAudio ? '<div class="channel-meta">🎧</div>' : ''}
               </div>
           `;
       }

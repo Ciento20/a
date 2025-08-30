@@ -1765,7 +1765,8 @@
           return `
               <div class="${cardClass}"
                    data-id="${channel.id}"
-                   data-number="${channel.number}">
+                   data-number="${channel.number}"
+                   data-name="${channel.name}">
                   <div class="channel-card__quality">
                       ${channel.quality || ''}
                   </div>
@@ -1812,30 +1813,46 @@
           
           if (state.lastChannelPlay) {
               const previousChannelId = state.lastChannelPlay.channelId;
+              const previousChannelName = state.lastChannelPlay.channelName;
               const duration = (now - state.lastChannelPlay.timestamp) / 1000;
               
-              const rating = state.channelRatings[previousChannelId] || 2.5;
-              let newRating = rating;
+              if (previousChannelName === channel.name) {
+                  const rating = state.channelRatings[previousChannelId] || 2.5;
+                  let newRating = rating;
 
-              if (duration >= 10) {
-                  if (duration >= (30 * 60)) { 
-                      newRating += 1.5;
-                  } else if (duration >= (15 * 60)) { 
-                      newRating -= 0.5;
-                  } else if (duration >= (5 * 60)) { 
-                      newRating -= 1;
-                  } else { 
-                      newRating -= 1.5;
+                  if (duration >= 10) {
+                      if (duration >= (30 * 60)) { 
+                          newRating += 1.5;
+                      } else if (duration >= (15 * 60)) { 
+                          newRating -= 0.5;
+                      } else if (duration >= (5 * 60)) { 
+                          newRating -= 1;
+                      } else { 
+                          newRating -= 1.5;
+                      }
                   }
-              }
 
-              state.channelRatings[previousChannelId] = Math.max(1, Math.min(5, newRating));
+                  state.channelRatings[previousChannelId] = Math.max(1, Math.min(5, newRating));
+              } else {
+                  // Lógica para un canal diferente:
+                  // Otorga una puntuación positiva al canal anterior si se vio por más de 30 minutos.
+                  const rating = state.channelRatings[previousChannelId] || 2.5;
+                  let newRating = rating;
+                  
+                  if (duration >= (30 * 60)) {
+                      newRating += 1.5;
+                  }
+                  
+                  state.channelRatings[previousChannelId] = Math.max(1, Math.min(5, newRating));
+              }
+              
               saveRatings();
               renderResults();
           }
 
           state.lastChannelPlay = {
               channelId: channel.id,
+              channelName: channel.name,
               timestamp: now
           };
           localStorage.setItem('lastChannelPlay', JSON.stringify(state.lastChannelPlay));

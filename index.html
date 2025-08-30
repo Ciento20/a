@@ -1011,12 +1011,12 @@
       const HISTORY_EXPIRY_HOURS = 168;
       const BACKUP_KEY = 'channel_backup';
 
-      function toggleFavorite(channelNumber) {
-          const index = state.favorites.indexOf(channelNumber);
+      function toggleFavorite(channelId) {
+          const index = state.favorites.indexOf(channelId);
           if (index > -1) {
               state.favorites.splice(index, 1);
           } else {
-              state.favorites.push(channelNumber);
+              state.favorites.push(channelId);
           }
           localStorage.setItem('favorites', JSON.stringify(state.favorites));
           renderResults();
@@ -1151,6 +1151,7 @@
               renderResults();
               saveBackup(newChannels);
               showStatusMessage("Todos los canales actualizados correctamente.", "success");
+              cleanObsoleteRatings();
               
           } catch (error) {
               console.error("Error al cargar nuevos canales:", error);
@@ -1585,7 +1586,7 @@
         }
 
         if (state.currentFilter === 'favorites') {
-            filteredChannels = filteredChannels.filter(c => state.favorites.includes(c.number));
+            filteredChannels = filteredChannels.filter(c => state.favorites.includes(c.id));
         } else if (state.currentFilter === 'history') {
             const historyChannels = Object.entries(state.channelHistory).map(([number, data]) => {
                 return {
@@ -1727,7 +1728,7 @@
       }
 
       function createChannelCard(channel) {
-          const isFavorite = state.favorites.includes(channel.number);
+          const isFavorite = state.favorites.includes(channel.id);
           const cardClass = `channel-card ${isFavorite ? 'channel-card--favorite' : ''} ${state.isFavoriteMode ? 'channel-card--favorite-mode' : ''}`;
           
           const rating = state.channelRatings[channel.id] !== undefined ? state.channelRatings[channel.id] : 2.5;
@@ -1760,7 +1761,7 @@
               }
           }
 
-          const onClickAction = state.isFavoriteMode ? `toggleFavorite('${channel.number}')` : `handleTap(event)`;
+          const onClickAction = state.isFavoriteMode ? `toggleFavorite('${channel.id}')` : `handleTap(event)`;
 
           return `
               <div class="${cardClass}"
@@ -1794,14 +1795,18 @@
       }
       
       // Variables de estado globales para el manejo de eventos
-      let startX = 0;
-      let startY = 0;
       let currentCard = null;
       let isSwiping = false;
       const SWIPE_THRESHOLD = 80;
       const VERTICAL_TOLERANCE = 40;
       let longPressTimer;
       let isLongPress = false;
+      
+      let touchStartX = 0;
+      let touchStartY = 0;
+      let touchStartTime = 0;
+      const TAP_THRESHOLD_TIME = 200;
+      const TAP_THRESHOLD_DISTANCE = 10;
 
       function handleChannelPlay(channel) {
           if (isSwiping) {
@@ -1821,9 +1826,7 @@
               const previousName = previousChannelData ? previousChannelData.name.toLowerCase().trim() : '';
               const currentName = channel.name.toLowerCase().trim();
 
-              // Lógica: Comparar SOLO los nombres de los canales
               if (previousName === currentName) {
-                  // Nombres IGUALES: la puntuación puede subir o bajar
                   if (duration >= (30 * 60)) {
                       newRating += 1.5;
                   } else if (duration >= (15 * 60)) {
@@ -1834,11 +1837,10 @@
                       newRating -= 1.5;
                   }
               } else {
-                  // Nombres DIFERENTES: la puntuación SOLO puede subir
                   if (duration >= (30 * 60)) {
                       newRating += 1.5;
                   } else {
-                      newRating = rating; // No hay cambios, no baja
+                      newRating = rating;
                   }
               }
 
@@ -1868,7 +1870,7 @@
                 handleChannelPlay(channelData);
             }
         } else {
-            toggleFavorite(currentCard.dataset.number);
+            toggleFavorite(currentCard.dataset.id);
         }
       }
 
@@ -1953,6 +1955,20 @@
         const isDarkMode = document.body.classList.contains('dark-mode');
         document.documentElement.style.setProperty('--primary-light', 
           isDarkMode ? `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.2)` : `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.1)`);
+      }
+      
+      function cleanObsoleteRatings() {
+        const activeChannelIds = new Set(state.channelsData.map(c => c.id));
+        const ratingsToKeep = {};
+
+        for (const channelId in state.channelRatings) {
+            if (activeChannelIds.has(channelId)) {
+                ratingsToKeep[channelId] = state.channelRatings[channelId];
+            }
+        }
+        state.channelRatings = ratingsToKeep;
+        saveRatings();
+        console.log("Puntuaciones de canales obsoletas limpiadas.");
       }
 
       function saveRatings() {
@@ -2098,8 +2114,9 @@
       document.addEventListener('mousedown', (e) => {
           if (e.target.closest('.channel-card')) {
               currentCard = e.target.closest('.channel-card');
-              startX = e.clientX;
-              startY = e.clientY;
+              touchStartX = e.clientX;
+              touchStartY = e.clientY;
+              touchStartTime = new Date().getTime();
               isSwiping = false;
           }
       });
@@ -2107,8 +2124,8 @@
       document.addEventListener('mousemove', (e) => {
           if (!currentCard) return;
 
-          const diffX = e.clientX - startX;
-          const diffY = e.clientY - startY;
+          const diffX = e.clientX - touchStartX;
+          const diffY = e.clientY - touchStartY;
 
           if (Math.abs(diffX) > SWIPE_THRESHOLD && Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffY) < VERTICAL_TOLERANCE) {
               isSwiping = true;
@@ -2121,7 +2138,12 @@
       document.addEventListener('mouseup', (e) => {
           if (currentCard) {
               if (!isSwiping) {
-                if (e.target.closest('.channel-card') === currentCard) {
+                const mouseUpTime = new Date().getTime();
+                const touchDuration = mouseUpTime - touchStartTime;
+                const touchDistanceX = Math.abs(e.clientX - touchStartX);
+                const touchDistanceY = Math.abs(e.clientY - touchStartY);
+
+                if (touchDuration < TAP_THRESHOLD_TIME && touchDistanceX < TAP_THRESHOLD_DISTANCE && touchDistanceY < TAP_THRESHOLD_DISTANCE) {
                     handleTap(e);
                 }
               }
@@ -2136,8 +2158,9 @@
               e.stopPropagation(); 
               currentCard = e.target.closest('.channel-card');
               const touch = e.touches[0];
-              startX = touch.clientX;
-              startY = touch.clientY;
+              touchStartX = touch.clientX;
+              touchStartY = touch.clientY;
+              touchStartTime = new Date().getTime();
               isSwiping = false; 
               longPressTimer = setTimeout(() => {
                   isLongPress = true;
@@ -2148,8 +2171,8 @@
       document.addEventListener('touchmove', (e) => {
           if (!currentCard) return;
           const touch = e.touches[0];
-          const diffX = touch.clientX - startX;
-          const diffY = touch.clientY - startY;
+          const diffX = touch.clientX - touchStartX;
+          const diffY = touch.clientY - touchStartY;
 
           if (Math.abs(diffX) > SWIPE_THRESHOLD && Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffY) < VERTICAL_TOLERANCE) {
               isSwiping = true;
@@ -2170,7 +2193,12 @@
           if (currentCard) {
               if (!isSwiping) {
                   const endElement = document.elementFromPoint(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
-                  if (endElement && endElement.closest('.channel-card') === currentCard) {
+                  const touchEndTime = new Date().getTime();
+                  const touchDuration = touchEndTime - touchStartTime;
+                  const touchDistanceX = Math.abs(e.changedTouches[0].clientX - touchStartX);
+                  const touchDistanceY = Math.abs(e.changedTouches[0].clientY - touchStartY);
+
+                  if (endElement && endElement.closest('.channel-card') === currentCard && touchDuration < TAP_THRESHOLD_TIME && touchDistanceX < TAP_THRESHOLD_DISTANCE && touchDistanceY < TAP_THRESHOLD_DISTANCE) {
                     handleTap(e);
                   }
               }

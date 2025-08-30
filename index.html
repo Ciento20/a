@@ -1760,13 +1760,12 @@
               }
           }
 
-          const onClickAction = state.isFavoriteMode ? `toggleFavorite('${channel.number}')` : `handleChannelPlay(${JSON.stringify(channel).replace(/"/g, "'")})`;
+          const onClickAction = state.isFavoriteMode ? `toggleFavorite('${channel.number}')` : `handleTap(event)`;
 
           return `
               <div class="${cardClass}"
                    data-id="${channel.id}"
-                   data-number="${channel.number}"
-                   onclick="${onClickAction}">
+                   data-number="${channel.number}">
                   <div class="channel-card__quality">
                       ${channel.quality || ''}
                   </div>
@@ -1795,7 +1794,21 @@
           }, 500);
       }
       
+      // Variables de estado globales para el manejo de eventos
+      let startX = 0;
+      let startY = 0;
+      let currentCard = null;
+      let isSwiping = false; // Nueva variable para controlar si se está deslizando
+      const SWIPE_THRESHOLD = 80; // Aumentar el umbral para evitar activaciones accidentales
+      const VERTICAL_TOLERANCE = 40; // Umbral de movimiento vertical para considerarlo un swipe horizontal
+      let longPressTimer;
+      let isLongPress = false;
+
       function handleChannelPlay(channel) {
+          if (isSwiping) {
+              isSwiping = false;
+              return;
+          }
           const now = new Date().getTime();
           
           if (state.lastChannelPlay) {
@@ -1829,6 +1842,58 @@
           localStorage.setItem('lastChannelPlay', JSON.stringify(state.lastChannelPlay));
           
           playChannel(channel.id);
+      }
+
+      function handleTap(event) {
+        if (!currentCard || isSwiping) {
+            return;
+        }
+
+        if (!state.isFavoriteMode) {
+            const channelId = currentCard.dataset.id;
+            const channelData = state.channelsData.find(c => c.id === channelId);
+            if (channelData) {
+                handleChannelPlay(channelData);
+            }
+        } else {
+            toggleFavorite(currentCard.dataset.number);
+        }
+      }
+
+      function showCopyModal(acestreamId) {
+          const url = `acestream://${acestreamId}`;
+          const copyModal = document.getElementById('copyModal');
+          const confirmBtn = document.getElementById('confirmCopyBtn');
+          const urlDisplay = document.getElementById('copyUrlDisplay');
+
+          urlDisplay.textContent = url;
+          
+          confirmBtn.onclick = () => copyUrlToClipboard(acestreamId);
+          copyModal.classList.add('active');
+      }
+
+      function hideCopyModal() {
+          document.getElementById('copyModal').classList.remove('active');
+      }
+
+      function showCopySuccessMessage() {
+          const messageElement = document.getElementById('copyMessage');
+          messageElement.classList.add('show');
+          setTimeout(() => {
+              messageElement.classList.remove('show');
+          }, 2000);
+      }
+
+      async function copyUrlToClipboard(acestreamId) {
+          const url = `acestream://${acestreamId}`;
+          try {
+              await navigator.clipboard.writeText(url);
+              hideCopyModal();
+              showCopySuccessMessage();
+          } catch (err) {
+              console.error('Error al copiar el texto: ', err);
+              alert('No se pudo copiar la URL. Por favor, hazlo manualmente.');
+          }
       }
 
       function handleSearchInput() {
@@ -1901,49 +1966,6 @@
           }
           const emptyStars = '☆'.repeat(5 - fullStars - (hasHalfStar ? 1 : 0));
           return `<span style="color: gold;">${stars}</span><span style="color: gray;">${emptyStars}</span>`;
-      }
-      
-      let startX = 0;
-      let startY = 0;
-      let isMoved = false;
-      let currentCard = null;
-      const MOVE_THRESHOLD = 10;
-      const SWIPE_THRESHOLD = 50;
-
-      function showCopyModal(acestreamId) {
-          const url = `acestream://${acestreamId}`;
-          const copyModal = document.getElementById('copyModal');
-          const confirmBtn = document.getElementById('confirmCopyBtn');
-          const urlDisplay = document.getElementById('copyUrlDisplay');
-
-          urlDisplay.textContent = url;
-          
-          confirmBtn.onclick = () => copyUrlToClipboard(acestreamId);
-          copyModal.classList.add('active');
-      }
-
-      function hideCopyModal() {
-          document.getElementById('copyModal').classList.remove('active');
-      }
-
-      function showCopySuccessMessage() {
-          const messageElement = document.getElementById('copyMessage');
-          messageElement.classList.add('show');
-          setTimeout(() => {
-              messageElement.classList.remove('show');
-          }, 2000);
-      }
-
-      async function copyUrlToClipboard(acestreamId) {
-          const url = `acestream://${acestreamId}`;
-          try {
-              await navigator.clipboard.writeText(url);
-              hideCopyModal();
-              showCopySuccessMessage();
-          } catch (err) {
-              console.error('Error al copiar el texto: ', err);
-              alert('No se pudo copiar la URL. Por favor, hazlo manualmente.');
-          }
       }
 
       document.addEventListener('DOMContentLoaded', () => {
@@ -2060,12 +2082,13 @@
           loadInitialChannels();
       });
 
+      // Lógica de SWIPE - MOUSE
       document.addEventListener('mousedown', (e) => {
           if (e.target.closest('.channel-card')) {
               currentCard = e.target.closest('.channel-card');
               startX = e.clientX;
               startY = e.clientY;
-              isMoved = false;
+              isSwiping = false; // Resetear el estado de swipe
           }
       });
 
@@ -2075,43 +2098,40 @@
           const diffX = e.clientX - startX;
           const diffY = e.clientY - startY;
 
-          if (Math.abs(diffX) > MOVE_THRESHOLD || Math.abs(diffY) > MOVE_THRESHOLD) {
-              isMoved = true;
-          }
-
-          if (Math.abs(diffX) > SWIPE_THRESHOLD && Math.abs(diffX) > Math.abs(diffY)) {
-              e.preventDefault();
+          if (Math.abs(diffX) > SWIPE_THRESHOLD && Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffY) < VERTICAL_TOLERANCE) {
+              isSwiping = true;
+              e.preventDefault(); 
               showCopyModal(currentCard.dataset.id);
-              currentCard = null;
+              currentCard = null; 
           }
       });
 
-      document.addEventListener('mouseup', () => {
+      document.addEventListener('mouseup', (e) => {
           if (currentCard) {
-              if (!isMoved) {
-                  if (!state.isFavoriteMode) {
-                      const channelId = currentCard.dataset.id;
-                      const channelData = state.channelsData.find(c => c.id === channelId);
-                      if (channelData) {
-                          handleChannelPlay(channelData);
-                      }
-                  } else {
-                      toggleFavorite(currentCard.dataset.number);
-                  }
+              if (!isSwiping) {
+                if (e.target.closest('.channel-card') === currentCard) {
+                    handleTap(e);
+                }
               }
           }
           currentCard = null;
+          isSwiping = false;
       });
 
+      // Lógica de SWIPE - TOUCH
       document.addEventListener('touchstart', (e) => {
           if (e.target.closest('.channel-card')) {
+              e.stopPropagation(); 
               currentCard = e.target.closest('.channel-card');
               const touch = e.touches[0];
               startX = touch.clientX;
               startY = touch.clientY;
-              isMoved = false;
+              isSwiping = false; 
+              longPressTimer = setTimeout(() => {
+                  isLongPress = true;
+              }, 500);
           }
-      });
+      }, {passive: false});
 
       document.addEventListener('touchmove', (e) => {
           if (!currentCard) return;
@@ -2119,32 +2139,32 @@
           const diffX = touch.clientX - startX;
           const diffY = touch.clientY - startY;
 
-          if (Math.abs(diffX) > MOVE_THRESHOLD || Math.abs(diffY) > MOVE_THRESHOLD) {
-              isMoved = true;
-          }
-
-          if (Math.abs(diffX) > SWIPE_THRESHOLD && Math.abs(diffX) > Math.abs(diffY)) {
-              e.preventDefault();
+          if (Math.abs(diffX) > SWIPE_THRESHOLD && Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffY) < VERTICAL_TOLERANCE) {
+              isSwiping = true;
+              e.preventDefault(); 
               showCopyModal(currentCard.dataset.id);
               currentCard = null;
+              clearTimeout(longPressTimer);
           }
-      });
+      }, {passive: false});
 
-      document.addEventListener('touchend', () => {
+      document.addEventListener('touchend', (e) => {
+          if (isLongPress) {
+              isLongPress = false;
+              clearTimeout(longPressTimer);
+              return;
+          }
+
           if (currentCard) {
-              if (!isMoved) {
-                  if (!state.isFavoriteMode) {
-                      const channelId = currentCard.dataset.id;
-                      const channelData = state.channelsData.find(c => c.id === channelId);
-                      if (channelData) {
-                          handleChannelPlay(channelData);
-                      }
-                  } else {
-                      toggleFavorite(currentCard.dataset.number);
+              if (!isSwiping) {
+                  const endElement = document.elementFromPoint(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
+                  if (endElement && endElement.closest('.channel-card') === currentCard) {
+                    handleTap(e);
                   }
               }
           }
           currentCard = null;
+          isSwiping = false;
       });
     </script>
 </body>

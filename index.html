@@ -1761,14 +1761,12 @@
               }
           }
 
-          const onClickAction = state.isFavoriteMode ? `toggleFavorite('${channel.id}')` : `handleTap(event)`;
-
           return `
               <div class="${cardClass}"
                    data-id="${channel.id}"
                    data-number="${channel.number}">
                   <div class="channel-card__quality">
-                      ${channel.quality || ''}
+                      ${channel.quality || ''} ${channel.multiAudio ? '🎧' : ''}
                   </div>
                   <div class="channel-header">
                       <div class="channel-name">${highlightBrands(channel.name)}</div>
@@ -1778,7 +1776,6 @@
                       <span class="source-initials">${sourceBadgeText}</span>
                   </div>
                   <div class="rating-stars">${getStarRating(rating)}</div>
-                  ${channel.multiAudio ? '<div class="channel-meta">🎧</div>' : ''}
               </div>
           `;
       }
@@ -1820,7 +1817,7 @@
               const previousChannelData = state.channelsData.find(c => c.id === previousChannelId);
               const duration = (now - state.lastChannelPlay.timestamp) / 1000;
               
-              let rating = state.channelRatings[previousChannelId] || 2.5;
+              let rating = state.channelRatings[previousChannelId] !== undefined ? state.channelRatings[previousChannelId] : 2.5;
               let newRating = rating;
 
               const previousName = previousChannelData ? previousChannelData.name.toLowerCase().trim() : '';

@@ -130,6 +130,7 @@
         gap: 0.6rem;
         margin-top: 0.8rem;
         flex-wrap: wrap;
+        align-items: center;
       }
       
       .filter-button {
@@ -146,7 +147,6 @@
         display: flex;
         justify-content: center;
         align-items: center;
-        flex-basis: auto;
       }
       
       .filter-button:hover {
@@ -164,6 +164,10 @@
         width: 36px;
         min-width: 36px;
         padding: 0.5rem 0;
+      }
+
+      #filterDAZN, #filterMovistar, #filterEurosport {
+          flex: 1;
       }
 
       .channels-grid {
@@ -889,8 +893,8 @@
             <div class="filter-buttons">
                 <button class="filter-button filter-button--favorites" id="filterFavorites">★</button>
                 <button class="filter-button" id="filterDAZN">DAZN</button>
-                <button class="filter-button" id="filterMovistar">M+</button>
-                <button class="filter-button" id="filterEurosport">Eurosport</button>
+                <button class="filter-button" id="filterMovistar">MOVISTAR+</button>
+                <button class="filter-button" id="filterEurosport">★EUROSPORT</button>
                 <button class="filter-button filter-button--clear" id="clearEmojiFilters">x</button>
             </div>
         </div>

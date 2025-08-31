@@ -557,7 +557,9 @@
       .dazn { color: var(--dazn-black) !important; }
       .f1 { color: var(--f1-red) !important; }
       .action { color: var(--action-red) !important; }
-      .classics { color: var(--classics-red) !important; }
+      { name: 'hits', class: 'action' },
+      { name: 'clasicos', class: 'action' },
+      { name: 'Clásicos', class: 'classics' },
       .sports { color: var(--sports-green) !important; }
       .vamos { color: var(--vamos-green) !important; }
       .copadelrey { color: var(--copadelrey-green) !important; }
@@ -644,12 +646,6 @@
         color: white;
         margin-top: 2px;
       }
-      
-      .channel-number-badge.gist-badge { background-color: var(--gist-source-color); }
-      .channel-number-badge.elcano-badge { background-color: var(--elcano-source-color); }
-      .channel-number-badge.special-gist-badge { background-color: var(--special-gist-color); }
-      .channel-number-badge.events-badge { background-color: var(--events-source-color); }
-      .channel-number-badge.shickat-badge { background-color: var(--shickat-badge); }
       
       body.dark-mode .channel-number-badge .channel-number {
         color: white;
@@ -848,7 +844,7 @@
       }
 
       .half-star {
-        background: linear-gradient(to right, gold 50%, gray 50%);
+        background: linear-gradient(to right, var(--primary) 50%, gray 50%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         display: inline-block;
@@ -1994,7 +1990,7 @@
               stars += '<span class="half-star">★</span>';
           }
           const emptyStars = '☆'.repeat(5 - fullStars - (hasHalfStar ? 1 : 0));
-          return `<span style="color: gold;">${stars}</span><span style="color: gray;">${emptyStars}</span>`;
+          return `<span style="color: var(--primary);">${stars}</span><span style="color: gray;">${emptyStars}</span>`;
       }
 
       document.addEventListener('DOMContentLoaded', () => {

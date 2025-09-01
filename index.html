@@ -958,6 +958,19 @@
           transform: scale(0.8);
         }
       }
+
+      /* Estilo modificado para el contenedor de eventos para reducir su ancho */
+      .channel-group__events-container {
+        display: flex;
+        align-items: center;
+        flex: 1 1 auto; /* Cambiado para que ocupe menos espacio */
+        text-align: right;
+        white-space: nowrap;
+        overflow: hidden;
+        position: relative;
+        justify-content: flex-end; /* Alinea los elementos a la derecha */
+        min-width: 0; /* Permite que se encoja */
+      }
     </style>
 </head>
 <body>

@@ -260,82 +260,14 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
-        position: relative; /* Añadido para posicionar los elementos */
-        cursor: grab;
       }
       
-      .channel-group__header.swiping {
-          cursor: grabbing;
-      }
-
       .channel-group__title {
         font-weight: 600;
         color: var(--text);
         font-size: 1rem;
-        flex: 1 1 25%; /* 1/4 del espacio */
-        text-align: left;
-        margin-right: 1rem;
-      }
-
-      /* Modificación en channel-group__events para ser un contenedor de texto y flechas */
-      .channel-group__events-container {
-        display: flex;
-        align-items: center;
-        flex: 3 1 75%;
-        text-align: right;
-        white-space: nowrap;
-        overflow: hidden;
-        position: relative;
-        justify-content: flex-end; /* Alinea los elementos a la derecha */
       }
       
-      .channel-group__events {
-          flex: 1; /* Ocupa el espacio disponible */
-          white-space: nowrap;
-          overflow-x: auto;
-          overflow-y: hidden;
-          -webkit-overflow-scrolling: touch;
-          font-size: 0.9rem;
-          opacity: 0.8;
-          transition: transform 0.3s ease, opacity 0.3s ease;
-          position: relative;
-          text-align: right;
-          scrollbar-width: none;
-      }
-      
-      .channel-group__events::-webkit-scrollbar {
-        display: none;
-      }
-
-      .channel-group__events--hidden {
-          opacity: 0;
-          transform: translateX(20px);
-      }
-
-      .channel-group__events--transition-left {
-          transform: translateX(-100%);
-      }
-      
-      .channel-group__events--transition-right {
-          transform: translateX(100%);
-      }
-      
-      .channel-group__arrow {
-          font-size: 1.2rem;
-          color: var(--primary);
-          cursor: pointer;
-          user-select: none;
-          opacity: 0.3;
-          transition: opacity 0.3s;
-          padding: 0 5px;
-          z-index: 10;
-          position: relative;
-      }
-
-      .channel-group__arrow:hover {
-          opacity: 1;
-      }
-
       .channel-group__content {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -958,19 +890,6 @@
           transform: scale(0.8);
         }
       }
-
-      /* Estilo modificado para el contenedor de eventos para reducir su ancho */
-      .channel-group__events-container {
-        display: flex;
-        align-items: center;
-        flex: 1 1 auto; /* Cambiado para que ocupe menos espacio */
-        text-align: right;
-        white-space: nowrap;
-        overflow: hidden;
-        position: relative;
-        justify-content: flex-end; /* Alinea los elementos a la derecha */
-        min-width: 0; /* Permite que se encoja */
-      }
     </style>
 </head>
 <body>
@@ -1103,12 +1022,7 @@
           
           channelRatings: JSON.parse(localStorage.getItem('channelRatings')) || {},
           lastChannelPlay: JSON.parse(localStorage.getItem('lastChannelPlay')) || null,
-          firstSeen: JSON.parse(localStorage.getItem('firstSeen')) || {},
-          
-          // Nuevo estado para los eventos
-          events: {},
-          currentEventIndex: {},
-          eventGroups: ['DAZN F1', 'DAZN 1', 'DAZN 2', 'DAZN 3', 'DAZN 4', 'DAZN La Liga', 'M+ La Liga', 'M+ Champions', 'La Liga Hypermotion', 'M+ Vamos', 'M+ Deportes', 'M+ Deportes 2', 'M+ Deportes 3', 'M+ Deportes 4', 'M+ Deportes 5', 'M+ Deportes 6', 'M+ Plus', 'M+ Golf', 'M+', '★EUROSPORT 1', '★EUROSPORT 2'],
+          firstSeen: JSON.parse(localStorage.getItem('firstSeen')) || {}
       };
 
       const RANGES = {
@@ -1284,11 +1198,9 @@
           try {
               const gistChannels = await loadGistChannels();
               const elcanoChannels = await loadElcanoSource();
-              const { channels: eventsChannels, events } = await loadEventsSource();
+              const eventsChannels = await loadEventsSource();
               const shickatChannels = await loadShickatChannels();
               
-              state.events = events;
-
               const allChannels = [...gistChannels, ...elcanoChannels, ...eventsChannels, ...shickatChannels];
               const newChannels = mergeChannels(allChannels);
 
@@ -1612,7 +1524,6 @@
 
       function processEventsData(htmlContent) {
           const numberedChannels = [];
-          const events = {};
           const parser = new DOMParser();
           const doc = parser.parseFromString(htmlContent, 'text/html');
           const rows = doc.querySelectorAll('table tbody tr');
@@ -1622,61 +1533,28 @@
           rows.forEach(row => {
               const cells = row.querySelectorAll('td');
               if (cells.length >= 5) {
-                  const time = cells[0].textContent.trim();
-                  const sport = cells[1].textContent.trim();
-                  const competition = cells[2].textContent.trim();
-                  const eventName = cells[3].textContent.trim();
                   const canalesCell = cells[4];
                   const links = canalesCell.querySelectorAll('a[href^="acestream://"]');
                   
                   links.forEach(link => {
                       const acestreamId = link.href.split('://')[1];
                       let channelName = link.textContent.trim();
-
+                      
+                      channelName = channelName.replace('Estable', '').replace('New Era I', '').trim();
+                      channelName = channelName.replace(/\s*\(Op\d+\)/g, '');
+                      
                       let simplifiedName = channelName
-                          .replace('Estable', '')
-                          .replace('New Era I', '')
-                          .replace('New Era VI', '')
-                          .replace('720', '')
-                          .replace('1080', '')
-                          .replace(/\s*\(Op\d+\)/g, '')
+                          .replace(/1080|720|UHD|MultiAudio|Multi Audio|\(.*?\)/g, '')
                           .replace(/\s+/g, ' ')
                           .trim();
                       
-                      const nameMap = {
-                          'DAZN F1': 'DAZN F1',
-                          'DAZN 1': 'DAZN 1',
-                          'DAZN 2': 'DAZN 2',
-                          'DAZN 3': 'DAZN 3',
-                          'DAZN 4': 'DAZN 4',
-                          'DAZN LaLiga': 'DAZN La Liga',
-                          'Movistar La Liga': 'M+ La Liga',
-                          'Movistar Campeones': 'M+ Champions',
-                          'La Liga Hypermotion': 'La Liga Hypermotion',
-                          'Movistar Vamos': 'M+ Vamos',
-                          'Movistar Deportes': 'M+ Deportes',
-                          'Eurosport 1': '★EUROSPORT 1',
-                          'Eurosport 2': '★EUROSPORT 2'
-                      };
-                      
-                      let groupName = 'Otros'; // Default group
-                      for (const key in nameMap) {
-                          if (simplifiedName.includes(key)) {
-                              groupName = nameMap[key];
-                              break;
-                          }
+                      if (simplifiedName.includes('Movistar')) {
+                          simplifiedName = simplifiedName.replace('Movistar', 'M+');
+                      } else if (simplifiedName.includes('LALIGA')) {
+                          simplifiedName = simplifiedName.replace('LALIGA', 'La Liga');
+                      } else if (simplifiedName.includes('Premier')) {
+                          simplifiedName = simplifiedName.replace('Premier', 'Premier League');
                       }
-                      
-                      // Agrupar eventos por nombre de canal
-                      if (!events[groupName]) {
-                          events[groupName] = new Set();
-                      }
-                      events[groupName].add(JSON.stringify({
-                          time: time,
-                          sport: sport,
-                          competition: competition,
-                          eventName: eventName
-                      }));
 
                       simplifiedName = normalizeChannelName(simplifiedName);
                       
@@ -1702,12 +1580,7 @@
               }
           });
           
-          // Convertir Sets a Arrays
-          for (const groupName in events) {
-              events[groupName] = Array.from(events[groupName]).map(s => JSON.parse(s));
-          }
-          
-          return { channels: numberedChannels, events: events };
+          return numberedChannels;
       }
 
       function highlightBrands(text) {
@@ -1799,60 +1672,6 @@
 
         return filteredChannels;
       }
-
-      function renderEvents(groupKey, element) {
-          const events = state.events[groupKey];
-          const eventContainer = element.querySelector('.channel-group__events');
-          
-          if (!events || events.length === 0) {
-              if (eventContainer) {
-                  eventContainer.textContent = '';
-                  eventContainer.style.display = 'none';
-              }
-              return;
-          }
-          
-          if (state.currentEventIndex[groupKey] === undefined) {
-              state.currentEventIndex[groupKey] = 0;
-          }
-
-          const currentEvent = events[state.currentEventIndex[groupKey]];
-          const eventText = `${currentEvent.time} | ${currentEvent.competition}: ${currentEvent.eventName}`;
-          
-          eventContainer.textContent = eventText;
-          eventContainer.style.display = 'block';
-      }
-
-      function navigateEvents(groupKey, direction) {
-          const groupElement = document.getElementById(`group-${groupKey}`);
-          const eventContainer = groupElement.querySelector('.channel-group__events');
-          
-          if (!eventContainer) return;
-          
-          const events = state.events[groupKey];
-          if (!events || events.length <= 1) return;
-
-          const currentIndex = state.currentEventIndex[groupKey];
-          let newIndex = currentIndex + direction;
-
-          if (newIndex < 0) {
-              newIndex = events.length - 1;
-          } else if (newIndex >= events.length) {
-              newIndex = 0;
-          }
-          
-          state.currentEventIndex[groupKey] = newIndex;
-
-          const newEvent = events[newIndex];
-          const eventText = `${newEvent.time} | ${newEvent.competition}: ${newEvent.eventName}`;
-
-          eventContainer.textContent = eventText;
-          eventContainer.classList.add('transitioning');
-          setTimeout(() => {
-              eventContainer.classList.remove('transitioning');
-          }, 300);
-      }
-
 
       function renderResults() {
         const filteredChannels = filterChannels();
@@ -1975,29 +1794,17 @@
 
         sortedGroupKeys.forEach(groupKey => {
           const group = groups[groupKey];
-          const hasEvents = state.events[groupKey] && state.events[groupKey].length > 1;
           const groupElement = document.createElement('div');
           groupElement.className = 'channel-group';
-          groupElement.id = `group-${groupKey}`;
           groupElement.innerHTML = `
             <div class="channel-group__header">
               <div class="channel-group__title">${group.name}</div>
-              ${hasEvents ? `
-              <div class="channel-group__events-container">
-                  <span class="channel-group__arrow channel-group__arrow--left" data-group="${groupKey}" data-direction="-1">◀</span>
-                  <div class="channel-group__events"></div>
-                  <span class="channel-group__arrow channel-group__arrow--right" data-group="${groupKey}" data-direction="1">▶</span>
-              </div>
-              ` : ''}
             </div>
             <div class="channel-group__content">
               ${group.channels.map(channel => createChannelCard(channel)).join('')}
             </div>
           `;
           channelsGrid.appendChild(groupElement);
-          if (hasEvents) {
-              renderEvents(groupKey, groupElement);
-          }
         });
         
       }
@@ -2083,10 +1890,6 @@
       let touchStartTime = 0;
       const TAP_THRESHOLD_TIME = 200;
       const TAP_THRESHOLD_DISTANCE = 10;
-      
-      let groupSwipeStartX = 0;
-      let groupSwipeTarget = null;
-      let isGroupSwiping = false;
 
       function handleChannelPlay(channel) {
           if (isSwiping) {
@@ -2400,30 +2203,20 @@
               touchStartY = e.clientY;
               touchStartTime = new Date().getTime();
               isSwiping = false;
-          } else if (e.target.closest('.channel-group__header')) {
-              groupSwipeTarget = e.target.closest('.channel-group__header');
-              groupSwipeTarget.classList.add('swiping');
-              groupSwipeStartX = e.clientX;
-              isGroupSwiping = false;
           }
       });
 
       document.addEventListener('mousemove', (e) => {
-          if (currentCard) {
-              const diffX = e.clientX - touchStartX;
-              const diffY = e.clientY - touchStartY;
-              
-              if (Math.abs(diffX) > SWIPE_THRESHOLD && Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffY) < VERTICAL_TOLERANCE) {
-                  isSwiping = true;
-                  e.preventDefault(); 
-                  showCopyModal(currentCard.dataset.id);
-                  currentCard = null; 
-              }
-          } else if (groupSwipeTarget) {
-              const diffX = e.clientX - groupSwipeStartX;
-              if (Math.abs(diffX) > 20) {
-                  isGroupSwiping = true;
-              }
+          if (!currentCard) return;
+
+          const diffX = e.clientX - touchStartX;
+          const diffY = e.clientY - touchStartY;
+
+          if (Math.abs(diffX) > SWIPE_THRESHOLD && Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffY) < VERTICAL_TOLERANCE) {
+              isSwiping = true;
+              e.preventDefault(); 
+              showCopyModal(currentCard.dataset.id);
+              currentCard = null; 
           }
       });
 
@@ -2440,22 +2233,8 @@
                 }
               }
           }
-          if (groupSwipeTarget) {
-              groupSwipeTarget.classList.remove('swiping');
-              if (isGroupSwiping) {
-                  const diffX = e.clientX - groupSwipeStartX;
-                  const groupKey = groupSwipeTarget.closest('.channel-group').id.replace('group-', '');
-                  if (diffX > 50) {
-                      navigateEvents(groupKey, -1);
-                  } else if (diffX < -50) {
-                      navigateEvents(groupKey, 1);
-                  }
-              }
-          }
           currentCard = null;
           isSwiping = false;
-          groupSwipeTarget = null;
-          isGroupSwiping = false;
       });
 
       // Lógica de SWIPE - TOUCH
@@ -2471,35 +2250,21 @@
               longPressTimer = setTimeout(() => {
                   isLongPress = true;
               }, 500);
-          } else if (e.target.closest('.channel-group__header')) {
-              groupSwipeTarget = e.target.closest('.channel-group__header');
-              groupSwipeTarget.classList.add('swiping');
-              const touch = e.touches[0];
-              groupSwipeStartX = touch.clientX;
-              isGroupSwiping = false;
           }
       }, {passive: false});
 
       document.addEventListener('touchmove', (e) => {
-          if (currentCard) {
-              const touch = e.touches[0];
-              const diffX = touch.clientX - touchStartX;
-              const diffY = touch.clientY - touchStartY;
-              
-              if (Math.abs(diffX) > SWIPE_THRESHOLD && Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffY) < VERTICAL_TOLERANCE) {
-                  isSwiping = true;
-                  e.preventDefault(); 
-                  showCopyModal(currentCard.dataset.id);
-                  currentCard = null;
-                  clearTimeout(longPressTimer);
-              }
-          } else if (groupSwipeTarget) {
-              const touch = e.touches[0];
-              const diffX = touch.clientX - groupSwipeStartX;
-              if (Math.abs(diffX) > 20) {
-                  isGroupSwiping = true;
-                  e.preventDefault();
-              }
+          if (!currentCard) return;
+          const touch = e.touches[0];
+          const diffX = touch.clientX - touchStartX;
+          const diffY = touch.clientY - touchStartY;
+
+          if (Math.abs(diffX) > SWIPE_THRESHOLD && Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffY) < VERTICAL_TOLERANCE) {
+              isSwiping = true;
+              e.preventDefault(); 
+              showCopyModal(currentCard.dataset.id);
+              currentCard = null;
+              clearTimeout(longPressTimer);
           }
       }, {passive: false});
 
@@ -2509,6 +2274,7 @@
               clearTimeout(longPressTimer);
               return;
           }
+
           if (currentCard) {
               if (!isSwiping) {
                   const endElement = document.elementFromPoint(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
@@ -2521,32 +2287,9 @@
                     handleTap(e);
                   }
               }
-          } else if (groupSwipeTarget) {
-              groupSwipeTarget.classList.remove('swiping');
-              if (isGroupSwiping) {
-                  const endTouch = e.changedTouches[0];
-                  const diffX = endTouch.clientX - groupSwipeStartX;
-                  const groupKey = groupSwipeTarget.closest('.channel-group').id.replace('group-', '');
-                  if (diffX > 50) {
-                      navigateEvents(groupKey, -1);
-                  } else if (diffX < -50) {
-                      navigateEvents(groupKey, 1);
-                  }
-              }
           }
           currentCard = null;
           isSwiping = false;
-          groupSwipeTarget = null;
-          isGroupSwiping = false;
-      });
-      
-      document.addEventListener('click', (e) => {
-          const arrow = e.target.closest('.channel-group__arrow');
-          if (arrow) {
-              const groupKey = arrow.dataset.group;
-              const direction = parseInt(arrow.dataset.direction, 10);
-              navigateEvents(groupKey, direction);
-          }
       });
     </script>
 </body>

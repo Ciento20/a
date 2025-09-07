@@ -554,7 +554,7 @@
       /* Estilos para los nombres de los canales */
       .movistar { color: var(--movistar-blue) !important; }
       .eurosport { color: var(--eurosport-blue) !important; }
-      .dazn { color: var(--text) !important; }
+      .dazn { color: var(--dazn-black) !important; }
       .f1 { color: var(--f1-red) !important; }
       .action { color: var(--action-red) !important; }
       { name: 'hits', class: 'action' },
@@ -1229,7 +1229,7 @@
               }
           }
       }
-
+      
       function normalizeChannelName(name) {
           if (name.includes('Eurosport 1')) {
               return '★EUROSPORT 1';
@@ -1240,7 +1240,7 @@
           }
           return name;
       }
-      
+
       async function loadGistChannels() {
           const infoGistUrl = "https://gist.githubusercontent.com/Ciento20/f7847e86d06e5011706fa76f2dab90be/raw";
           const infoResponse = await fetch(infoGistUrl);
@@ -1257,14 +1257,18 @@
 
         let currentNumber = RANGES.NE.start;
         const channelMappings = {
-          'MOVISTAR DEPORTES': 'M+ Deportes',
-          'MOVISTAR PLUS': 'M+ Plus',
-          'MOVISTAR VAMOS': 'M+ Vamos',
+          'MOVISTAR+': 'M+',
+          'MOVISTAR': 'M+',
+          'CLASICOS': 'Clásicos',
+          'ACCION': 'Acción',
+          'DEPORTES': 'Deportes',
+          'PLUS': 'Plus',
+          'LIGA DE CAMPEONES': 'Liga de Campeones',
+          'GOLF': 'Golf',
           'DAZN LA LIGA 1': 'DAZN La Liga 1',
           'M+ LALIGA': 'M+ La Liga',
-          'LIGA DE CAMPEONES': 'M+ Liga de Campeones',
           'HYPERMOTION': 'La Liga Hypermotion',
-          'EUROSPORT 1': '★EUROSPORT 1'
+          'EUROSPORT 1': '★EUROSPORT 1',
         };
 
         for (let i = 0; i < lines.length; i += 2) {
@@ -1283,7 +1287,13 @@
                         quality = 'UHD';
                     }
 
-                    const simplifiedName = channelMappings[namePart] || namePart.replace('FHD', '').replace('UHD', '').trim();
+                    let simplifiedName = namePart.replace('FHD', '').replace('UHD', '').trim();
+                    for (const key in channelMappings) {
+                      if (simplifiedName.includes(key)) {
+                          simplifiedName = simplifiedName.replace(key, channelMappings[key]);
+                          break; 
+                      }
+                    }
 
                     numberedChannels.push({
                         id: acestreamId,
@@ -1421,6 +1431,16 @@
           
           let currentNumber = RANGES.SH.start;
           
+          const nameMappings = {
+              'Movistar': 'M+',
+              'Clasicos': 'Clásicos',
+              'Accion': 'Acción',
+              'Deportes': 'Deportes',
+              'Plus': 'Plus',
+              'Liga de Campeones': 'Liga de Campeones',
+              'Golf': 'Golf',
+          };
+          
           cards.forEach(card => {
               const nameElement = card.querySelector('.canal-nombre');
               const acestreamLinkElement = card.querySelector('.acestream-link');
@@ -1443,6 +1463,13 @@
                       
                       const multiAudio = simplifiedName.includes('MultiAudio');
                       
+                      for (const key in nameMappings) {
+                          if (simplifiedName.includes(key)) {
+                              simplifiedName = simplifiedName.replace(key, nameMappings[key]);
+                              break;
+                          }
+                      }
+
                       if (simplifiedName.includes('M. LaLiga')) {
                           simplifiedName = simplifiedName.replace('M. LaLiga', 'M+ La Liga');
                       } else if (simplifiedName.includes('Movistar')) {
@@ -1746,7 +1773,7 @@
             'DAZN 4': /DAZN 4/i,
             'DAZN La Liga': /DAZN La Liga/i,
             'M+ La Liga': /M\+ La Liga/i,
-            'M+ Champions': /M\+ Liga de Campeones/i,
+            'Liga de Campeones': /Liga de Campeones/i,
             'La Liga Hypermotion': /La Liga Hypermotion/i,
             'M+ Vamos': /M\+ Vamos/i,
             'M+ Deportes': /M\+ Deportes/i,
@@ -1764,7 +1791,7 @@
 
         const groupOrder = [
             'DAZN F1', 'DAZN 1', 'DAZN 2', 'DAZN 3', 'DAZN 4', 'DAZN La Liga',
-            'M+ La Liga', 'M+ Champions', 'La Liga Hypermotion', 
+            'M+ La Liga', 'Liga de Campeones', 'La Liga Hypermotion', 
             'M+ Vamos', 'M+ Deportes', 'M+ Deportes 2', 'M+ Deportes 3', 'M+ Deportes 4', 'M+ Deportes 5', 'M+ Deportes 6',
             'M+ Plus', 'M+ Golf', 'M+',
             '★EUROSPORT 1', '★EUROSPORT 2'

@@ -554,7 +554,7 @@
       /* Estilos para los nombres de los canales */
       .movistar { color: var(--movistar-blue) !important; }
       .eurosport { color: var(--eurosport-blue) !important; }
-      .dazn { color: var(--dazn-black) !important; }
+      .dazn { color: var(--text) !important; }
       .f1 { color: var(--f1-red) !important; }
       .action { color: var(--action-red) !important; }
       { name: 'hits', class: 'action' },
@@ -1254,17 +1254,17 @@
       function processGistData(infoCanales) {
         const numberedChannels = [];
         const lines = infoCanales.split('\n').filter(line => line.trim() !== '');
-        
+
         let currentNumber = RANGES.NE.start;
         const channelMappings = {
-            'MOVISTAR DEPORTES': 'M+ Deportes',
-            'MOVISTAR PLUS': 'M+ Plus',
-            'MOVISTAR VAMOS': 'M+ Vamos',
-            'DAZN LA LIGA 1': 'DAZN La Liga 1',
-            'M+ LALIGA': 'M+ La Liga',
-            'LIGA DE CAMPEONES': 'M+ Liga de Campeones',
-            'HYPERMOTION': 'La Liga Hypermotion',
-            'EUROSPORT 1': '★EUROSPORT 1'
+          'MOVISTAR DEPORTES': 'M+ Deportes',
+          'MOVISTAR PLUS': 'M+ Plus',
+          'MOVISTAR VAMOS': 'M+ Vamos',
+          'DAZN LA LIGA 1': 'DAZN La Liga 1',
+          'M+ LALIGA': 'M+ La Liga',
+          'LIGA DE CAMPEONES': 'M+ Liga de Campeones',
+          'HYPERMOTION': 'La Liga Hypermotion',
+          'EUROSPORT 1': '★EUROSPORT 1'
         };
 
         for (let i = 0; i < lines.length; i += 2) {
@@ -1273,22 +1273,22 @@
 
             if (nameLine.includes('-->') && idLine.length > 0) {
                 const namePart = nameLine.split('-->')[0].trim().toUpperCase();
-                const acestreamId = idLine.replace(/p$/, ''); // Elimina la 'p' del final si existe
+                const acestreamId = idLine.replace(/p$/, '');
 
-                let quality = '720p';
-                if (namePart.includes('FHD')) {
-                    quality = '1080p';
-                } else if (namePart.includes('UHD')) {
-                    quality = 'UHD';
-                }
-                
-                const matchedName = Object.keys(channelMappings).find(key => namePart.includes(key));
-                
-                if (matchedName && acestreamId.length === 40) {
+                if (acestreamId.length === 40) {
+                    let quality = '720p';
+                    if (namePart.includes('FHD')) {
+                        quality = '1080p';
+                    } else if (namePart.includes('UHD')) {
+                        quality = 'UHD';
+                    }
+
+                    const simplifiedName = channelMappings[namePart] || namePart.replace('FHD', '').replace('UHD', '').trim();
+
                     numberedChannels.push({
                         id: acestreamId,
                         number: (currentNumber++).toString(),
-                        name: channelMappings[matchedName],
+                        name: simplifiedName,
                         quality: quality,
                         multiAudio: false,
                         isKnown: true,
@@ -1454,7 +1454,7 @@
                       }
                       
                       simplifiedName = normalizeChannelName(simplifiedName);
-
+                      
                       numberedChannels.push({
                           id: acestreamId,
                           number: currentNumber.toString(),

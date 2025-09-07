@@ -559,7 +559,7 @@
       .action { color: var(--action-red) !important; }
       { name: 'hits', class: 'action' },
       { name: 'clasicos', class: 'action' },
-      { name: 'Clásicos', class: 'classics' },
+      .classics { color: var(--classics-red) !important; }
       .sports { color: var(--sports-green) !important; }
       .vamos { color: var(--vamos-green) !important; }
       .copadelrey { color: var(--copadelrey-green) !important; }
@@ -1032,6 +1032,19 @@
           SH: { start: 750, end: 999, source: 'shickat' }
       };
 
+      // --- Nuevos canales añadidos a la fuente NE (Gist) ---
+      const NEW_GIST_CHANNELS = [
+          { name: 'M+ Deportes', quality: '1080p', multiAudio: false, id: '3692ea4cdda97eb0062ed5d656ebd61f149ebd0b' },
+          { name: 'M+ Plus', quality: '1080p', multiAudio: false, id: '1ab443f5b4beb6d586f19e8b25b9f9646cf2ab78' },
+          { name: 'M+ Vamos', quality: '720p', multiAudio: false, id: '0e5d8c9724fa9163f49096b70484e315251eb785' },
+          { name: 'DAZN La Liga 1', quality: '720p', multiAudio: false, id: '4e6d9cf7d177366045d33cd8311d8b1d7f4bed1f' },
+          { name: 'M+ La Liga', quality: '1080p', multiAudio: false, id: '107c3ce5a5d2527c9f06e4eab87477201791f231' },
+          { name: 'Liga de Campeones', quality: '1080p', multiAudio: false, id: '0f7842f8b6c26571e5a974407b61623e56e6a052' }, // Corregido el sufijo 'p' del ID
+          { name: 'La Liga Hypermotion', quality: '1080p', multiAudio: false, id: '8ee52f6208e33706171856f99d2ed2dabd317f3a' },
+          { name: '★EUROSPORT 1', quality: '1080p', multiAudio: false, id: 'bae98f69fbf867550b4f73b4eb176dae84d7f909' }
+      ];
+      // --- Fin de nuevos canales ---
+
       const MAX_RETRIES = 3;
       const ELCANO_BACKUP_KEY = 'a4v_elcano_backup';
       const EVENTS_BACKUP_KEY = 'a4v_events_backup';
@@ -1283,6 +1296,21 @@
               }
           });
           
+          // Añadir los nuevos canales a la fuente 'gist'
+          NEW_GIST_CHANNELS.forEach((channel, index) => {
+              const channelNumber = (parseInt(RANGES.NE.start) + numberedChannels.length + index).toString();
+              numberedChannels.push({
+                  id: channel.id,
+                  number: channelNumber,
+                  name: channel.name,
+                  quality: channel.quality,
+                  multiAudio: channel.multiAudio,
+                  isKnown: true,
+                  source: 'gist'
+              });
+              trackFirstSeen(channel.id);
+          });
+          
           return numberedChannels;
       }
 
@@ -1340,7 +1368,7 @@
           
           for (const proxy of PROXIES) {
               try {
-                  const proxyUrl = proxy + encodeURIComponent('https://ciriaco-liart.vercel.app//');
+                  const proxyUrl = proxy + encodeURIComponent('https:// ciriaco-liart.vercel.app//');
                   const controller = new AbortController();
                   const timeoutId = setTimeout(() => controller.abort(), 15000);
                   
@@ -1707,15 +1735,7 @@
                 return qualityB - qualityA;
             }
 
-            // Rule 3: Sort by Source Priority
-            const sourcePriorityMap = { 'gist': 4, 'events': 3, 'shickat': 2, 'elcano': 1, 'history': 0 };
-            const sourceA = sourcePriorityMap[a.source] || 0;
-            const sourceB = sourcePriorityMap[b.source] || 0;
-            if (sourceB !== sourceA) {
-                return sourceB - sourceA;
-            }
-
-            // Rule 4: Sort by Channel Number
+            // Rule 3: Sort by Channel Number
             const numA = parseInt(a.number, 10);
             const numB = parseInt(b.number, 10);
             return numA - numB;
@@ -1877,7 +1897,7 @@
           }, 500);
       }
       
-      // Variables de estado globales para el manejo de eventos
+      // Lógica de SWIPE - MOUSE
       let currentCard = null;
       let isSwiping = false;
       const SWIPE_THRESHOLD = 80;

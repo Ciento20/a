@@ -1276,18 +1276,33 @@
             const idLine = lines[i + 1] ? lines[i + 1].trim() : '';
 
             if (nameLine.includes('-->') && idLine.length > 0) {
-                const namePart = nameLine.split('-->')[0].trim().toUpperCase();
+                let namePart = nameLine.split('-->')[0].trim().toUpperCase();
                 const acestreamId = idLine.replace(/p$/, '');
 
                 if (acestreamId.length === 40) {
-                    let quality = '720p';
+                    let quality = 'SD'; 
+                    let multiAudio = false;
+
                     if (namePart.includes('FHD')) {
-                        quality = '1080p';
-                    } else if (namePart.includes('UHD')) {
-                        quality = 'UHD';
+                        quality = 'FHD';
+                        namePart = namePart.replace('FHD', '').trim();
+                    } else if (namePart.includes('4K')) {
+                        quality = '4K';
+                        namePart = namePart.replace('4K', '').trim();
+                    } else if (namePart.includes('HD')) {
+                        quality = 'HD';
+                        namePart = namePart.replace('HD', '').trim();
+                    } else if (namePart.includes('SD')) {
+                        quality = 'SD';
+                        namePart = namePart.replace('SD', '').trim();
+                    }
+                    
+                    if (namePart.includes('MULTI')) {
+                        multiAudio = true;
+                        namePart = namePart.replace('MULTI', '').trim();
                     }
 
-                    let simplifiedName = namePart.replace('FHD', '').replace('UHD', '').trim();
+                    let simplifiedName = namePart;
                     for (const key in channelMappings) {
                       if (simplifiedName.includes(key)) {
                           simplifiedName = simplifiedName.replace(key, channelMappings[key]);
@@ -1300,7 +1315,7 @@
                         number: (currentNumber++).toString(),
                         name: simplifiedName,
                         quality: quality,
-                        multiAudio: false,
+                        multiAudio: multiAudio,
                         isKnown: true,
                         source: 'gist'
                     });
@@ -1715,6 +1730,21 @@
         return filteredChannels;
       }
 
+      function standardizeQuality(quality) {
+        if (!quality) return 'SD';
+        quality = quality.toLowerCase();
+        if (quality.includes('uhd') || quality.includes('4k')) {
+            return '4K';
+        }
+        if (quality.includes('1080') || quality.includes('fhd')) {
+            return 'FHD';
+        }
+        if (quality.includes('720') || quality.includes('hd')) {
+            return 'HD';
+        }
+        return 'SD';
+      }
+
       function renderResults() {
         const filteredChannels = filterChannels();
         const channelsGrid = document.getElementById('channelsGrid');
@@ -1742,9 +1772,9 @@
             if (!aIsOff && bIsOff) return -1;
 
             // Rule 2: Sort by Quality (UHD > 1080p > 720p)
-            const qualityMap = { 'UHD': 4, '1080p': 3, '720p': 2, 'SD': 1, 'N/A': 0 };
-            const qualityA = qualityMap[a.quality] || 0;
-            const qualityB = qualityMap[b.quality] || 0;
+            const qualityMap = { '4K': 5, 'FHD': 4, 'HD': 3, 'SD': 2, 'N/A': 1 };
+            const qualityA = qualityMap[standardizeQuality(a.quality)] || 0;
+            const qualityB = qualityMap[standardizeQuality(b.quality)] || 0;
             if (qualityB !== qualityA) {
                 return qualityB - qualityA;
             }
@@ -1888,13 +1918,15 @@
           const isNew = isChannelNew(channel.id);
           const newIndicator = isNew ? '<div class="new-channel-indicator"></div>' : '';
 
+          const displayQuality = standardizeQuality(channel.quality);
+
           return `
               <div class="${cardClass}"
                    data-id="${channel.id}"
                    data-number="${channel.number}">
                   ${newIndicator}
                   <div class="channel-card__quality">
-                      ${channel.quality || ''} ${channel.multiAudio ? '🎧' : ''}
+                      ${displayQuality} ${channel.multiAudio ? '🎧' : ''}
                   </div>
                   <div class="channel-header">
                       <div class="channel-name">${highlightBrands(channel.name)}</div>
@@ -1994,8 +2026,6 @@
             if (channelData) {
                 handleChannelPlay(channelData);
             }
-        } else {
-            toggleFavorite(currentCard.dataset.id);
         }
       }
 

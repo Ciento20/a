@@ -1040,7 +1040,6 @@
       const HISTORY_EXPIRY_HOURS = 168;
       const BACKUP_KEY = 'channel_backup';
 
-      // Nuevas funciones para el indicador visual
       function trackFirstSeen(channelId) {
           if (!state.firstSeen[channelId]) {
               state.firstSeen[channelId] = new Date().getTime();
@@ -1257,7 +1256,6 @@
 
         let currentNumber = RANGES.NE.start;
         const channelMappings = {
-          'MOVISTAR+': 'M+',
           'MOVISTAR': 'M+',
           'CLASICOS': 'Clásicos',
           'ACCION': 'Acción',
@@ -1265,10 +1263,10 @@
           'PLUS': 'Plus',
           'LIGA DE CAMPEONES': 'Liga de Campeones',
           'GOLF': 'Golf',
-          'DAZN LA LIGA 1': 'DAZN La Liga 1',
-          'M+ LALIGA': 'M+ La Liga',
+          'LA LIGA': 'La Liga',
+          'ELEVEN DAZN': 'DAZN ELEVEN',
           'HYPERMOTION': 'La Liga Hypermotion',
-          'EUROSPORT 1': '★EUROSPORT 1',
+          'EUROSPORT': '★EUROSPORT',
         };
 
         for (let i = 0; i < lines.length; i += 2) {
@@ -1306,7 +1304,6 @@
                     for (const key in channelMappings) {
                       if (simplifiedName.includes(key)) {
                           simplifiedName = simplifiedName.replace(key, channelMappings[key]);
-                          break; 
                       }
                     }
 
@@ -1762,16 +1759,13 @@
           return;
         }
 
-        // --- Nuevo sistema de ordenación ---
         const sortedChannels = [...filteredChannels].sort((a, b) => {
-            // Rule 1: "OFF" channels go to the end
             const aIsOff = a.name.includes('(OFF)');
             const bIsOff = b.name.includes('(OFF)');
             
             if (aIsOff && !bIsOff) return 1;
             if (!aIsOff && bIsOff) return -1;
 
-            // Rule 2: Sort by Quality (UHD > 1080p > 720p)
             const qualityMap = { '4K': 5, 'FHD': 4, 'HD': 3, 'SD': 2, 'N/A': 1 };
             const qualityA = qualityMap[standardizeQuality(a.quality)] || 0;
             const qualityB = qualityMap[standardizeQuality(b.quality)] || 0;
@@ -1779,7 +1773,6 @@
                 return qualityB - qualityA;
             }
 
-            // Rule 3: Sort by Source Priority
             const sourcePriorityMap = { 'gist': 4, 'events': 3, 'shickat': 2, 'elcano': 1, 'history': 0 };
             const sourceA = sourcePriorityMap[a.source] || 0;
             const sourceB = sourcePriorityMap[b.source] || 0;
@@ -1787,7 +1780,6 @@
                 return sourceB - sourceA;
             }
 
-            // Rule 4: Sort by Channel Number
             const numA = parseInt(a.number, 10);
             const numB = parseInt(b.number, 10);
             return numA - numB;
@@ -1951,7 +1943,6 @@
           }, 500);
       }
       
-      // Variables de estado globales para el manejo de eventos
       let currentCard = null;
       let isSwiping = false;
       const SWIPE_THRESHOLD = 80;

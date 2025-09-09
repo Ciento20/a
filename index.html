@@ -1741,6 +1741,11 @@
         return 'SD';
       }
 
+      function getChannelNumberFromName(name) {
+          const match = name.match(/\d+/);
+          return match ? parseInt(match[0], 10) : 1;
+      }
+
       function renderResults() {
         const filteredChannels = filterChannels();
         const channelsGrid = document.getElementById('channelsGrid');
@@ -1764,6 +1769,12 @@
             
             if (aIsOff && !bIsOff) return 1;
             if (!aIsOff && bIsOff) return -1;
+            
+            const nameNumberA = getChannelNumberFromName(a.name);
+            const nameNumberB = getChannelNumberFromName(b.name);
+            if (nameNumberA !== nameNumberB) {
+                return nameNumberA - nameNumberB;
+            }
 
             const qualityMap = { '4K': 5, 'FHD': 4, 'HD': 3, 'SD': 2, 'N/A': 1 };
             const qualityA = qualityMap[standardizeQuality(a.quality)] || 0;
@@ -1798,8 +1809,7 @@
             'M+ Plus', 
             'M+ Golf', 
             'M+',
-            '★EUROSPORT 1', 
-            '★EUROSPORT 2'
+            '★EUROSPORT'
         ];
 
         const groupRegexes = {
@@ -1814,8 +1824,7 @@
             'M+ Plus': /M\+ Plus/i,
             'M+ Golf': /M\+ Golf/i,
             'M+': /M\+/i,
-            '★EUROSPORT 1': /★EUROSPORT 1/i,
-            '★EUROSPORT 2': /★EUROSPORT 2/i,
+            '★EUROSPORT': /★EUROSPORT/i,
         };
         
         sortedChannels.forEach(channel => {
@@ -2013,7 +2022,16 @@
             return;
         }
 
-        if (!state.isFavoriteMode) {
+        if (state.isFavoriteMode) {
+            const channelId = currentCard.dataset.id;
+            toggleFavorite(channelId);
+            const channelCard = document.querySelector(`[data-id="${channelId}"]`);
+            if (state.favorites.includes(channelId)) {
+                channelCard.classList.add('channel-card--favorite');
+            } else {
+                channelCard.classList.remove('channel-card--favorite');
+            }
+        } else {
             const channelId = currentCard.dataset.id;
             const channelData = state.channelsData.find(c => c.id === channelId);
             if (channelData) {
@@ -2035,7 +2053,7 @@
       }
 
       function hideCopyModal() {
-          document.getElementById('copyModal').classList.remove('modal--active');
+          document.getElementById('copyModal').classList.remove('active');
       }
 
       function showCopySuccessMessage() {

@@ -557,9 +557,7 @@
       .dazn { color: var(--dazn-black) !important; }
       .f1 { color: var(--f1-red) !important; }
       .action { color: var(--action-red) !important; }
-      { name: 'hits', class: 'action' },
-      { name: 'clásicos', class: 'action' },
-      { name: 'Clásicos', class: 'classics' },
+      .classics { color: var(--classics-red) !important; }
       .sports { color: var(--sports-green) !important; }
       .vamos { color: var(--vamos-green) !important; }
       .copadelrey { color: var(--copadelrey-green) !important; }
@@ -1266,7 +1264,6 @@
           'LIGA DE CAMPEONES': 'M+ Liga de Campeones',
           'GOLF': 'Golf',
           'LA LIGA': 'La Liga',
-          'ELEVEN DAZN': 'DAZN ELEVEN',
           'HYPERMOTION': 'La Liga Hypermotion',
           'EUROSPORT': '★EUROSPORT',
         };
@@ -1480,7 +1477,7 @@
                       for (const key in nameMappings) {
                           if (simplifiedName.includes(key)) {
                               simplifiedName = simplifiedName.replace(key, nameMappings[key]);
-                              break;
+                              break; 
                           }
                       }
 
@@ -1646,10 +1643,10 @@
               { name: 'DAZN', class: 'dazn' },
               { name: 'F1', class: 'f1' },
               { name: 'Acción', class: 'action' },
+              { name: 'Deportes', class: 'sports' },
               { name: 'hits', class: 'action' },
               { name: 'clásicos', class: 'action' },
               { name: 'Clásicos', class: 'classics' },
-              { name: 'Deportes', class: 'sports' },
               { name: 'Vamos', class: 'vamos' },
               { name: 'Copa del Rey', class: 'copadelrey' },
               { name: 'Liga de Campeones', class: 'champions' },
@@ -1789,41 +1786,44 @@
 
         const groups = {};
         
+        const groupOrder = [
+            'DAZN F1', 
+            'DAZN',
+            'DAZN La Liga',
+            'M+ La Liga', 
+            'Liga de Campeones', 
+            'La Liga Hypermotion', 
+            'M+ Vamos', 
+            'M+ Deportes',
+            'M+ Plus', 
+            'M+ Golf', 
+            'M+',
+            '★EUROSPORT 1', 
+            '★EUROSPORT 2'
+        ];
+
         const groupRegexes = {
             'DAZN F1': /DAZN F1/i,
-            'DAZN 1': /DAZN 1/i,
-            'DAZN 2': /DAZN 2/i,
-            'DAZN 3': /DAZN 3/i,
-            'DAZN 4': /DAZN 4/i,
+            'DAZN': /DAZN/i,
             'DAZN La Liga': /DAZN La Liga/i,
             'M+ La Liga': /M\+ La Liga/i,
             'Liga de Campeones': /Liga de Campeones/i,
             'La Liga Hypermotion': /La Liga Hypermotion/i,
             'M+ Vamos': /M\+ Vamos/i,
             'M+ Deportes': /M\+ Deportes/i,
-            'M+ Deportes 2': /M\+ Deportes 2/i,
-            'M+ Deportes 3': /M\+ Deportes 3/i,
-            'M+ Deportes 4': /M\+ Deportes 4/i,
-            'M+ Deportes 5': /M\+ Deportes 5/i,
-            'M+ Deportes 6': /M\+ Deportes 6/i,
             'M+ Plus': /M\+ Plus/i,
             'M+ Golf': /M\+ Golf/i,
             'M+': /M\+/i,
             '★EUROSPORT 1': /★EUROSPORT 1/i,
             '★EUROSPORT 2': /★EUROSPORT 2/i,
         };
-
-        const groupOrder = [
-            'DAZN F1', 'DAZN 1', 'DAZN 2', 'DAZN 3', 'DAZN 4', 'DAZN La Liga',
-            'M+ La Liga', 'Liga de Campeones', 'La Liga Hypermotion', 
-            'M+ Vamos', 'M+ Deportes', 'M+ Deportes 2', 'M+ Deportes 3', 'M+ Deportes 4', 'M+ Deportes 5', 'M+ Deportes 6',
-            'M+ Plus', 'M+ Golf', 'M+',
-            '★EUROSPORT 1', '★EUROSPORT 2'
-        ];
-
+        
         sortedChannels.forEach(channel => {
             let groupFound = false;
             for (const groupName of groupOrder) {
+                if (groupName === 'DAZN' && /DAZN La Liga/i.test(channel.name)) {
+                    continue;
+                }
                 if (groupRegexes[groupName] && groupRegexes[groupName].test(channel.name)) {
                     if (!groups[groupName]) {
                         groups[groupName] = { name: groupName, channels: [] };
@@ -2035,7 +2035,7 @@
       }
 
       function hideCopyModal() {
-          document.getElementById('copyModal').classList.remove('active');
+          document.getElementById('copyModal').classList.remove('modal--active');
       }
 
       function showCopySuccessMessage() {

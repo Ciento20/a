@@ -266,6 +266,15 @@
         font-weight: 600;
         color: var(--text);
         font-size: 1rem;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        text-align: left;
+      }
+
+      .channel-group__title > div {
+        margin: 0;
+        padding: 0;
       }
       
       .channel-group__content {
@@ -888,6 +897,17 @@
           transform: scale(0.8);
         }
       }
+
+      /* Nuevos estilos para mostrar la fecha del evento */
+      .event-date {
+        font-size: 0.75rem;
+        color: var(--primary);
+        background-color: var(--primary-light);
+        padding: 0.2rem 0.5rem;
+        border-radius: var(--radius-sm);
+        margin-top: 0.3rem;
+        display: inline-block;
+      }
     </style>
 </head>
 <body>
@@ -1234,6 +1254,8 @@
               return '★EUROSPORT 2';
           } else if (name.includes('Eurosport')) {
               return '★EUROSPORT 1';
+          } else if (name.includes('Teledeporte')) {
+              return 'Teledeporte';
           }
           return name;
       }
@@ -1387,7 +1409,55 @@
                   if (!response.ok) throw new Error(`Proxy ${proxy} responded with ${response.status}`);
                   
                   const htmlContent = await response.text();
-                  return processEventsData(htmlContent);
+                  const parser = new DOMParser();
+                  const doc = parser.parseFromString(htmlContent, 'text/html');
+                  
+                  const eventsData = [];
+                  let currentNumber = RANGES.EV.start;
+                  
+                  const dateHeaders = doc.querySelectorAll('h2.fecha');
+                  
+                  dateHeaders.forEach(dateHeader => {
+                      const date = dateHeader.textContent.trim();
+                      const table = dateHeader.nextElementSibling;
+                      
+                      if (table && table.tagName.toLowerCase() === 'table') {
+                          const rows = table.querySelectorAll('tbody tr');
+                          
+                          rows.forEach(row => {
+                              const cells = row.querySelectorAll('td');
+                              if (cells.length >= 5) {
+                                  const time = cells[0].textContent.trim();
+                                  const competition = cells[2].textContent.trim();
+                                  const match = cells[3].textContent.trim();
+                                  const canalesCell = cells[4];
+                                  const links = canalesCell.querySelectorAll('a[href^="acestream://"]');
+                                  
+                                  if (links.length > 0) {
+                                      links.forEach(link => {
+                                          const acestreamId = link.href.split('://')[1];
+                                          const channelName = link.textContent.trim().replace('Estable', '').replace('New Era I', '').trim().replace(/\s*\(Op\d+\)/g, '');
+                                          
+                                          eventsData.push({
+                                              id: acestreamId,
+                                              number: currentNumber.toString(),
+                                              name: normalizeChannelName(channelName),
+                                              quality: channelName.includes('1080') ? '1080p' : (channelName.includes('UHD') ? 'UHD' : '720p'),
+                                              multiAudio: false,
+                                              isKnown: true,
+                                              source: 'events',
+                                              event: { time, competition, match, date }
+                                          });
+                                          trackFirstSeen(acestreamId);
+                                          currentNumber++;
+                                      });
+                                  }
+                              }
+                          });
+                      }
+                  });
+                  
+                  return eventsData;
                   
               } catch (error) {
                   lastError = error;
@@ -1396,7 +1466,7 @@
               }
           }
           
-          throw lastError || new Error("All proxies failed");
+          throw lastError || new Error("All proxies failed for events source");
       }
       
       async function loadShickatChannels() {
@@ -1579,56 +1649,68 @@
           const numberedChannels = [];
           const parser = new DOMParser();
           const doc = parser.parseFromString(htmlContent, 'text/html');
-          const rows = doc.querySelectorAll('table tbody tr');
+          const dateHeaders = doc.querySelectorAll('h2.fecha');
           
           let currentNumber = RANGES.EV.start;
           
-          rows.forEach(row => {
-              const cells = row.querySelectorAll('td');
-              if (cells.length >= 5) {
-                  const canalesCell = cells[4];
-                  const links = canalesCell.querySelectorAll('a[href^="acestream://"]');
+          dateHeaders.forEach(dateHeader => {
+              const date = dateHeader.textContent.trim();
+              const table = dateHeader.nextElementSibling;
+              
+              if (table && table.tagName.toLowerCase() === 'table') {
+                  const rows = table.querySelectorAll('tbody tr');
                   
-                  links.forEach(link => {
-                      const acestreamId = link.href.split('://')[1];
-                      let channelName = link.textContent.trim();
-                      
-                      channelName = channelName.replace('Estable', '').replace('New Era I', '').trim();
-                      channelName = channelName.replace(/\s*\(Op\d+\)/g, '');
-                      
-                      let simplifiedName = channelName
-                          .replace(/1080|720|UHD|MultiAudio|Multi Audio|\(.*?\)/g, '')
-                          .replace(/\s+/g, ' ')
-                          .trim();
-                      
-                      if (simplifiedName.includes('Movistar')) {
-                          simplifiedName = simplifiedName.replace('Movistar', 'M+');
-                      } else if (simplifiedName.includes('LALIGA')) {
-                          simplifiedName = simplifiedName.replace('LALIGA', 'La Liga');
-                      } else if (simplifiedName.includes('Premier')) {
-                          simplifiedName = simplifiedName.replace('Premier', 'Premier League');
-                      }
+                  rows.forEach(row => {
+                      const cells = row.querySelectorAll('td');
+                      if (cells.length >= 5) {
+                          const time = cells[0].textContent.trim();
+                          const competition = cells[2].textContent.trim();
+                          const match = cells[3].textContent.trim();
+                          const canalesCell = cells[4];
+                          const links = canalesCell.querySelectorAll('a[href^="acestream://"]');
+                          
+                          if (links.length > 0) {
+                              links.forEach(link => {
+                                  const acestreamId = link.href.split('://')[1];
+                                  const channelName = link.textContent.trim();
+                                  
+                                  let simplifiedName = channelName
+                                      .replace(/Estable|New Era I|1080|720|UHD|MultiAudio|Multi Audio|\(.*?\)/g, '')
+                                      .replace(/\s+/g, ' ')
+                                      .trim();
+                                  
+                                  if (simplifiedName.includes('Movistar')) {
+                                      simplifiedName = simplifiedName.replace('Movistar', 'M+');
+                                  } else if (simplifiedName.includes('LALIGA')) {
+                                      simplifiedName = simplifiedName.replace('LALIGA', 'La Liga');
+                                  } else if (simplifiedName.includes('Premier')) {
+                                      simplifiedName = simplifiedName.replace('Premier', 'Premier League');
+                                  }
 
-                      simplifiedName = normalizeChannelName(simplifiedName);
-                      
-                      let quality = '720p';
-                      if (channelName.includes('1080')) quality = '1080p';
-                      if (channelName.includes('UHD')) quality = 'UHD';
-                      
-                      const multiAudio = false;
-                      
-                      numberedChannels.push({
-                          id: acestreamId,
-                          number: currentNumber.toString(),
-                          name: simplifiedName,
-                          quality: quality,
-                          multiAudio: multiAudio,
-                          isKnown: true,
-                          source: 'events'
-                      });
-                      trackFirstSeen(acestreamId);
-                      
-                      currentNumber++;
+                                  simplifiedName = normalizeChannelName(simplifiedName);
+                                  
+                                  let quality = '720p';
+                                  if (channelName.includes('1080')) quality = '1080p';
+                                  if (channelName.includes('UHD')) quality = 'UHD';
+                                  
+                                  const multiAudio = false;
+                                  
+                                  numberedChannels.push({
+                                      id: acestreamId,
+                                      number: currentNumber.toString(),
+                                      name: simplifiedName,
+                                      quality: quality,
+                                      multiAudio: multiAudio,
+                                      isKnown: true,
+                                      source: 'events',
+                                      event: { time, competition, match, date }
+                                  });
+                                  trackFirstSeen(acestreamId);
+                                  
+                                  currentNumber++;
+                              });
+                          }
+                      }
                   });
               }
           });
@@ -1747,152 +1829,189 @@
       }
 
       function renderResults() {
-        const filteredChannels = filterChannels();
-        const channelsGrid = document.getElementById('channelsGrid');
-        
-        channelsGrid.innerHTML = '';
-        
-        if (filteredChannels.length === 0) {
-          channelsGrid.innerHTML = `
-              <div class="no-results">
-                  <div class="no-results-icon">📡</div>
-                  <div class="no-results-text">No se encontraron canales</div>
-                  <div class="no-results-hint">Prueba con otros filtros o términos de búsqueda</div>
-              </div>
-          `;
-          return;
-        }
+          const filteredChannels = filterChannels();
+          const channelsGrid = document.getElementById('channelsGrid');
+          
+          channelsGrid.innerHTML = '';
+          
+          if (filteredChannels.length === 0) {
+            channelsGrid.innerHTML = `
+                <div class="no-results">
+                    <div class="no-results-icon">📡</div>
+                    <div class="no-results-text">No se encontraron canales</div>
+                    <div class="no-results-hint">Prueba con otros filtros o términos de búsqueda</div>
+                </div>
+            `;
+            return;
+          }
 
-        const sortedChannels = [...filteredChannels].sort((a, b) => {
-            const aIsOff = a.name.includes('(OFF)');
-            const bIsOff = b.name.includes('(OFF)');
-            
-            if (aIsOff && !bIsOff) return 1;
-            if (!aIsOff && bIsOff) return -1;
-            
-            const nameNumberA = getChannelNumberFromName(a.name);
-            const nameNumberB = getChannelNumberFromName(b.name);
-            if (nameNumberA !== nameNumberB) {
-                return nameNumberA - nameNumberB;
-            }
+          const sortedChannels = [...filteredChannels].sort((a, b) => {
+              const aIsOff = a.name.includes('(OFF)');
+              const bIsOff = b.name.includes('(OFF)');
+              
+              if (aIsOff && !bIsOff) return 1;
+              if (!aIsOff && bIsOff) return -1;
+              
+              const nameNumberA = getChannelNumberFromName(a.name);
+              const nameNumberB = getChannelNumberFromName(b.name);
+              if (nameNumberA !== nameNumberB) {
+                  return nameNumberA - nameNumberB;
+              }
 
-            const qualityMap = { '4K': 5, 'FHD': 4, 'HD': 3, 'SD': 2, 'N/A': 1 };
-            const qualityA = qualityMap[standardizeQuality(a.quality)] || 0;
-            const qualityB = qualityMap[standardizeQuality(b.quality)] || 0;
-            if (qualityB !== qualityA) {
-                return qualityB - qualityA;
-            }
+              const qualityMap = { '4K': 5, 'FHD': 4, 'HD': 3, 'SD': 2, 'N/A': 1, 'UHD': 6 };
+              const qualityA = qualityMap[standardizeQuality(a.quality)] || 0;
+              const qualityB = qualityMap[standardizeQuality(b.quality)] || 0;
+              if (qualityB !== qualityA) {
+                  return qualityB - qualityA;
+              }
 
-            const sourcePriorityMap = { 'gist': 4, 'events': 3, 'shickat': 2, 'elcano': 1, 'history': 0 };
-            const sourceA = sourcePriorityMap[a.source] || 0;
-            const sourceB = sourcePriorityMap[b.source] || 0;
-            if (sourceB !== sourceA) {
-                return sourceB - sourceA;
-            }
+              const sourcePriorityMap = { 'gist': 4, 'events': 3, 'shickat': 2, 'elcano': 1, 'history': 0 };
+              const sourceA = sourcePriorityMap[a.source] || 0;
+              const sourceB = sourcePriorityMap[b.source] || 0;
+              if (sourceB !== sourceA) {
+                  return sourceB - sourceA;
+              }
 
-            const numA = parseInt(a.number, 10);
-            const numB = parseInt(b.number, 10);
-            return numA - numB;
-        });
+              const numA = parseInt(a.number, 10);
+              const numB = parseInt(b.number, 10);
+              return numA - numB;
+          });
 
-        const groups = {};
-        
-        const groupOrder = [
-            'DAZN F1', 
-            'DAZN',
-            'DAZN La Liga',
-            'M+ La Liga', 
-            'Liga de Campeones', 
-            'La Liga Hypermotion', 
-            'M+ Vamos', 
-            'M+ Deportes',
-            'M+ Plus', 
-            'M+ Golf', 
-            'M+',
-            '★EUROSPORT'
-        ];
+          const groups = {};
+          const otherChannels = [];
+          
+          const groupOrder = [
+              'DAZN F1', 
+              'DAZN',
+              'DAZN La Liga',
+              'M+ La Liga', 
+              'Liga de Campeones', 
+              'La Liga Hypermotion', 
+              'M+ Vamos', 
+              'M+ Deportes',
+              'M+ Plus', 
+              'M+ Golf', 
+              'M+',
+              '★EUROSPORT'
+          ];
 
-        const groupRegexes = {
-            'DAZN F1': /DAZN F1/i,
-            'DAZN': /DAZN/i,
-            'DAZN La Liga': /DAZN La Liga/i,
-            'M+ La Liga': /M\+ La Liga/i,
-            'Liga de Campeones': /Liga de Campeones/i,
-            'La Liga Hypermotion': /La Liga Hypermotion/i,
-            'M+ Vamos': /M\+ Vamos/i,
-            'M+ Deportes': /M\+ Deportes/i,
-            'M+ Plus': /M\+ Plus/i,
-            'M+ Golf': /M\+ Golf/i,
-            'M+': /M\+/i,
-            '★EUROSPORT': /★EUROSPORT/i,
-        };
-        
-        sortedChannels.forEach(channel => {
-            let groupFound = false;
-            const channelName = channel.name.toLowerCase();
-            
-            if (channelName.includes('eventos') || channelName.includes('eleven')) {
-                if (!groups['Otros']) {
-                    groups['Otros'] = { name: 'Otros', channels: [] };
-                }
-                groups['Otros'].channels.push(channel);
-                groupFound = true;
-            } else {
-                for (const groupName of groupOrder) {
-                    if (groupName === 'DAZN' && /DAZN La Liga/i.test(channel.name)) {
-                        continue;
-                    }
-                    if (groupRegexes[groupName] && groupRegexes[groupName].test(channel.name)) {
-                        if (!groups[groupName]) {
-                            groups[groupName] = { name: groupName, channels: [] };
-                        }
-                        groups[groupName].channels.push(channel);
-                        groupFound = true;
-                        break;
-                    }
-                }
-            }
+          const groupRegexes = {
+              'DAZN F1': /DAZN F1/i,
+              'DAZN': /DAZN/i,
+              'DAZN La Liga': /DAZN La Liga/i,
+              'M+ La Liga': /M\+ La Liga/i,
+              'Liga de Campeones': /Liga de Campeones/i,
+              'La Liga Hypermotion': /La Liga Hypermotion/i,
+              'M+ Vamos': /M\+ Vamos/i,
+              'M+ Deportes': /M\+ Deportes/i,
+              'M+ Plus': /M\+ Plus/i,
+              'M+ Golf': /M\+ Golf/i,
+              'M+': /M\+/i,
+              '★EUROSPORT': /★EUROSPORT/i,
+          };
+          
+          sortedChannels.forEach(channel => {
+              if (channel.source === 'events' && channel.event) {
+                  const eventGroupKey = `${channel.event.competition}: ${channel.event.match} (${channel.event.time})`;
+                  if (!groups[eventGroupKey]) {
+                      groups[eventGroupKey] = { name: `${channel.event.competition}: ${channel.event.match}`, channels: [], time: channel.event.time, date: channel.event.date, isEvent: true };
+                  }
+                  groups[eventGroupKey].channels.push(channel);
+              } else {
+                  otherChannels.push(channel);
+              }
+          });
 
-            if (!groupFound) {
-                if (!groups['Otros']) {
-                    groups['Otros'] = { name: 'Otros', channels: [] };
-                }
-                groups['Otros'].channels.push(channel);
-            }
-        });
-        
-        const sortedGroupKeys = Object.keys(groups).sort((a, b) => {
-            const indexA = groupOrder.indexOf(a);
-            const indexB = groupOrder.indexOf(b);
-            
-            if (indexA === -1 && indexB === -1) {
-                return a.localeCompare(b);
-            }
-            if (indexA === -1) return 1;
-            if (indexB === -1) return -1;
-            
-            return indexA - indexB;
-        });
-        
-        if (groups['Otros']) {
-            sortedGroupKeys.push(sortedGroupKeys.splice(sortedGroupKeys.indexOf('Otros'), 1)[0]);
-        }
+          otherChannels.forEach(channel => {
+              let addedToEventGroup = false;
+              for (const groupKey in groups) {
+                  if (groups[groupKey].isEvent) {
+                      const eventChannelName = groups[groupKey].channels[0].name.toLowerCase();
+                      if (channel.name.toLowerCase().includes(eventChannelName) || eventChannelName.includes(channel.name.toLowerCase())) {
+                          groups[groupKey].channels.push(channel);
+                          addedToEventGroup = true;
+                          break;
+                      }
+                  }
+              }
 
-        sortedGroupKeys.forEach(groupKey => {
-          const group = groups[groupKey];
-          const groupElement = document.createElement('div');
-          groupElement.className = 'channel-group';
-          groupElement.innerHTML = `
-            <div class="channel-group__header">
-              <div class="channel-group__title">${group.name}</div>
-            </div>
-            <div class="channel-group__content">
-              ${group.channels.map(channel => createChannelCard(channel)).join('')}
-            </div>
-          `;
-          channelsGrid.appendChild(groupElement);
-        });
-        
+              if (!addedToEventGroup) {
+                  let groupFound = false;
+                  for (const groupName of groupOrder) {
+                      if (groupName === 'DAZN' && /DAZN La Liga/i.test(channel.name)) {
+                          continue;
+                      }
+                      if (groupRegexes[groupName] && groupRegexes[groupName].test(channel.name)) {
+                          if (!groups[groupName]) {
+                              groups[groupName] = { name: groupName, channels: [] };
+                          }
+                          groups[groupName].channels.push(channel);
+                          groupFound = true;
+                          break;
+                      }
+                  }
+                  if (!groupFound) {
+                      if (!groups['Otros']) {
+                          groups['Otros'] = { name: 'Otros', channels: [] };
+                      }
+                      groups['Otros'].channels.push(channel);
+                  }
+              }
+          });
+
+          const sortedGroupKeys = Object.keys(groups).sort((a, b) => {
+              const groupA = groups[a];
+              const groupB = groups[b];
+
+              if (groupA.isEvent && !groupB.isEvent) return -1;
+              if (!groupA.isEvent && groupB.isEvent) return 1;
+
+              if (groupA.isEvent && groupB.isEvent) {
+                  const timeA = groupA.time.replace(':', '');
+                  const timeB = groupB.time.replace(':', '');
+                  return parseInt(timeA, 10) - parseInt(timeB, 10);
+              }
+
+              const indexA = groupOrder.indexOf(a);
+              const indexB = groupOrder.indexOf(b);
+              
+              if (indexA === -1 && indexB === -1) {
+                  return a.localeCompare(b);
+              }
+              if (indexA === -1) return 1;
+              if (indexB === -1) return -1;
+              
+              return indexA - indexB;
+          });
+
+          if (groups['Otros']) {
+              sortedGroupKeys.push(sortedGroupKeys.splice(sortedGroupKeys.indexOf('Otros'), 1)[0]);
+          }
+          
+          sortedGroupKeys.forEach(groupKey => {
+              const group = groups[groupKey];
+              const groupElement = document.createElement('div');
+              groupElement.className = 'channel-group';
+
+              let groupTitleContent = group.name;
+              if (group.isEvent) {
+                  groupTitleContent = `
+                      <div style="font-size: 0.8rem; opacity: 0.8;">${group.time} - ${group.channels[0].event.competition}</div>
+                      <div style="font-size: 1.1rem; font-weight: bold;">${group.channels[0].event.match}</div>
+                      <div class="event-date">${group.date}</div>
+                  `;
+              }
+
+              groupElement.innerHTML = `
+                  <div class="channel-group__header">
+                    <div class="channel-group__title">${groupTitleContent}</div>
+                  </div>
+                  <div class="channel-group__content">
+                    ${group.channels.map(channel => createChannelCard(channel)).join('')}
+                  </div>
+              `;
+              channelsGrid.appendChild(groupElement);
+          });
       }
 
       function createChannelCard(channel) {

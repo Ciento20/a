@@ -1050,6 +1050,16 @@
           SH: { start: 750, end: 999, source: 'shickat' }
       };
 
+      const PROXIES = [
+          'https://api.allorigins.win/raw?url=',
+          'https://cors-anywhere.herokuapp.com/',
+          'https://api.codetabs.com/v1/proxy/?quest='
+      ];
+      const GIST_URL = "https://gist.githubusercontent.com/Ciento20/f7847e86d06e5011706fa76f2dab90be/raw";
+      const ELCANO_URL = 'https://ipfs.io/ipns/elcano.top';
+      const EVENTS_URL = 'https://ciriaco-liart.vercel.app/';
+      const SHICKAT_URL = 'https://shickat.me/';
+
       const MAX_RETRIES = 3;
       const ELCANO_BACKUP_KEY = 'a4v_elcano_backup';
       const EVENTS_BACKUP_KEY = 'a4v_events_backup';
@@ -1206,34 +1216,64 @@
           const backupChannels = loadBackup();
           if (backupChannels) {
               state.channelsData = backupChannels;
+              processChannelNames();
               renderResults();
               showStatusMessage("Mostrando canales del historial. Buscando actualizaciones...");
           } else {
               channelsGrid.innerHTML = '<div class="loading-container"><div class="loading-spinner"></div><span>Cargando canales...</span></div>';
           }
-
+          
+          const sources = [
+              loadGistChannels(),
+              loadElcanoSource(),
+              loadEventsSource(),
+              loadShickatChannels()
+          ];
+          
           try {
-              const gistChannels = await loadGistChannels();
-              const elcanoChannels = await loadElcanoSource();
-              const eventsChannels = await loadEventsSource();
-              const shickatChannels = await loadShickatChannels();
-              
-              const allChannels = [...gistChannels, ...elcanoChannels, ...eventsChannels, ...shickatChannels];
-              const newChannels = mergeChannels(allChannels);
+              const results = await Promise.allSettled(sources);
+              let allChannels = [];
+              let successfulLoads = 0;
+              let failedLoads = 0;
 
-              state.channelsData = newChannels;
-              renderResults();
-              saveBackup(newChannels);
-              showStatusMessage("Todos los canales actualizados correctamente.", "success");
-              cleanObsoleteRatings();
-              
+              results.forEach((result) => {
+                  if (result.status === 'fulfilled') {
+                      allChannels = allChannels.concat(result.value);
+                      successfulLoads++;
+                  } else {
+                      failedLoads++;
+                      console.error("Fallo la carga de una fuente:", result.reason);
+                  }
+              });
+
+              if (allChannels.length > 0) {
+                  const newChannels = mergeChannels(allChannels);
+                  state.channelsData = newChannels;
+                  processChannelNames();
+                  renderResults();
+                  saveBackup(newChannels);
+                  if (failedLoads === 0) {
+                      showStatusMessage("Todos los canales actualizados correctamente.", "success");
+                  } else {
+                      showStatusMessage(`Carga completa con ${successfulLoads} fuentes, ${failedLoads} fallaron.`, "warning");
+                  }
+                  cleanObsoleteRatings();
+              } else {
+                  if (!backupChannels) {
+                      channelsGrid.innerHTML = `
+                          <div class="no-results">
+                              <div class="no-results-icon">📡</div>
+                              <div class="no-results-text">Error al cargar los canales.</div>
+                              <div class="no-results-hint">Revisa tu conexión o inténtalo de nuevo.</div>
+                              <button class="retry-button" onclick="loadInitialChannels()">Reintentar</button>
+                          </div>
+                      `;
+                      showStatusMessage("Error al cargar canales. Inténtalo de nuevo.", "error");
+                  }
+              }
           } catch (error) {
               console.error("Error al cargar nuevos canales:", error);
-              if (backupChannels) {
-                  state.channelsData = backupChannels;
-                  renderResults();
-                  showStatusMessage("No se pudieron cargar nuevos canales. Mostrando el historial.", "error");
-              } else {
+              if (!backupChannels) {
                   channelsGrid.innerHTML = `
                       <div class="no-results">
                           <div class="no-results-icon">📡</div>
@@ -1243,6 +1283,8 @@
                       </div>
                   `;
                   showStatusMessage("Error al cargar canales. Inténtalo de nuevo.", "error");
+              } else {
+                  showStatusMessage("No se pudieron cargar nuevos canales. Mostrando el historial.", "error");
               }
           }
       }
@@ -1261,12 +1303,9 @@
       }
 
       async function loadGistChannels() {
-          const infoGistUrl = "https://gist.githubusercontent.com/Ciento20/f7847e86d06e5011706fa76f2dab90be/raw";
-          const infoResponse = await fetch(infoGistUrl);
-          
+          const infoResponse = await fetch(GIST_URL);
           if (!infoResponse.ok) throw new Error("Error al obtener la info de canales Gist");
           const infoContent = await infoResponse.text();
-          
           return processGistData(infoContent);
       }
       
@@ -1345,114 +1384,71 @@
       }
 
       async function loadElcanoSource() {
-          const PROXIES = [
-              'https://api.allorigins.win/raw?url=',
-              'https://cors-anywhere.herokuapp.com/',
-              'https://api.codetabs.com/v1/proxy/?quest='
-          ];
-          
           let lastError;
-          
           for (const proxy of PROXIES) {
               try {
-                  const proxyUrl = proxy + encodeURIComponent('https://ipfs.io/ipns/elcano.top');
+                  const proxyUrl = proxy + encodeURIComponent(ELCANO_URL);
                   const controller = new AbortController();
                   const timeoutId = setTimeout(() => controller.abort(), 15000);
-                  
                   const response = await fetch(proxyUrl, { signal: controller.signal });
-                  
                   clearTimeout(timeoutId);
-                  
                   if (!response.ok) throw new Error(`Proxy ${proxy} responded with ${response.status}`);
-                  
                   const htmlContent = await response.text();
                   const jsonMatch = htmlContent.match(/const linksData\s*=\s*({[\s\S]*?});/);
-                  
                   if (!jsonMatch) throw new Error("Data format changed");
-                  
                   const linksData = JSON.parse(jsonMatch[1]
                       .replace(/\s*\/\/.*(?:\n|$)/g, '')
                       .replace(/,\s*}/g, '}')
                       .replace(/,\s*]/g, ']'));
-                      
                   return processElcanoData(linksData.links || []);
-                  
               } catch (error) {
                   lastError = error;
                   console.warn(`Proxy ${proxy} failed:`, error);
                   continue;
               }
           }
-          
           throw lastError || new Error("All proxies failed");
       }
 
       async function loadEventsSource() {
-          const PROXIES = [
-              'https://api.allorigins.win/raw?url=',
-              'https://cors-anywhere.herokuapp.com/',
-              'https://api.codetabs.com/v1/proxy/?quest='
-          ];
-          
           let lastError;
-          
           for (const proxy of PROXIES) {
               try {
-                  const proxyUrl = proxy + encodeURIComponent('https://ciriaco-liart.vercel.app//');
+                  const proxyUrl = proxy + encodeURIComponent(EVENTS_URL);
                   const controller = new AbortController();
                   const timeoutId = setTimeout(() => controller.abort(), 15000);
-                  
                   const response = await fetch(proxyUrl, { signal: controller.signal });
-                  
                   clearTimeout(timeoutId);
-                  
                   if (!response.ok) throw new Error(`Proxy ${proxy} responded with ${response.status}`);
-                  
                   const htmlContent = await response.text();
                   return processEventsData(htmlContent);
-                  
               } catch (error) {
                   lastError = error;
                   console.warn(`Proxy ${proxy} failed:`, error);
                   continue;
               }
           }
-          
           throw lastError || new Error("All proxies failed for events source");
       }
       
       async function loadShickatChannels() {
-          const PROXIES = [
-              'https://api.allorigins.win/raw?url=',
-              'https://cors-anywhere.herokuapp.com/',
-              'https://api.codetabs.com/v1/proxy/?quest='
-          ];
-          
           let lastError;
-          const url = 'https://shickat.me/';
-          
           for (const proxy of PROXIES) {
               try {
-                  const proxyUrl = proxy + encodeURIComponent(url);
+                  const proxyUrl = proxy + encodeURIComponent(SHICKAT_URL);
                   const controller = new AbortController();
                   const timeoutId = setTimeout(() => controller.abort(), 15000);
-                  
                   const response = await fetch(proxyUrl, { signal: controller.signal });
-                  
                   clearTimeout(timeoutId);
-                  
                   if (!response.ok) throw new Error(`Proxy ${proxy} responded with ${response.status}`);
-                  
                   const htmlContent = await response.text();
                   return processShickatData(htmlContent);
-                  
               } catch (error) {
                   lastError = error;
                   console.warn(`Proxy ${proxy} failed:`, error);
                   continue;
               }
           }
-          
           throw lastError || new Error("All proxies failed for shickat.me");
       }
 
@@ -1673,8 +1669,8 @@
           
           return numberedChannels;
       }
-
-      function highlightBrands(text) {
+      
+      function processChannelNames() {
           const brands = [
               { name: 'M+', class: 'movistar' },
               { name: '★Eurosport', class: 'eurosport' },
@@ -1706,26 +1702,24 @@
               { name: 'Series', class: 'series' }
           ];
 
-          let result = text;
-
-          brands.forEach(brand => {
-              if (brand.regex) {
-                  const regex = new RegExp(`(${brand.name})`, 'gi');
-                  result = result.replace(regex, `<span class="${brand.class}">$1</span>`);
-              } else {
-                  const escapedName = brand.name.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
-                  const regex = new RegExp(`(${escapedName})`, 'gi');
-                  result = result.replace(regex, `<span class="${brand.class}">$1</span>`);
-              }
+          state.channelsData.forEach(channel => {
+              let result = channel.name;
+              brands.forEach(brand => {
+                  if (brand.regex) {
+                      const regex = new RegExp(`(${brand.name})`, 'gi');
+                      result = result.replace(regex, `<span class="${brand.class}">$1</span>`);
+                  } else {
+                      const escapedName = brand.name.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+                      const regex = new RegExp(`(${escapedName})`, 'gi');
+                      result = result.replace(regex, `<span class="${brand.class}">$1</span>`);
+                  }
+              });
+              const comediaRegex = /(comedia)/gi;
+              result = result.replace(comediaRegex, '<span class="degradado-comedia">Comedia</span>');
+              channel.displayableName = result;
           });
-          
-          const comediaRegex = /(comedia)/gi;
-          result = result.replace(comediaRegex, '<span class="degradado-comedia">Comedia</span>');
-
-
-          return result;
       }
-      
+
       function filterChannels() {
         let filteredChannels = state.channelsData;
         const searchTerm = document.getElementById('searchInput').value.trim().toLowerCase();
@@ -1944,6 +1938,7 @@
               sortedGroupKeys.push(sortedGroupKeys.splice(sortedGroupKeys.indexOf('Otros'), 1)[0]);
           }
           
+          const fragment = document.createDocumentFragment();
           sortedGroupKeys.forEach(groupKey => {
               const group = groups[groupKey];
               const groupElement = document.createElement('div');
@@ -1966,8 +1961,9 @@
                     ${group.channels.map(channel => createChannelCard(channel)).join('')}
                   </div>
               `;
-              channelsGrid.appendChild(groupElement);
+              fragment.appendChild(groupElement);
           });
+          channelsGrid.appendChild(fragment);
       }
 
       function createChannelCard(channel) {
@@ -2018,7 +2014,7 @@
                       ${displayQuality} ${channel.multiAudio ? '🎧' : ''}
                   </div>
                   <div class="channel-header">
-                      <div class="channel-name">${highlightBrands(channel.name)}</div>
+                      <div class="channel-name">${channel.displayableName}</div>
                   </div>
                   <div class="channel-number-badge ${sourceBadgeClass}">
                       <span class="channel-number">${channel.number}</span>

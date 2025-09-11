@@ -1284,7 +1284,31 @@
           } else if (name.includes('Teledeporte')) {
               return 'Teledeporte';
           }
+          
+          let cleanName = name.replace(/\(HD\)|\(FHD\)|\(UHD\)|\(4K\)|multi/gi, '').trim();
+
+          const hasNumber = cleanName.match(/\d/);
+          if (!hasNumber) {
+              if (cleanName.includes('Deportes') || cleanName.includes('deportes')) {
+                  return 'Movistar Deportes 1';
+              }
+              if (cleanName.includes('Golf') || cleanName.includes('golf')) {
+                  return 'Movistar Golf 1';
+              }
+          }
+
           return name;
+      }
+      
+      function simplifyDisplayableName(name) {
+          let simplified = name;
+          if (simplified.includes('Movistar Deportes 1')) {
+              simplified = simplified.replace(' 1', '');
+          }
+          if (simplified.includes('Movistar Golf 1')) {
+              simplified = simplified.replace(' 1', '');
+          }
+          return simplified;
       }
 
       async function loadGistChannels() {
@@ -1351,6 +1375,8 @@
                           simplifiedName = simplifiedName.replace(key, channelMappings[key]);
                       }
                     }
+                    
+                    simplifiedName = normalizeChannelName(simplifiedName);
 
                     numberedChannels.push({
                         id: acestreamId,
@@ -1472,7 +1498,7 @@
                           simplifiedName = rawName.replace('(HD)', '').trim();
                       } else if (rawName.includes('(FHD)')) {
                           quality = '1080p';
-                          simplifiedName = rawName.replace('(FHD)', '').trim();
+                          simplifiedName = simplifiedName.replace('(FHD)', '').trim();
                       }
                       
                       const multiAudio = simplifiedName.includes('MultiAudio');
@@ -1632,6 +1658,8 @@
                                   
                                   const multiAudio = false;
                                   
+                                  simplifiedName = normalizeChannelName(simplifiedName);
+
                                   numberedChannels.push({
                                       id: acestreamId,
                                       number: currentNumber.toString(),
@@ -1688,7 +1716,7 @@
           ];
 
           state.channelsData.forEach(channel => {
-              let result = channel.name;
+              let result = simplifyDisplayableName(channel.name);
               brands.forEach(brand => {
                   if (brand.regex) {
                       const regex = new RegExp(`(${brand.name})`, 'gi');
@@ -1787,6 +1815,19 @@
               if (aIsOff && !bIsOff) return 1;
               if (!aIsOff && bIsOff) return -1;
               
+              if (a.source === 'events' && b.source === 'events') {
+                  const dateA = new Date(a.event.date.replace(/(\d{2})\/(\d{2})/, '$2/$1'));
+                  const dateB = new Date(b.event.date.replace(/(\d{2})\/(\d{2})/, '$2/$1'));
+                  const timeA = a.event.time.replace(':', '');
+                  const timeB = b.event.time.replace(':', '');
+
+                  if (dateA.getTime() !== dateB.getTime()) {
+                      return dateA.getTime() - dateB.getTime();
+                  }
+
+                  return parseInt(timeA, 10) - parseInt(timeB, 10);
+              }
+
               const nameNumberA = getChannelNumberFromName(a.name);
               const nameNumberB = getChannelNumberFromName(b.name);
               if (nameNumberA !== nameNumberB) {
@@ -1832,7 +1873,7 @@
 
           const groupRegexes = {
               'DAZN F1': /DAZN F1/i,
-              'DAZN': /DAZN/i,
+              'DAZN': /DAZN(?! F1)/i,
               'DAZN La Liga': /DAZN La Liga/i,
               'M+ La Liga': /M\+ La Liga/i,
               'Liga de Campeones': /Liga de Campeones/i,
@@ -1847,7 +1888,7 @@
           
           sortedChannels.forEach(channel => {
               if (channel.source === 'events' && channel.event) {
-                  const eventGroupKey = `${channel.event.competition}: ${channel.event.match} (${channel.event.time})`;
+                  const eventGroupKey = `${channel.event.date}_${channel.event.time}_${channel.event.competition}_${channel.event.match}`;
                   if (!groups[eventGroupKey]) {
                       groups[eventGroupKey] = { name: `${channel.event.competition}: ${channel.event.match}`, channels: [], time: channel.event.time, date: channel.event.date, isEvent: true };
                   }
@@ -1873,9 +1914,6 @@
               if (!addedToEventGroup) {
                   let groupFound = false;
                   for (const groupName of groupOrder) {
-                      if (groupName === 'DAZN' && /DAZN La Liga/i.test(channel.name)) {
-                          continue;
-                      }
                       if (groupRegexes[groupName] && groupRegexes[groupName].test(channel.name)) {
                           if (!groups[groupName]) {
                               groups[groupName] = { name: groupName, channels: [] };
@@ -1902,6 +1940,12 @@
               if (!groupA.isEvent && groupB.isEvent) return 1;
 
               if (groupA.isEvent && groupB.isEvent) {
+                  const dateA = new Date(groupA.date.replace(/(\d{2})\/(\d{2})/, '$2/$1'));
+                  const dateB = new Date(groupB.date.replace(/(\d{2})\/(\d{2})/, '$2/$1'));
+                  if (dateA.getTime() !== dateB.getTime()) {
+                      return dateA.getTime() - dateB.getTime();
+                  }
+
                   const timeA = groupA.time.replace(':', '');
                   const timeB = groupB.time.replace(':', '');
                   return parseInt(timeA, 10) - parseInt(timeB, 10);

@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=0.8, maximum-scale=0.8, user-scalable=no">
     <title>🅰️</title>
     <style>
-      /* Variables CSS del primer HTML para unificar el estilo */
       :root {
         --primary: #2563eb;
         --primary-light: rgba(37, 99, 235, 0.1);
@@ -19,8 +18,6 @@
         --radius-sm: 6px;
         --shadow-sm: 0 1px 3px rgba(0,0,0,0.1);
         --primary-rgb: 37, 99, 235;
-        
-        /* Colores del segundo HTML para los nombres de canales */
         --secondary: #f72585;
         --success: #4cc9f0;
         --warning: #f8961e;
@@ -47,7 +44,6 @@
         --shickat-badge: #077b3b;
         --player-bg: black;
         --channel-number-color: #4b5563;
-        
         --plus-blue: #3399ff;
         --western-red: #e60000;
         --documentary-purple: #a06cf5;
@@ -198,7 +194,6 @@
           border-color: var(--primary-light);
       }
 
-      /* Nuevo estilo para el modo de edición de favoritos */
       .channel-card--favorite-mode {
           border-style: dashed;
           border-width: 2px;
@@ -226,7 +221,6 @@
           padding: 0 0.5rem;
       }
 
-      /* Estilos adicionales para unificar el aspecto */
       .channel-info-line {
           display: flex;
           justify-content: space-between;
@@ -531,7 +525,6 @@
         transform: translateX(26px);
       }
 
-      /* Estilos para el selector de color */
       .color-picker {
         display: flex;
         gap: 6px;
@@ -555,12 +548,10 @@
         transform: scale(1.1);
       }
 
-      /* Ocultar el header del segundo HTML para mantener la estética */
       .header {
         display: none;
       }
 
-      /* Estilos para los nombres de los canales */
       .movistar { color: var(--movistar-blue) !important; }
       .eurosport { color: var(--eurosport-blue) !important; }
       .dazn { color: var(--dazn-black) !important; }
@@ -588,7 +579,6 @@
       .ellas { color: var(--ellas-green) !important; }
       .series { color: var(--series-orange) !important; }
       
-      /* Nuevo estilo para la calidad y la fuente */
       .channel-meta {
           display: flex;
           align-items: center;
@@ -620,7 +610,6 @@
       .events-badge { background-color: var(--events-source-color); color: white; }
       .shickat-badge { background-color: var(--shickat-badge); color: white; }
       
-      /* Nuevos estilos para el badge del número y la fuente */
       .channel-number-badge {
         position: absolute;
         top: 50%;
@@ -743,7 +732,6 @@
         100% { transform: scale(1); box-shadow: 0 4-4px 8px rgba(0, 0, 0, 0.2); }
       }
 
-      /* Estilo del degradado para la palabra "Comedia" */
       .degradado-comedia {
         background-image: linear-gradient(to right, #ff3c3c, #ffa500);
         -webkit-background-clip: text;
@@ -751,7 +739,6 @@
         font-weight: bold;
       }
       
-      /* Estilos para el modal de copiar URL */
       .copy-modal {
         position: fixed;
         top: 50%;
@@ -858,11 +845,11 @@
       }
 
       .channel-card__quality {
-          font-size: 0.7rem; /* Tamaño de fuente reducido */
+          font-size: 0.7rem;
           font-weight: 600;
           color: var(--primary);
           background: var(--primary-light);
-          padding: 0.2rem 0.5rem; /* Relleno reducido */
+          padding: 0.2rem 0.5rem;
           border-radius: var(--radius-sm);
           position: absolute;
           top: 5px;
@@ -870,21 +857,20 @@
           z-index: 10;
       }
       
-      /* Estilos para el nuevo punto indicador */
       .new-channel-indicator {
         position: absolute;
-        top: 8px; /* Ajusta según el padding del .channel-card */
-        right: 8px; /* Ajusta según el padding del .channel-card */
+        top: 8px;
+        right: 8px;
         width: 8px;
         height: 8px;
-        background-color: var(--primary); /* Se cambia a la variable de color principal */
+        background-color: var(--primary);
         border-radius: 50%;
         animation: blink-soft 1.5s infinite ease-in-out;
-        z-index: 20; /* Se aumenta el z-index para que se superponga */
+        z-index: 20;
       }
       
       body.dark-mode .new-channel-indicator {
-        background-color: var(--primary); /* Para que mantenga el color del tema */
+        background-color: var(--primary);
       }
 
       @keyframes blink-soft {
@@ -898,7 +884,6 @@
         }
       }
 
-      /* Nuevos estilos para mostrar la fecha del evento */
       .event-date {
         font-size: 0.75rem;
         color: var(--primary);
@@ -2360,7 +2345,6 @@
           loadInitialChannels();
       });
 
-      // Lógica de SWIPE - MOUSE
       document.addEventListener('mousedown', (e) => {
           if (e.target.closest('.channel-card')) {
               currentCard = e.target.closest('.channel-card');
@@ -2402,7 +2386,6 @@
           isSwiping = false;
       });
 
-      // Lógica de SWIPE - TOUCH
       document.addEventListener('touchstart', (e) => {
           if (e.target.closest('.channel-card')) {
               e.stopPropagation(); 

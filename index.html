@@ -1390,7 +1390,7 @@
       async function loadEventsSource() {
           const PROXIES = [
               'https://api.allorigins.win/raw?url=',
-              'https://cors-any-where.herokuapp.com/',
+              'https://cors-anywhere.herokuapp.com/',
               'https://api.codetabs.com/v1/proxy/?quest='
           ];
           
@@ -1409,55 +1409,7 @@
                   if (!response.ok) throw new Error(`Proxy ${proxy} responded with ${response.status}`);
                   
                   const htmlContent = await response.text();
-                  const parser = new DOMParser();
-                  const doc = parser.parseFromString(htmlContent, 'text/html');
-                  
-                  const eventsData = [];
-                  let currentNumber = RANGES.EV.start;
-                  
-                  const dateHeaders = doc.querySelectorAll('h2.fecha');
-                  
-                  dateHeaders.forEach(dateHeader => {
-                      const date = dateHeader.textContent.trim();
-                      const table = dateHeader.nextElementSibling;
-                      
-                      if (table && table.tagName.toLowerCase() === 'table') {
-                          const rows = table.querySelectorAll('tbody tr');
-                          
-                          rows.forEach(row => {
-                              const cells = row.querySelectorAll('td');
-                              if (cells.length >= 5) {
-                                  const time = cells[0].textContent.trim();
-                                  const competition = cells[2].textContent.trim();
-                                  const match = cells[3].textContent.trim();
-                                  const canalesCell = cells[4];
-                                  const links = canalesCell.querySelectorAll('a[href^="acestream://"]');
-                                  
-                                  if (links.length > 0) {
-                                      links.forEach(link => {
-                                          const acestreamId = link.href.split('://')[1];
-                                          const channelName = link.textContent.trim().replace('Estable', '').replace('New Era I', '').trim().replace(/\s*\(Op\d+\)/g, '');
-                                          
-                                          eventsData.push({
-                                              id: acestreamId,
-                                              number: currentNumber.toString(),
-                                              name: normalizeChannelName(channelName),
-                                              quality: channelName.includes('1080') ? '1080p' : (channelName.includes('UHD') ? 'UHD' : '720p'),
-                                              multiAudio: false,
-                                              isKnown: true,
-                                              source: 'events',
-                                              event: { time, competition, match, date }
-                                          });
-                                          trackFirstSeen(acestreamId);
-                                          currentNumber++;
-                                      });
-                                  }
-                              }
-                          });
-                      }
-                  });
-                  
-                  return eventsData;
+                  return processEventsData(htmlContent);
                   
               } catch (error) {
                   lastError = error;
@@ -1653,6 +1605,15 @@
           
           let currentNumber = RANGES.EV.start;
           
+          const channelMappings = {
+              'Movistar': 'M+',
+              'LaLiga': 'La Liga',
+              'Premier': 'Premier League',
+              'Eurosport': '★EUROSPORT',
+              'Copa del Rey': 'Copa del Rey',
+              'Liga de Campeones': 'Liga de Campeones'
+          };
+
           dateHeaders.forEach(dateHeader => {
               const date = dateHeader.textContent.trim();
               const table = dateHeader.nextElementSibling;
@@ -1672,22 +1633,17 @@
                           if (links.length > 0) {
                               links.forEach(link => {
                                   const acestreamId = link.href.split('://')[1];
-                                  const channelName = link.textContent.trim();
+                                  let channelName = link.textContent.trim();
+                                  
+                                  for (const key in channelMappings) {
+                                      const regex = new RegExp(key, 'gi');
+                                      channelName = channelName.replace(regex, channelMappings[key]);
+                                  }
                                   
                                   let simplifiedName = channelName
                                       .replace(/Estable|New Era I|1080|720|UHD|MultiAudio|Multi Audio|\(.*?\)/g, '')
                                       .replace(/\s+/g, ' ')
                                       .trim();
-                                  
-                                  if (simplifiedName.includes('Movistar')) {
-                                      simplifiedName = simplifiedName.replace('Movistar', 'M+');
-                                  } else if (simplifiedName.includes('LALIGA')) {
-                                      simplifiedName = simplifiedName.replace('LALIGA', 'La Liga');
-                                  } else if (simplifiedName.includes('Premier')) {
-                                      simplifiedName = simplifiedName.replace('Premier', 'Premier League');
-                                  }
-
-                                  simplifiedName = normalizeChannelName(simplifiedName);
                                   
                                   let quality = '720p';
                                   if (channelName.includes('1080')) quality = '1080p';

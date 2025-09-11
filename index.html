@@ -1472,7 +1472,7 @@
                           simplifiedName = rawName.replace('(HD)', '').trim();
                       } else if (rawName.includes('(FHD)')) {
                           quality = '1080p';
-                          simplifiedName = rawName.replace('(FHD)', '').trim();
+                          simplifiedName = simplifiedName.replace('(FHD)', '').trim();
                       }
                       
                       const multiAudio = simplifiedName.includes('MultiAudio');
@@ -1862,7 +1862,13 @@
               for (const groupKey in groups) {
                   if (groups[groupKey].isEvent) {
                       const eventChannelName = groups[groupKey].channels[0].name.toLowerCase();
-                      if (channel.name.toLowerCase().includes(eventChannelName) || eventChannelName.includes(channel.name.toLowerCase())) {
+                      const currentChannelName = channel.name.toLowerCase();
+                      
+                      const isMatch = currentChannelName === eventChannelName || 
+                                      (currentChannelName.startsWith(eventChannelName + ' ') && 
+                                       !/\d/.test(currentChannelName.substring(eventChannelName.length + 1)));
+
+                      if (isMatch) {
                           groups[groupKey].channels.push(channel);
                           addedToEventGroup = true;
                           break;

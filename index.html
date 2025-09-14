@@ -1182,7 +1182,7 @@
       function mergeChannels(channelsArray) {
         const uniqueChannelsMap = new Map();
 
-        const orderedSources = ['gist', 'events', 'shickat', 'elcano'];
+        const orderedSources = ['events', 'gist', 'shickat', 'elcano'];
 
         orderedSources.forEach(source => {
             channelsArray.forEach(channel => {
@@ -1209,10 +1209,10 @@
           }
           
           const sources = [
-              loadGistChannels(),
-              loadElcanoSource(),
               loadEventsSource(),
-              loadShickatChannels()
+              loadGistChannels(),
+              loadShickatChannels(),
+              loadElcanoSource()
           ];
           
           try {

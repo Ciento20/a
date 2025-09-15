@@ -264,6 +264,7 @@
         flex-direction: column;
         align-items: flex-start;
         text-align: left;
+        width: 100%;
       }
 
       .channel-group__title > div {
@@ -892,6 +893,17 @@
         border-radius: var(--radius-sm);
         margin-top: 0.3rem;
         display: inline-block;
+      }
+      
+      .group-title-emoji {
+        font-size: 1.2em;
+        vertical-align: middle;
+      }
+      
+      .group-title-text {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
       }
     </style>
 </head>
@@ -1615,6 +1627,10 @@
                       const cells = row.querySelectorAll('td');
                       if (cells.length >= 5) {
                           const time = cells[0].textContent.trim();
+                          const sportCell = cells[1];
+                          const sportEmoji = sportCell ? sportCell.firstChild.textContent.trim() : '';
+                          const sportName = sportCell ? sportCell.querySelector('.deporte').textContent.trim() : '';
+
                           const competition = cells[2].textContent.trim();
                           const match = cells[3].textContent.trim();
                           const canalesCell = cells[4];
@@ -1649,7 +1665,7 @@
                                       multiAudio: multiAudio,
                                       isKnown: true,
                                       source: 'events',
-                                      event: { time, competition, match, date }
+                                      event: { time, competition, match, date, sportEmoji, sportName }
                                   });
                                   trackFirstSeen(acestreamId);
                                   
@@ -1843,9 +1859,9 @@
               'DAZN F1': /DAZN F1/i,
               'DAZN': /DAZN/i,
               'DAZN La Liga': /DAZN La Liga/i,
-              'M+ La Liga': /M\+ La Liga/i,
               'Liga de Campeones': /Liga de Campeones/i,
               'La Liga Hypermotion': /La Liga Hypermotion/i,
+              'M+ La Liga': /M\+ La Liga/i,
               'M+ Vamos': /M\+ Vamos/i,
               'M+ Deportes': /M\+ Deportes/i,
               'M+ Plus': /M\+ Plus/i,
@@ -1856,9 +1872,9 @@
           
           sortedChannels.forEach(channel => {
               if (channel.source === 'events' && channel.event) {
-                  const eventGroupKey = `${channel.event.competition}: ${channel.event.match} (${channel.event.time})`;
+                  const eventGroupKey = `${channel.event.sportEmoji || ''}${channel.event.competition}: ${channel.event.match} (${channel.event.time})`;
                   if (!groups[eventGroupKey]) {
-                      groups[eventGroupKey] = { name: `${channel.event.competition}: ${channel.event.match}`, channels: [], time: channel.event.time, date: channel.event.date, isEvent: true };
+                      groups[eventGroupKey] = { name: `${channel.event.competition}: ${channel.event.match}`, channels: [], time: channel.event.time, date: channel.event.date, isEvent: true, sportEmoji: channel.event.sportEmoji, sportName: channel.event.sportName };
                   }
                   groups[eventGroupKey].channels.push(channel);
               } else {
@@ -1920,13 +1936,22 @@
               const groupElement = document.createElement('div');
               groupElement.className = 'channel-group';
 
-              let groupTitleContent = group.name;
+              let groupTitleContent;
               if (group.isEvent) {
                   groupTitleContent = `
-                      <div style="font-size: 0.8rem; opacity: 0.8;">${group.time} - ${group.channels[0].event.competition}</div>
-                      <div style="font-size: 1.1rem; font-weight: bold;">${group.channels[0].event.match}</div>
-                      <div class="event-date">${group.date}</div>
+                      <div style="display: flex; flex-direction: column; width: 100%;">
+                        <div style="display: flex; justify-content: space-between; width: 100%;">
+                          <div>${group.date}</div>
+                          <div class="group-title-emoji">${group.sportEmoji}</div>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; width: 100%;">
+                          <div>${group.time} - ${group.channels[0].event.competition}</div>
+                          <div>${group.channels[0].event.match}</div>
+                        </div>
+                      </div>
                   `;
+              } else {
+                  groupTitleContent = `<div>${group.name}</div>`;
               }
 
               groupElement.innerHTML = `

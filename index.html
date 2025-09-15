@@ -1182,12 +1182,23 @@
       function mergeChannels(channelsArray) {
         const uniqueChannelsMap = new Map();
 
-        const orderedSources = ['events', 'gist', 'shickat', 'elcano'];
+        // Las fuentes se procesan en orden inverso de prioridad para que
+        // las de mayor prioridad sobrescriban las de menor.
+        const orderedSources = ['gist', 'shickat', 'elcano', 'events'];
 
         orderedSources.forEach(source => {
             channelsArray.forEach(channel => {
                 if (channel.source === source) {
-                    uniqueChannelsMap.set(channel.id, channel);
+                    if (source === 'events') {
+                        // Para la fuente 'events', usamos una clave única para cada evento.
+                        // Esto previene que se eliminen eventos duplicados dentro de la misma fuente.
+                        const key = channel.id + channel.event.match;
+                        uniqueChannelsMap.set(key, channel);
+                    } else {
+                        // Para el resto de fuentes, la clave es solo el ID del canal.
+                        // Esto asegura que no haya duplicados entre estas fuentes.
+                        uniqueChannelsMap.set(channel.id, channel);
+                    }
                 }
             });
         });
@@ -1853,30 +1864,6 @@
                   }
                   groups[eventGroupKey].channels.push(channel);
               } else {
-                  otherChannels.push(channel);
-              }
-          });
-
-          otherChannels.forEach(channel => {
-              let addedToEventGroup = false;
-              for (const groupKey in groups) {
-                  if (groups[groupKey].isEvent) {
-                      const eventChannelName = groups[groupKey].channels[0].name.toLowerCase();
-                      const currentChannelName = channel.name.toLowerCase();
-                      
-                      const isMatch = currentChannelName === eventChannelName || 
-                                      (currentChannelName.startsWith(eventChannelName + ' ') && 
-                                       !/\d/.test(currentChannelName.substring(eventChannelName.length + 1)));
-
-                      if (isMatch) {
-                          groups[groupKey].channels.push(channel);
-                          addedToEventGroup = true;
-                          break;
-                      }
-                  }
-              }
-
-              if (!addedToEventGroup) {
                   let groupFound = false;
                   for (const groupName of groupOrder) {
                       if (groupName === 'DAZN' && /DAZN La Liga/i.test(channel.name)) {

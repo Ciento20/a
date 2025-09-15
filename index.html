@@ -1180,30 +1180,28 @@
       }
 
       function mergeChannels(channelsArray) {
-        const uniqueChannelsMap = new Map();
+        const eventChannels = channelsArray.filter(channel => channel.source === 'events');
+        const otherChannels = channelsArray.filter(channel => channel.source !== 'events');
 
-        // Las fuentes se procesan en orden inverso de prioridad para que
-        // las de mayor prioridad sobrescriban las de menor.
-        const orderedSources = ['gist', 'shickat', 'elcano', 'events'];
+        const eventIds = new Set(eventChannels.map(channel => channel.id));
 
-        orderedSources.forEach(source => {
-            channelsArray.forEach(channel => {
+        const uniqueOtherChannelsMap = new Map();
+        
+        const orderedOtherSources = ['gist', 'shickat', 'elcano'];
+
+        orderedOtherSources.forEach(source => {
+            otherChannels.forEach(channel => {
                 if (channel.source === source) {
-                    if (source === 'events') {
-                        // Para la fuente 'events', usamos una clave única para cada evento.
-                        // Esto previene que se eliminen eventos duplicados dentro de la misma fuente.
-                        const key = channel.id + channel.event.match;
-                        uniqueChannelsMap.set(key, channel);
-                    } else {
-                        // Para el resto de fuentes, la clave es solo el ID del canal.
-                        // Esto asegura que no haya duplicados entre estas fuentes.
-                        uniqueChannelsMap.set(channel.id, channel);
+                    if (!eventIds.has(channel.id)) {
+                        uniqueOtherChannelsMap.set(channel.id, channel);
                     }
                 }
             });
         });
         
-        return Array.from(uniqueChannelsMap.values());
+        const mergedOtherChannels = Array.from(uniqueOtherChannelsMap.values());
+        
+        return eventChannels.concat(mergedOtherChannels);
       }
       
       async function loadInitialChannels() {
@@ -1276,8 +1274,8 @@
                           <div class="no-results-text">Error al cargar los canales.</div>
                           <div class="no-results-hint">Revisa tu conexión o inténtalo de nuevo.</div>
                           <button class="retry-button" onclick="loadInitialChannels()">Reintentar</button>
-                      </div>
-                  `;
+                          </div>
+                      `;
                   showStatusMessage("Error al cargar canales. Inténtalo de nuevo.", "error");
               } else {
                   showStatusMessage("No se pudieron cargar nuevos canales. Mostrando el historial.", "error");

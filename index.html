@@ -1117,13 +1117,16 @@
       const EVENTS_URL = 'https://ciriaco-liart.vercel.app/';
       const SHICKAT_URL = 'https://shickat.me/';
 
+      const BACKUP_KEYS = {
+          gist: 'gist_channels_backup',
+          elcano: 'elcano_channels_backup',
+          events: 'events_channels_backup',
+          shickat: 'shickat_channels_backup'
+      };
+      
       const MAX_RETRIES = 3;
-      const ELCANO_BACKUP_KEY = 'a4v_elcano_backup';
-      const EVENTS_BACKUP_KEY = 'a4v_events_backup';
-      const CHANNEL_HISTORY_KEY = 'a4v_channel_history';
       const BACKUP_EXPIRY_HOURS = 6;
       const HISTORY_EXPIRY_HOURS = 168;
-      const BACKUP_KEY = 'channel_backup';
       
       // Función auxiliar para normalizar texto (eliminar tildes y convertir a minúsculas)
       function normalizeText(text) {
@@ -1220,53 +1223,34 @@
             }, 3000); 
           }
       }
-
-      function saveBackup(data) {
+      
+      function saveBackup(data, key) {
           try {
-              localStorage.setItem(BACKUP_KEY, JSON.stringify(data));
-              console.log("Copia de seguridad de canales guardada exitosamente.");
+              localStorage.setItem(key, JSON.stringify({ timestamp: new Date().getTime(), data }));
           } catch (e) {
-              console.error("Error al guardar la copia de seguridad:", e);
+              console.error(`Error al guardar la copia de seguridad para ${key}:`, e);
           }
       }
 
-      function loadBackup() {
+      function loadBackup(key) {
           try {
-              const backupData = localStorage.getItem(BACKUP_KEY);
+              const backupData = localStorage.getItem(key);
               if (backupData) {
-                  const channels = JSON.parse(backupData);
-                  console.log("Cargando canales desde la copia de seguridad...");
-                  return channels;
+                  const { timestamp, data } = JSON.parse(backupData);
+                  const backupAgeHours = (new Date().getTime() - timestamp) / (1000 * 60 * 60);
+                  
+                  if (backupAgeHours > BACKUP_EXPIRY_HOURS) {
+                      localStorage.removeItem(key);
+                      return null;
+                  }
+                  return data;
               }
           } catch (e) {
-              console.error("Error al cargar la copia de seguridad:", e);
+              console.error(`Error al cargar la copia de seguridad para ${key}:`, e);
           }
           return null;
       }
       
-      function saveChannelHistory(channels) {
-          const history = {
-              timestamp: new Date().getTime(),
-              channels: channels
-          };
-          localStorage.setItem(CHANNEL_HISTORY_KEY, JSON.stringify(history));
-      }
-
-      function loadChannelHistory() {
-          const history = localStorage.getItem(CHANNEL_HISTORY_KEY);
-          if (!history) return null;
-          
-          const parsedHistory = JSON.parse(history);
-          const backupAgeHours = (new Date().getTime() - parsedHistory.timestamp) / (1000 * 60 * 60);
-          
-          if (backupAgeHours > HISTORY_EXPIRY_HOURS) {
-              localStorage.removeItem(CHANNEL_HISTORY_KEY);
-              return null;
-          }
-          
-          return parsedHistory.channels;
-      }
-
       function mergeChannels(channelsArray) {
         const eventChannels = channelsArray.filter(channel => channel.source === 'events');
         const otherChannels = channelsArray.filter(channel => channel.source !== 'events');
@@ -1292,82 +1276,76 @@
         return eventChannels.concat(mergedOtherChannels);
       }
       
-      async function loadInitialChannels() {
-          const channelsGrid = document.getElementById("channelsGrid");
-          
-          const backupChannels = loadBackup();
-          if (backupChannels) {
-              state.channelsData = backupChannels;
-              processChannelNames();
-              renderResults();
-              showStatusMessage("Mostrando canales del historial. Buscando actualizaciones...");
-          } else {
-              channelsGrid.innerHTML = '<div class="loading-container"><div class="loading-spinner"></div><span>Cargando canales...</span></div>';
-          }
-          
-          const sources = [
-              loadEventsSource(),
-              loadGistChannels(),
-              loadShickatChannels(),
-              loadElcanoSource()
-          ];
+      async function fetchAndProcessSource(sourceName, url, processor, backupKey) {
+          let channels = null;
+          let message = '';
           
           try {
-              const results = await Promise.allSettled(sources);
-              let allChannels = [];
-              let successfulLoads = 0;
-              let failedLoads = 0;
-
-              results.forEach((result) => {
-                  if (result.status === 'fulfilled') {
-                      allChannels = allChannels.concat(result.value);
-                      successfulLoads++;
-                  } else {
-                      failedLoads++;
-                      console.error("Fallo la carga de una fuente:", result.reason);
-                  }
-              });
-
-              if (allChannels.length > 0) {
-                  const newChannels = mergeChannels(allChannels);
-                  state.channelsData = newChannels;
-                  processChannelNames();
-                  renderResults();
-                  saveBackup(newChannels);
-                  if (failedLoads === 0) {
-                      showStatusMessage("Todos los canales actualizados correctamente.", "success");
-                  } else {
-                      showStatusMessage(`Carga completa con ${successfulLoads} fuentes, ${failedLoads} fallaron.`, "warning");
-                  }
-                  cleanObsoleteRatings();
-              } else {
-                  if (!backupChannels) {
-                      channelsGrid.innerHTML = `
-                          <div class="no-results">
-                              <div class="no-results-icon">📡</div>
-                              <div class="no-results-text">Error al cargar los canales.</div>
-                              <div class="no-results-hint">Revisa tu conexión o inténtalo de nuevo.</div>
-                              <button class="retry-button" onclick="loadInitialChannels()">Reintentar</button>
-                          </div>
-                      `;
-                      showStatusMessage("Error al cargar canales. Inténtalo de nuevo.", "error");
-                  }
-              }
+              channels = await processor(url);
+              saveBackup(channels, backupKey);
+              message = `Canales de ${sourceName} cargados.`;
           } catch (error) {
-              console.error("Error al cargar nuevos canales:", error);
-              if (!backupChannels) {
-                  channelsGrid.innerHTML = `
-                      <div class="no-results">
-                          <div class="no-results-icon">📡</div>
-                          <div class="no-results-text">Error al cargar los canales.</div>
-                          <div class="no-results-hint">Revisa tu conexión o inténtalo de nuevo.</div>
-                          <button class="retry-button" onclick="loadInitialChannels()">Reintentar</button>
-                          </div>
-                      `;
-                  showStatusMessage("Error al cargar canales. Inténtalo de nuevo.", "error");
+              console.error(`Fallo al cargar de ${sourceName}:`, error);
+              channels = loadBackup(backupKey);
+              if (channels) {
+                  message = `Fallo de ${sourceName}. Mostrando canales del historial.`;
               } else {
-                  showStatusMessage("No se pudieron cargar nuevos canales. Mostrando el historial.", "error");
+                  message = `Fallo de ${sourceName}. Sin historial disponible.`;
               }
+          }
+          return { name: sourceName, channels, message };
+      }
+
+      async function loadInitialChannels() {
+          const channelsGrid = document.getElementById("channelsGrid");
+          channelsGrid.innerHTML = '<div class="loading-container"><div class="loading-spinner"></div><span>Cargando canales...</span></div>';
+          
+          const results = await Promise.all([
+              fetchAndProcessSource('events', EVENTS_URL, loadEventsSource, BACKUP_KEYS.events),
+              fetchAndProcessSource('gist', GIST_URL, loadGistChannels, BACKUP_KEYS.gist),
+              fetchAndProcessSource('shickat', SHICKAT_URL, loadShickatChannels, BACKUP_KEYS.shickat),
+              fetchAndProcessSource('elcano', ELCANO_URL, loadElcanoSource, BACKUP_KEYS.elcano)
+          ]);
+          
+          let allChannels = [];
+          let statusMessages = [];
+          
+          let hasNewChannels = false;
+          let hasFallback = false;
+          
+          results.forEach(result => {
+              if (result.channels) {
+                  allChannels = allChannels.concat(result.channels);
+                  hasNewChannels = true;
+                  if (result.message.includes('historial')) {
+                      hasFallback = true;
+                  }
+              }
+              statusMessages.push(result.message);
+          });
+          
+          if (allChannels.length > 0) {
+              const newChannels = mergeChannels(allChannels);
+              state.channelsData = newChannels;
+              processChannelNames();
+              renderResults();
+              cleanObsoleteRatings();
+              
+              if (hasFallback) {
+                  showStatusMessage(statusMessages.filter(m => m.includes('historial')).join('. '), "warning");
+              } else {
+                  showStatusMessage("Todos los canales actualizados correctamente.", "success");
+              }
+          } else {
+              channelsGrid.innerHTML = `
+                  <div class="no-results">
+                      <div class="no-results-icon">📡</div>
+                      <div class="no-results-text">Error al cargar los canales.</div>
+                      <div class="no-results-hint">Revisa tu conexión o inténtalo de nuevo.</div>
+                      <button class="retry-button" onclick="loadInitialChannels()">Reintentar</button>
+                  </div>
+              `;
+              showStatusMessage("Error al cargar canales. Inténtalo de nuevo.", "error");
           }
       }
       

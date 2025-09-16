@@ -1903,7 +1903,7 @@
           
           sortedChannels.forEach(channel => {
               if (channel.source === 'events' && channel.event) {
-                  const eventGroupKey = `${channel.event.sportEmoji || ''}${channel.event.competition}: ${channel.event.match} (${channel.event.time})`;
+                  const eventGroupKey = `${channel.event.date}-${channel.event.time}-${channel.event.competition}-${channel.event.match}`;
                   if (!groups[eventGroupKey]) {
                       groups[eventGroupKey] = { name: `${channel.event.competition}: ${channel.event.match}`, channels: [], time: channel.event.time, date: channel.event.date, isEvent: true, sportEmoji: channel.event.sportEmoji, sportName: channel.event.sportName };
                   }
@@ -1936,14 +1936,12 @@
               const groupA = groups[a];
               const groupB = groups[b];
 
+              if (groupA.isEvent && groupB.isEvent) {
+                  return compareEventDates(groupA, groupB);
+              }
+
               if (groupA.isEvent && !groupB.isEvent) return -1;
               if (!groupA.isEvent && groupB.isEvent) return 1;
-
-              if (groupA.isEvent && groupB.isEvent) {
-                  const timeA = groupA.time.replace(':', '');
-                  const timeB = groupB.time.replace(':', '');
-                  return parseInt(timeA, 10) - parseInt(timeB, 10);
-              }
 
               const indexA = groupOrder.indexOf(a);
               const indexB = groupOrder.indexOf(b);
@@ -2000,7 +1998,6 @@
           });
           channelsGrid.appendChild(fragment);
 
-          // Add JavaScript to check for overflow and apply animation class
           document.querySelectorAll('.competition-text').forEach(textElement => {
               const container = textElement.closest('.marquee-container');
               if (container && textElement.scrollWidth > container.clientWidth) {
@@ -2009,6 +2006,45 @@
                   textElement.classList.remove('is-overflowing');
               }
           });
+      }
+
+      function compareEventDates(eventA, eventB) {
+          const today = new Date();
+          const isTodayA = eventA.date.toLowerCase() === 'hoy';
+          const isTodayB = eventB.date.toLowerCase() === 'hoy';
+
+          if (isTodayA && !isTodayB) return -1;
+          if (!isTodayA && isTodayB) return 1;
+
+          if (isTodayA && isTodayB) {
+              const timeA = eventA.time.replace(':', '');
+              const timeB = eventB.time.replace(':', '');
+              return parseInt(timeA, 10) - parseInt(timeB, 10);
+          }
+
+          const dateA = parseDateString(eventA.date, today);
+          const dateB = parseDateString(eventB.date, today);
+
+          if (dateA.getTime() !== dateB.getTime()) {
+              return dateA.getTime() - dateB.getTime();
+          }
+
+          const timeA = eventA.time.replace(':', '');
+          const timeB = eventB.time.replace(':', '');
+          return parseInt(timeA, 10) - parseInt(timeB, 10);
+      }
+
+      function parseDateString(dateString, today) {
+          if (dateString.toLowerCase() === 'mañana') {
+              const tomorrow = new Date(today);
+              tomorrow.setDate(today.getDate() + 1);
+              return tomorrow;
+          }
+          const parts = dateString.split('/');
+          if (parts.length === 3) {
+              return new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+          }
+          return today;
       }
 
       function createChannelCard(channel) {

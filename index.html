@@ -1095,6 +1095,12 @@
       const BACKUP_EXPIRY_HOURS = 6;
       const HISTORY_EXPIRY_HOURS = 168;
       const BACKUP_KEY = 'channel_backup';
+      
+      // Función auxiliar para normalizar texto (eliminar tildes y convertir a minúsculas)
+      function normalizeText(text) {
+          if (!text) return '';
+          return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+      }
 
       function trackFirstSeen(channelId) {
           if (!state.firstSeen[channelId]) {
@@ -1768,7 +1774,7 @@
         let currentFilter = state.currentFilter;
         if(currentFilter !== 'all' && currentFilter !== 'favorites' && currentFilter !== 'history') {
              filteredChannels = filteredChannels.filter(channel =>
-                channel.name.toLowerCase().includes(currentFilter.toLowerCase())
+                normalizeText(channel.name).includes(normalizeText(currentFilter))
             );
         }
 
@@ -1791,18 +1797,20 @@
 
         if (searchTerm) {
           filteredChannels = filteredChannels.filter(channel => {
-            const nameMatches = channel.name.toLowerCase().includes(searchTerm);
+            const normalizedSearchTerm = normalizeText(searchTerm);
+            
+            const nameMatches = normalizeText(channel.name).includes(normalizedSearchTerm);
             const numberMatches = channel.number && channel.number.includes(searchTerm.replace('#', ''));
             
             let eventDetailsMatch = false;
             if (channel.event) {
                 const { time, competition, match, date, sportName } = channel.event;
                 eventDetailsMatch = 
-                    (time && time.toLowerCase().includes(searchTerm)) ||
-                    (sportName && sportName.toLowerCase().includes(searchTerm)) ||
-                    (competition && competition.toLowerCase().includes(searchTerm)) ||
-                    (match && match.toLowerCase().includes(searchTerm)) ||
-                    (date && date.toLowerCase().includes(searchTerm)); 
+                    normalizeText(time || '').includes(normalizedSearchTerm) ||
+                    normalizeText(sportName || '').includes(normalizedSearchTerm) ||
+                    normalizeText(competition || '').includes(normalizedSearchTerm) ||
+                    normalizeText(match || '').includes(normalizedSearchTerm) ||
+                    normalizeText(date || '').includes(normalizedSearchTerm); 
             }
 
             return nameMatches || numberMatches || eventDetailsMatch;

@@ -290,8 +290,8 @@
       }
       
       .update-notification {
-        background: #dbeafe;
         color: var(--primary);
+        background: var(--primary-light);
         padding: 0.5rem;
         border-radius: var(--radius-sm);
         margin-bottom: 1rem;
@@ -663,11 +663,39 @@
           grid-column: 1 / -1;
           text-align: center;
           padding: 0.5rem;
-          color: var(--success);
           font-size: 0.85rem;
           background-color: rgba(76, 201, 240, 0.1);
           border-radius: var(--radius-sm);
           margin-bottom: 0.5rem;
+          opacity: 1;
+          transition: all 0.5s ease-in-out, margin 0.5s ease-in-out;
+      }
+      
+      .status-message.hide {
+          opacity: 0;
+          transform: translateY(-20px);
+          pointer-events: none;
+          margin-bottom: 0;
+      }
+      
+      .status-message.success {
+          color: var(--primary);
+          background-color: var(--primary-light);
+      }
+
+      .status-message.info {
+          color: var(--primary);
+          background-color: var(--primary-light);
+      }
+      
+      .status-message.error {
+          color: var(--secondary);
+          background-color: rgba(247, 37, 133, 0.1);
+      }
+      
+      .status-message.warning {
+          color: var(--warning);
+          background-color: rgba(248, 150, 30, 0.1);
       }
       
       @keyframes spin {
@@ -1177,10 +1205,20 @@
           }
           
           statusElement.textContent = message;
-          statusElement.style.color = type === "error" ? "#dc2626" : "#4cc9f0";
-          statusElement.style.backgroundColor = type === "error" ? "rgba(247, 37, 133, 0.1)" : "rgba(76, 201, 240, 0.1)";
-          if (type === "error") statusElement.style.color = "var(--secondary)";
-          if (type === "success") statusElement.style.color = "var(--success)";
+          statusElement.className = `status-message ${type}`;
+
+          statusElement.classList.remove('hide');
+
+          if (type === "success" || type === "info") {
+            setTimeout(() => {
+                statusElement.classList.add('hide');
+                statusElement.addEventListener('transitionend', () => {
+                    if (statusElement.classList.contains('hide')) {
+                        statusElement.remove();
+                    }
+                }, { once: true });
+            }, 3000); 
+          }
       }
 
       function saveBackup(data) {

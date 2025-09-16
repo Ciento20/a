@@ -1923,19 +1923,30 @@
                   groups[eventGroupKey].channels.push(channel);
               } else {
                   let groupFound = false;
-                  for (const groupName of groupOrder) {
-                      if (groupName === 'DAZN' && /DAZN La Liga/i.test(channel.name)) {
-                          continue;
+
+                  // Lógica específica para ELEVEN DAZN y DAZN EVENTOS
+                  if (channel.name.toUpperCase().includes('ELEVEN DAZN') || channel.name.toUpperCase().includes('DAZN EVENTOS')) {
+                      if (!groups['Otros']) {
+                          groups['Otros'] = { name: 'Otros', channels: [] };
                       }
-                      if (groupRegexes[groupName] && groupRegexes[groupName].test(channel.name)) {
-                          if (!groups[groupName]) {
-                              groups[groupName] = { name: groupName, channels: [] };
+                      groups['Otros'].channels.push(channel);
+                      groupFound = true;
+                  } else {
+                      for (const groupName of groupOrder) {
+                          if (groupName === 'DAZN' && /DAZN La Liga/i.test(channel.name)) {
+                              continue;
                           }
-                          groups[groupName].channels.push(channel);
-                          groupFound = true;
-                          break;
+                          if (groupRegexes[groupName] && groupRegexes[groupName].test(channel.name)) {
+                              if (!groups[groupName]) {
+                                  groups[groupName] = { name: groupName, channels: [] };
+                              }
+                              groups[groupName].channels.push(channel);
+                              groupFound = true;
+                              break;
+                          }
                       }
                   }
+                  
                   if (!groupFound) {
                       if (!groups['Otros']) {
                           groups['Otros'] = { name: 'Otros', channels: [] };

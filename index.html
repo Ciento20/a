@@ -1790,10 +1790,23 @@
         }
 
         if (searchTerm) {
-          filteredChannels = filteredChannels.filter(channel => 
-              channel.name.toLowerCase().includes(searchTerm) || 
-              (channel.number && channel.number.includes(searchTerm.replace('#', '')))
-          );
+          filteredChannels = filteredChannels.filter(channel => {
+            const nameMatches = channel.name.toLowerCase().includes(searchTerm);
+            const numberMatches = channel.number && channel.number.includes(searchTerm.replace('#', ''));
+            
+            let eventDetailsMatch = false;
+            if (channel.event) {
+                const { time, competition, match, date, sportName } = channel.event;
+                eventDetailsMatch = 
+                    (time && time.toLowerCase().includes(searchTerm)) ||
+                    (sportName && sportName.toLowerCase().includes(searchTerm)) ||
+                    (competition && competition.toLowerCase().includes(searchTerm)) ||
+                    (match && match.toLowerCase().includes(searchTerm)) ||
+                    (date && date.toLowerCase().includes(searchTerm)); 
+            }
+
+            return nameMatches || numberMatches || eventDetailsMatch;
+          });
         }
 
         return filteredChannels;

@@ -143,6 +143,7 @@
         display: flex;
         justify-content: center;
         align-items: center;
+        white-space: nowrap; 
       }
       
       .filter-button:hover {
@@ -164,6 +165,26 @@
 
       #filterDAZN, #filterMovistar, #filterEurosport {
           flex: 1;
+      }
+      
+      #sportFiltersContainer {
+        margin-top: 0.6rem; 
+        /* --- MODIFICACIÓN CLAVE --- */
+        display: flex;
+        gap: 0.6rem;
+        flex-wrap: wrap;
+        justify-content: center; /* Centra los botones de deporte */
+        /* -------------------------- */
+      }
+      
+      /* REGLAS: Botones de filtro de deportes (emoji) redondos */
+      .sport-filter-button {
+        flex: 0 0 auto; 
+        width: 36px;
+        height: 36px;
+        padding: 0;
+        border-radius: 50%; 
+        font-size: 1.1rem; 
       }
 
       .channels-grid {
@@ -996,7 +1017,16 @@
                 <button class="filter-button" id="filterEurosport">★EUROSPORT</button>
                 <button class="filter-button filter-button--clear" id="clearEmojiFilters">x</button>
             </div>
-        </div>
+            <div class="filter-buttons" id="sportFiltersContainer" style="margin-top: 0.6rem;">
+                <button class="filter-button sport-filter-button" data-sport-key="futbol" id="filterFutbol">⚽</button>
+                <button class="filter-button sport-filter-button" data-sport-key="baloncesto" id="filterBaloncesto">🏀</button>
+                <button class="filter-button sport-filter-button" data-sport-key="tenis" id="filterTenis">🎾</button>
+                <button class="filter-button sport-filter-button" data-sport-key="boxeo" id="filterBoxeo">🥊</button>
+                <button class="filter-button sport-filter-button" data-sport-key="ciclismo" id="filterCiclismo">🚴</button>
+                <button class="filter-button sport-filter-button" data-sport-key="motorsport" id="filterMotorsport">🏁</button>
+                <button class="filter-button sport-filter-button" data-sport-key="f1" id="filterF1">🏎️</button>
+            </div>
+            </div>
 
         <div id="updateNotification" class="update-notification"></div>
         <div class="channels-grid" id="channelsGrid">
@@ -1096,7 +1126,10 @@
           
           channelRatings: JSON.parse(localStorage.getItem('channelRatings')) || {},
           lastChannelPlay: JSON.parse(localStorage.getItem('lastChannelPlay')) || null,
-          firstSeen: JSON.parse(localStorage.getItem('firstSeen')) || {}
+          firstSeen: JSON.parse(localStorage.getItem('firstSeen')) || {},
+          
+          // NUEVA PROPIEDAD PARA EL FILTRO DE DEPORTES
+          sportFilter: 'all' 
       };
 
       const RANGES = {
@@ -1179,12 +1212,14 @@
         updatePrimaryLightColor();
       }
       
+      // MODIFICACIÓN DE applyFilter para filtros de marca
       function applyFilter(filter) {
         state.currentFilter = filter;
         document.getElementById('searchInput').value = '';
         state.searchTerm = '';
         
-        document.querySelectorAll('.filter-button').forEach(btn => btn.classList.remove('filter-button--active'));
+        // Desactivar filtros de marca
+        document.querySelectorAll('.filter-buttons:first-of-type .filter-button').forEach(btn => btn.classList.remove('filter-button--active'));
         
         const targetBtn = document.getElementById(`filter${filter.charAt(0).toUpperCase() + filter.slice(1)}`);
         if (targetBtn) {
@@ -1194,6 +1229,22 @@
         }
         
         renderResults();
+      }
+      
+      // NUEVA FUNCIÓN para filtros de deporte
+      function applySportFilter(sportKey) {
+          state.sportFilter = state.sportFilter === sportKey ? 'all' : sportKey; // Alterna el filtro
+          document.getElementById('searchInput').value = '';
+          state.searchTerm = '';
+          
+          // Quitar activación de todos los botones de deporte
+          document.querySelectorAll('.sport-filter-button').forEach(btn => btn.classList.remove('filter-button--active'));
+          
+          if (state.sportFilter !== 'all') {
+              document.querySelector(`.sport-filter-button[data-sport-key="${sportKey}"]`).classList.add('filter-button--active');
+          }
+
+          renderResults();
       }
       
       function showStatusMessage(message, type = "info") {
@@ -1844,17 +1895,21 @@
           });
       }
 
+      // MODIFICACIÓN DE filterChannels para incluir el filtrado por deporte
       function filterChannels() {
         let filteredChannels = state.channelsData;
         const searchTerm = document.getElementById('searchInput').value.trim().toLowerCase();
         
         let currentFilter = state.currentFilter;
+        
+        // 1. Filtrado por Marca (DAZN, Movistar, Eurosport, etc.)
         if(currentFilter !== 'all' && currentFilter !== 'favorites' && currentFilter !== 'history') {
              filteredChannels = filteredChannels.filter(channel =>
                 normalizeText(channel.name).includes(normalizeText(currentFilter))
             );
         }
 
+        // 2. Filtrado por Favoritos/Historial
         if (state.currentFilter === 'favorites') {
             filteredChannels = filteredChannels.filter(c => state.favorites.includes(c.id));
         } else if (state.currentFilter === 'history') {
@@ -1872,6 +1927,39 @@
             filteredChannels = historyChannels;
         }
 
+        // 3. NUEVO FILTRADO POR DEPORTE
+        if (state.sportFilter !== 'all') {
+            const normalizedSportFilter = normalizeText(state.sportFilter);
+            
+            const sportSearchTerms = {
+                'futbol': ['futbol', 'soccer', 'liga', 'campeones', 'copa del rey', 'premier', 'bundesliga', 'serie a'],
+                'baloncesto': ['baloncesto', 'basket', 'nba', 'euroliga'],
+                'tenis': ['tenis', 'wimbledon', 'roland garros', 'us open', 'atp', 'wta'],
+                'boxeo': ['boxeo', 'boxing', 'lucha', 'ufc', 'mma'],
+                'ciclismo': ['ciclismo', 'tour', 'giro', 'vuelta'],
+                'motorsport': ['motor', 'f1', 'fórmula', 'formula', 'moto', 'motociclismo', 'dakar', 'rally', 'motogp', 'wrc', 'nascar'],
+                'f1': ['f1', 'fórmula 1', 'formula 1', 'formulaone', 'fórmulaone']
+            };
+            
+            const targetTerms = sportSearchTerms[normalizedSportFilter] || [normalizedSportFilter];
+            
+            filteredChannels = filteredChannels.filter(channel => {
+                const normalizedName = normalizeText(channel.name);
+                
+                // Buscar en el nombre del canal o en los detalles del evento
+                const eventDetailsMatch = channel.event && (
+                    normalizeText(channel.event.sportName || '').includes(normalizedSportFilter) ||
+                    targetTerms.some(term => normalizeText(channel.event.competition || '').includes(term)) ||
+                    targetTerms.some(term => normalizeText(channel.event.match || '').includes(term))
+                );
+                
+                const nameMatch = targetTerms.some(term => normalizedName.includes(term));
+                
+                return eventDetailsMatch || nameMatch;
+            });
+        }
+
+        // 4. Filtrado por Término de Búsqueda
         if (searchTerm) {
           filteredChannels = filteredChannels.filter(channel => {
             const normalizedSearchTerm = normalizeText(searchTerm);
@@ -2351,6 +2439,7 @@
       function handleSearchInput() {
         state.searchTerm = document.getElementById('searchInput').value.trim();
         document.querySelectorAll('.filter-button').forEach(btn => btn.classList.remove('filter-button--active'));
+        document.querySelectorAll('.sport-filter-button').forEach(btn => btn.classList.remove('filter-button--active'));
         renderResults();
       }
 
@@ -2537,6 +2626,14 @@
           document.getElementById('filterDAZN').addEventListener('click', () => applyFilter('dazn'));
           document.getElementById('filterMovistar').addEventListener('click', () => applyFilter('m+'));
           document.getElementById('filterEurosport').addEventListener('click', () => applyFilter('eurosport'));
+          
+          // Listeners para los NUEVOS filtros de Deporte
+          document.querySelectorAll('.sport-filter-button').forEach(button => {
+              button.addEventListener('click', () => {
+                  applySportFilter(button.dataset.sportKey);
+              });
+          });
+          
           document.getElementById('searchInput').addEventListener('input', handleSearchInput);
           document.getElementById('darkModeCheckbox').addEventListener('change', toggleDarkMode);
           document.getElementById('closeSettingsBtn').addEventListener('click', () => document.getElementById('settingsModal').classList.remove('modal--active'));

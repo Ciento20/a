@@ -998,7 +998,6 @@
             </div>
         </div>
 
-        <div id="offlineMessage" class="offline-message" style="display: none;">Modo offline: mostrando canales del historial</div>
         <div id="updateNotification" class="update-notification"></div>
         <div class="channels-grid" id="channelsGrid">
             <div class="loading-container">
@@ -1296,59 +1295,120 @@
           return { name: sourceName, channels, message };
       }
 
+      function loadAndRenderBackupChannels() {
+          let allBackupChannels = [];
+          let hasBackup = false;
+
+          // Cargar y combinar copias de seguridad de todas las fuentes
+          for (const key in BACKUP_KEYS) {
+              const backup = loadBackup(BACKUP_KEYS[key]);
+              if (backup) {
+                  allBackupChannels = allBackupChannels.concat(backup.map(c => ({
+                      ...c,
+                      source: key, 
+                      name: c.name || `Canal de ${key.toUpperCase()}`,
+                      id: c.id || `${key}_${Math.random()}`,
+                      displayableName: c.displayableName || c.name 
+                  })));
+                  hasBackup = true;
+              }
+          }
+
+          if (allBackupChannels.length > 0) {
+              const newChannels = mergeChannels(allBackupChannels); 
+              state.channelsData = newChannels;
+              processChannelNames(); 
+              renderResults();
+              
+              // [MODIFICACIÓN] Ya no mostramos la notificación de uso de historial aquí
+              return true;
+          }
+          return false;
+      }
+
       async function loadInitialChannels() {
           const channelsGrid = document.getElementById("channelsGrid");
-          channelsGrid.innerHTML = '<div class="loading-container"><div class="loading-spinner"></div><span>Cargando canales...</span></div>';
           
-          const results = await Promise.all([
+          // 1. Mostrar historial si está disponible (silenciosamente)
+          const isShowingBackup = loadAndRenderBackupChannels();
+
+          // 2. Si no hay historial, mostrar spinner de carga inicial
+          if (!isShowingBackup) {
+              channelsGrid.innerHTML = '<div class="loading-container"><div class="loading-spinner"></div><span>Cargando canales...</span></div>';
+          }
+          
+          // Muestra un mensaje temporal de carga. Se ocultará solo (showStatusMessage usa 'info').
+          const temporaryLoadMessage = isShowingBackup 
+            ? "Mostrando historial. Obteniendo datos en tiempo real..." 
+            : "Cargando datos en tiempo real...";
+          showStatusMessage(temporaryLoadMessage, "info");
+
+
+          // 3. Iniciar la carga de todas las fuentes en línea
+          const results = await Promise.allSettled([ 
               fetchAndProcessSource('events', EVENTS_URL, loadEventsSource, BACKUP_KEYS.events),
               fetchAndProcessSource('gist', GIST_URL, loadGistChannels, BACKUP_KEYS.gist),
               fetchAndProcessSource('shickat', SHICKAT_URL, loadShickatChannels, BACKUP_KEYS.shickat),
               fetchAndProcessSource('elcano', ELCANO_URL, loadElcanoSource, BACKUP_KEYS.elcano)
           ]);
           
+          // 4. Procesar resultados
           let allChannels = [];
-          let statusMessages = [];
-          
-          let hasNewChannels = false;
-          let hasFallback = false;
+          let hasFallback = false; 
+          let hasOnlineSuccess = false; 
           
           results.forEach(result => {
-              if (result.channels) {
-                  allChannels = allChannels.concat(result.channels);
-                  hasNewChannels = true;
-                  if (result.message.includes('historial')) {
+              if (result.status === 'fulfilled' && result.value.channels) {
+                  if (result.value.message.includes('historial')) {
                       hasFallback = true;
+                      allChannels = allChannels.concat(result.value.channels);
+                  } else {
+                      allChannels = allChannels.concat(result.value.channels);
+                      hasOnlineSuccess = true;
                   }
               }
-              statusMessages.push(result.message);
           });
           
+          // 5. Determinar el conjunto final de canales y la ÚNICA notificación final
           if (allChannels.length > 0) {
               const newChannels = mergeChannels(allChannels);
               state.channelsData = newChannels;
               processChannelNames();
-              renderResults();
+              renderResults(); 
               cleanObsoleteRatings();
-              
-              if (hasFallback) {
-                  showStatusMessage(statusMessages.filter(m => m.includes('historial')).join('. '), "warning");
+              // document.getElementById('offlineMessage').style.display = 'none'; // REFERENCIA ELIMINADA
+
+              // Notificación ÚNICA FINAL
+              if (hasOnlineSuccess) {
+                if (hasFallback) {
+                    showStatusMessage("Canales actualizados (algunos con historial).", "warning");
+                } else {
+                    showStatusMessage("Canales actualizados correctamente.", "success");
+                }
+              } else if (hasFallback) {
+                  // Esto solo ocurre si todo falló online, pero se tenía un backup completo
+                  showStatusMessage("Fallo al actualizar. Se sigue mostrando el historial completo.", "error");
               } else {
-                  showStatusMessage("Todos los canales actualizados correctamente.", "success");
+                   // Fallo completo, pero el arreglo tiene canales (caso límite)
+                   showStatusMessage("Error al actualizar, se cargaron canales desconocidos.", "error");
               }
+          } else if (isShowingBackup) {
+              // Fallo en la carga online, pero ya se había renderizado el backup
+              showStatusMessage("Fallo al actualizar canales. Se sigue mostrando el historial.", "error");
           } else {
+              // Fallo total y no hay backup.
               channelsGrid.innerHTML = `
                   <div class="no-results">
                       <div class="no-results-icon">📡</div>
                       <div class="no-results-text">Error al cargar los canales.</div>
-                      <div class="no-results-hint">Revisa tu conexión o inténtalo de nuevo.</div>
+                      <div class="no-results-hint">No se han conseguido cargar los canales (modo offline/sin historial).</div>
                       <button class="retry-button" onclick="loadInitialChannels()">Reintentar</button>
                   </div>
               `;
-              showStatusMessage("Error al cargar canales. Inténtalo de nuevo.", "error");
+              showStatusMessage("Error al cargar canales. Sin historial disponible.", "error");
           }
       }
-      
+
       function normalizeChannelName(name) {
           if (name.includes('Eurosport 1')) {
               return '★EUROSPORT 1';

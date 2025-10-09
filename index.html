@@ -2301,6 +2301,19 @@
                   });
               }
               
+              // NUEVA MODIFICACIÓN: Ordenar favoritos al principio de cada grupo
+              group.channels.sort((a, b) => {
+                  const aIsFavorite = state.favorites.includes(a.id);
+                  const bIsFavorite = state.favorites.includes(b.id);
+
+                  if (aIsFavorite && !bIsFavorite) return -1; // 'a' va primero
+                  if (!aIsFavorite && bIsFavorite) return 1;  // 'b' va primero
+                  
+                  // Mantener el orden relativo existente si ambos son favoritos o no
+                  return 0;
+              });
+              // FIN NUEVA MODIFICACIÓN
+              
               const groupElement = document.createElement('div');
               groupElement.className = 'channel-group';
 

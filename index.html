@@ -1256,36 +1256,61 @@
         updatePrimaryLightColor();
       }
       
-      // MODIFICACIÓN DE applyFilter para filtros de marca
+      // MODIFICACIÓN DE applyFilter para filtros de marca (CORREGIDA)
       function applyFilter(filter) {
         state.currentFilter = filter;
         document.getElementById('searchInput').value = '';
         state.searchTerm = '';
         
-        // Desactivar filtros de marca
+        // 1. Desactivar todos los filtros de marca (primer .filter-buttons)
         document.querySelectorAll('.filter-buttons:first-of-type .filter-button').forEach(btn => btn.classList.remove('filter-button--active'));
+        // 2. Desactivar todos los filtros de deporte (segundo .filter-buttons)
+        document.querySelectorAll('.sport-filter-button').forEach(btn => btn.classList.remove('filter-button--active'));
         
+        // También desactivar el filtro de deporte si estamos aplicando un filtro de marca
+        state.sportFilter = 'all';
+
         const targetBtn = document.getElementById(`filter${filter.charAt(0).toUpperCase() + filter.slice(1)}`);
-        if (targetBtn) {
-            targetBtn.classList.add('filter-button--active');
+        
+        // Lógica para el botón de Movistar, DAZN y Eurosport
+        if (filter === 'dazn') {
+            document.getElementById('filterDAZN').classList.add('filter-button--active');
+        } else if (filter === 'm+') {
+            // En el HTML el ID es 'filterMovistar', no 'filterM+'
+            document.getElementById('filterMovistar').classList.add('filter-button--active');
+        } else if (filter === 'eurosport') {
+            document.getElementById('filterEurosport').classList.add('filter-button--active');
+        } else if (filter === 'favorites') {
+            document.getElementById('filterFavorites').classList.add('filter-button--active');
         } else if (filter === 'all') {
             document.getElementById('clearEmojiFilters').classList.add('filter-button--active');
+        } else if (targetBtn) {
+            targetBtn.classList.add('filter-button--active');
         }
         
         renderResults();
       }
       
-      // NUEVA FUNCIÓN para filtros de deporte
+      // NUEVA FUNCIÓN para filtros de deporte (CORREGIDA)
       function applySportFilter(sportKey) {
           state.sportFilter = state.sportFilter === sportKey ? 'all' : sportKey; // Alterna el filtro
           document.getElementById('searchInput').value = '';
           state.searchTerm = '';
           
-          // Quitar activación de todos los botones de deporte
+          // 1. Quitar activación de todos los botones de deporte
           document.querySelectorAll('.sport-filter-button').forEach(btn => btn.classList.remove('filter-button--active'));
           
+          // 2. Quitar activación de todos los botones de marca
+          document.querySelectorAll('.filter-buttons:first-of-type .filter-button').forEach(btn => btn.classList.remove('filter-button--active'));
+          
+          // Desactivar filtro de marca si estamos aplicando un filtro de deporte
+          state.currentFilter = 'all'; 
+
           if (state.sportFilter !== 'all') {
               document.querySelector(`.sport-filter-button[data-sport-key="${sportKey}"]`).classList.add('filter-button--active');
+          } else {
+              // Si se desactiva el filtro de deporte, activar el filtro 'x' (all)
+              document.getElementById('clearEmojiFilters').classList.add('filter-button--active');
           }
 
           renderResults();
@@ -2546,10 +2571,23 @@
           }
       }
 
+      // CORRECCIÓN APLICADA AQUÍ
       function handleSearchInput() {
         state.searchTerm = document.getElementById('searchInput').value.trim();
+        // Desactivar todos los filtros de marca y deporte
         document.querySelectorAll('.filter-button').forEach(btn => btn.classList.remove('filter-button--active'));
-        document.querySelectorAll('.sport-filter-button').forEach(btn => btn.classList.remove('filter-filter-button--active'));
+        document.querySelectorAll('.sport-filter-button').forEach(btn => btn.classList.remove('filter-button--active'));
+        
+        // Si la búsqueda está vacía, activa el botón 'all' (la 'x')
+        if (!state.searchTerm) {
+            document.getElementById('clearEmojiFilters').classList.add('filter-button--active');
+            state.currentFilter = 'all'; 
+            state.sportFilter = 'all';
+        } else {
+            state.currentFilter = 'all'; 
+            state.sportFilter = 'all';
+        }
+        
         renderResults();
       }
 
@@ -2740,7 +2778,8 @@
           // Listeners para los NUEVOS filtros de Deporte
           document.querySelectorAll('.sport-filter-button').forEach(button => {
               button.addEventListener('click', () => {
-                  applySportFilter(button.dataset.sport-key);
+                  // CORRECCIÓN APLICADA: Usar dataSet.sportKey en lugar de dataSet.sport-key
+                  applySportFilter(button.dataset.sportKey);
               });
           });
           
@@ -2782,7 +2821,9 @@
           });
           // [FIN DE LA CORRECCIÓN]
           
+          // CORRECCIÓN FINAL: Asegurar que el filtro 'all' se active visualmente al inicio
           applyFilter('all');
+          
           loadInitialChannels();
       });
 
@@ -2805,8 +2846,8 @@
 
       document.addEventListener('mouseup', (e) => {
           if (currentCard) {
-                const mouseUpTime = new Date().getTime();
-                const touchDuration = mouseUpTime - touchStartTime;
+                const mouseUpUpTime = new Date().getTime();
+                const touchDuration = mouseUpUpTime - touchStartTime;
                 const touchDistanceX = Math.abs(e.clientX - touchStartX);
                 const touchDistanceY = Math.abs(e.clientY - touchStartY);
 

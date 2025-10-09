@@ -1262,8 +1262,13 @@
         document.getElementById('searchInput').value = '';
         state.searchTerm = '';
         
-        // 1. Desactivar todos los filtros de marca (primer .filter-buttons)
-        document.querySelectorAll('.filter-buttons:first-of-type .filter-button').forEach(btn => btn.classList.remove('filter-button--active'));
+        // CORRECCIÓN CLAVE PARA EL BUG VISUAL: Desactivar explícitamente todos los de la primera fila
+        document.getElementById('filterDAZN').classList.remove('filter-button--active');
+        document.getElementById('filterMovistar').classList.remove('filter-button--active');
+        document.getElementById('filterEurosport').classList.remove('filter-button--active');
+        document.getElementById('filterFavorites').classList.remove('filter-button--active');
+        document.getElementById('clearEmojiFilters').classList.remove('filter-button--active');
+        
         // 2. Desactivar todos los filtros de deporte (segundo .filter-buttons)
         document.querySelectorAll('.sport-filter-button').forEach(btn => btn.classList.remove('filter-button--active'));
         
@@ -1272,7 +1277,7 @@
 
         const targetBtn = document.getElementById(`filter${filter.charAt(0).toUpperCase() + filter.slice(1)}`);
         
-        // Lógica para el botón de Movistar, DAZN y Eurosport
+        // Lógica para la activación
         if (filter === 'dazn') {
             document.getElementById('filterDAZN').classList.add('filter-button--active');
         } else if (filter === 'm+') {
@@ -1301,7 +1306,11 @@
           document.querySelectorAll('.sport-filter-button').forEach(btn => btn.classList.remove('filter-button--active'));
           
           // 2. Quitar activación de todos los botones de marca
-          document.querySelectorAll('.filter-buttons:first-of-type .filter-button').forEach(btn => btn.classList.remove('filter-button--active'));
+          document.getElementById('filterDAZN').classList.remove('filter-button--active');
+          document.getElementById('filterMovistar').classList.remove('filter-button--active');
+          document.getElementById('filterEurosport').classList.remove('filter-button--active');
+          document.getElementById('filterFavorites').classList.remove('filter-button--active');
+          document.getElementById('clearEmojiFilters').classList.remove('filter-button--active');
           
           // Desactivar filtro de marca si estamos aplicando un filtro de deporte
           state.currentFilter = 'all'; 

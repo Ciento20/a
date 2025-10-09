@@ -1171,7 +1171,7 @@
           if (index > -1) {
               state.favorites.splice(index, 1);
           } else {
-              state.favorites.push(channelId);
+              state.favorites.push(index, 1);
           }
           localStorage.setItem('favorites', JSON.stringify(state.favorites));
           
@@ -1414,6 +1414,9 @@
               renderResults(); 
               cleanObsoleteRatings();
 
+              const loadingContainer = channelsGrid.querySelector('.loading-container');
+              if (loadingContainer) loadingContainer.remove();
+
               if (hasOnlineSuccess) {
                 if (hasFallback) {
                     showStatusMessage("Canales actualizados (algunos con historial).", "warning");
@@ -1427,6 +1430,8 @@
               }
           } else if (isShowingBackup) {
               showStatusMessage("Fallo al actualizar canales. Se sigue mostrando el historial.", "error");
+              const loadingContainer = channelsGrid.querySelector('.loading-container');
+              if (loadingContainer) loadingContainer.remove();
           } else {
               channelsGrid.innerHTML = `
                   <div class="no-results">
@@ -1645,7 +1650,7 @@
                       
                       for (const key in nameMappings) {
                           if (simplifiedName.includes(key)) {
-                              simplifiedName = simplifiedName.Name.replace(key, nameMappings[key]);
+                              simplifiedName = simplifiedName.replace(key, nameMappings[key]);
                               break; 
                           }
                       }

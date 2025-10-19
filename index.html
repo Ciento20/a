@@ -821,6 +821,7 @@
         font-family: monospace;
         word-break: break-all;
         font-size: 0.85rem;
+        display: block; /* Asegurarse de que se muestre si es necesario para depuración */
       }
       
       body.dark-mode .copy-modal-url {
@@ -1067,9 +1068,13 @@
     
     <div class="copy-modal" id="copyModal">
         <div class="copy-modal-icon">🔗</div>
-        <div class="copy-modal-text">¿Quieres copiar la URL de este canal?</div>
-        <p id="copyUrlDisplay" class="copy-modal-url"></p>
-        <button class="copy-modal-button" id="confirmCopyBtn">Copiar enlace</button>
+        <div class="copy-modal-text">Selecciona el formato de enlace a copiar:</div>
+        <p id="copyUrlDisplayAceStream" class="copy-modal-url" style="display:none;"></p>
+        <p id="copyUrlDisplayVLC" class="copy-modal-url" style="display:none;"></p>
+        
+        <button class="copy-modal-button" id="copyAceStreamBtn" data-format="acestream">Copiar AceStream</button>
+        <button class="copy-modal-button" id="copyVLCBtn" data-format="vlc">Copiar VLC</button>
+        
         <button class="modal__btn modal__btn--cancel" id="cancelCopyBtn">Cancelar</button>
     </div>
 
@@ -1133,6 +1138,28 @@
           if (!text) return '';
           return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
       }
+      
+      // 💡 NUEVAS FUNCIONES DE CONVERSIÓN VLC
+      /**
+       * Extrae el AceStream PID del enlace.
+       * @param {string} enlace - URL completa o solo el PID.
+       * @returns {string} El AceStream PID (hash) puro.
+       */
+      function extractPID(enlace) {
+          if (!enlace) return '';
+          return enlace.replace('acestream://', '').trim();
+      }
+
+      /**
+       * Convierte un AceStream PID en una URL de VLC.
+       * @param {string} pid - El AceStream PID puro.
+       * @returns {string} La URL compatible con VLC.
+       */
+      function convertToVLCUrl(pid) {
+          if (!pid) return '';
+          return `http://vlc.shickat.me:8000/pid/${pid}/stream.mp4`;
+      }
+      // 💡 FIN NUEVAS FUNCIONES DE CONVERSIÓN VLC
 
       function trackFirstSeen(channelId) {
           if (!state.firstSeen[channelId]) {
@@ -1166,7 +1193,7 @@
           if (index > -1) {
               state.favorites.splice(index, 1);
           } else {
-              state.favorites.push(index);
+              state.favorites.push(channelId);
           }
           localStorage.setItem('favorites', JSON.stringify(state.favorites));
           
@@ -2507,15 +2534,26 @@
           playChannel(channel.id);
       }
 
+      // 💡 MODIFICACIÓN DE showCopyModal
       function showCopyModal(acestreamId) {
-          const url = `acestream://${acestreamId}`;
-          const copyModal = document.getElementById('copyModal');
-          const confirmBtn = document.getElementById('confirmCopyBtn');
-          const urlDisplay = document.getElementById('copyUrlDisplay');
-
-          urlDisplay.textContent = url;
+          const acestreamUrl = `acestream://${acestreamId}`;
+          const pid = extractPID(acestreamUrl);
+          const vlcUrl = convertToVLCUrl(pid); 
           
-          confirmBtn.onclick = () => copyUrlToClipboard(acestreamId);
+          const copyModal = document.getElementById('copyModal');
+          const copyAceStreamBtn = document.getElementById('copyAceStreamBtn');
+          const copyVLCBtn = document.getElementById('copyVLCBtn');
+          const urlDisplayAceStream = document.getElementById('copyUrlDisplayAceStream');
+          const urlDisplayVLC = document.getElementById('copyUrlDisplayVLC');
+
+          // Almacenar las URLs en el display (oculto por CSS)
+          urlDisplayAceStream.textContent = acestreamUrl;
+          urlDisplayVLC.textContent = vlcUrl;
+
+          // Asignar handlers para copiar la URL correcta y el formato
+          copyAceStreamBtn.onclick = () => copyUrlToClipboard(acestreamUrl, 'AceStream');
+          copyVLCBtn.onclick = () => copyUrlToClipboard(vlcUrl, 'VLC');
+          
           copyModal.classList.add('active');
       }
 
@@ -2523,20 +2561,22 @@
           document.getElementById('copyModal').classList.remove('active');
       }
 
-      function showCopySuccessMessage() {
+      // 💡 MODIFICACIÓN DE showCopySuccessMessage
+      function showCopySuccessMessage(format = 'AceStream') {
           const messageElement = document.getElementById('copyMessage');
+          messageElement.textContent = `${format} URL copiada con éxito!`; 
           messageElement.classList.add('show');
           setTimeout(() => {
               messageElement.classList.remove('show');
           }, 2000);
       }
 
-      async function copyUrlToClipboard(acestreamId) {
-          const url = `acestream://${acestreamId}`;
+      // 💡 MODIFICACIÓN DE copyUrlToClipboard
+      async function copyUrlToClipboard(urlToCopy, format) {
           try {
-              await navigator.clipboard.writeText(url);
+              await navigator.clipboard.writeText(urlToCopy);
               hideCopyModal();
-              showCopySuccessMessage();
+              showCopySuccessMessage(format); 
           } catch (err) {
               console.error('Error al copiar el texto: ', err);
               alert('No se pudo copiar la URL. Por favor, hazlo manualmente.');

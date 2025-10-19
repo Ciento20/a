@@ -88,7 +88,7 @@
         background: var(--card-bg);
         border-radius: var(--radius-md);
         padding: 1rem;
-        margin-bottom: 1rem;
+        margin-bottom: 0rem;
         box-shadow: var(--shadow-sm);
         display: flex;
         flex-direction: column;
@@ -326,7 +326,7 @@
       .update-notification {
         color: var(--primary);
         background: var(--primary-light);
-        padding: 0.5rem;
+        padding: 0.2rem;
         border-radius: var(--radius-sm);
         margin-bottom: 1rem;
         text-align: center;
@@ -960,26 +960,21 @@
       .copy-link-btn {
           display: none; 
       }
+      
+      .event-date-header {
+        font-size: 1.2rem; 
+        font-weight: 600; 
+        color: var(--text); 
+        margin-top: 1rem; 
+        margin-bottom: 0.5rem; 
+        padding-left: 0.5rem;
+        border-left: 4px solid var(--primary); /* Estilo visual mejorado para la fecha */
+        padding-left: 10px;
+      }
     </style>
 </head>
 <body>
     <div class="main-container">
-        <div class="player-section" id="playerSection" style="display: none;">
-            <div class="player-container" id="playerContainer">
-                <iframe id="videoFrame" allowfullscreen></iframe>
-                <iframe id="scheduleFrame" allowfullscreen></iframe>
-            </div>
-            <div class="player-controls" id="playerControls">
-                <span class="channel-info" id="channelInfo"></span>
-                <button class="control-btn" id="prevChannelBtn" title="Canal anterior">◄</button>
-                <button class="control-btn" id="nextChannelBtn" title="Canal siguiente">►</button>
-                <button class="control-btn" id="toggleStickyBtn" title="Fijar reproductor">⛊</button>
-                <button class="control-btn" id="favoriteBtn" title="Guardar favorito">★</button>
-                <button class="control-btn" id="closePlayerBtn" title="Cerrar">×</button>
-                <span class="channel-number-display" id="channelNumberDisplay"></span>
-            </div>
-        </div>
-        
         <div class="search-filters">
             <div class="search-box">
                 <input type="text" id="searchInput" placeholder="Buscar canales, ID (ej: #123)" autofocus>
@@ -1914,11 +1909,17 @@
                 'tenis': ['tenis', 'wimbledon', 'roland garros', 'us open', 'atp', 'wta'],
                 'boxeo': ['boxeo', 'boxing', 'lucha', 'ufc', 'mma'],
                 'ciclismo': ['ciclismo', 'tour', 'giro', 'vuelta'],
+                // OPTIMIZACIÓN: Se usa la lógica de f1 para motorsport
                 'motorsport': ['motor', 'f1', 'fórmula', 'formula', 'moto', 'motociclismo', 'dakar', 'rally', 'motogp', 'wrc', 'nascar'],
                 'f1': ['f1', 'fórmula 1', 'formula 1', 'formulaone', 'fórmulaone']
             };
             
-            const targetTerms = sportSearchTerms[normalizedSportFilter] || [normalizedSportFilter];
+            let targetTerms = sportSearchTerms[normalizedSportFilter] || [normalizedSportFilter];
+            
+            // Si el filtro es motorsport, se añaden los términos de f1 para que funcione con ambos botones (f1 es subconjunto de motorsport)
+            if (normalizedSportFilter === 'motorsport' && sportSearchTerms['f1']) {
+                targetTerms = targetTerms.concat(sportSearchTerms['f1']);
+            }
             
             filteredChannels = filteredChannels.filter(channel => {
                 const normalizedName = normalizeText(channel.name);
@@ -2048,7 +2049,7 @@
 
           const groupRegexes = {
               'DAZN F1': /DAZN F1/i,
-              'DAZN': /DAZN/i,
+              'DAZN': /DAZN(?!.*F1|.*La Liga)/i, // Excluir F1 y La Liga para DAZN general
               'DAZN La Liga': /DAZN La Liga/i,
               'Liga de Campeones': /Liga de Campeones/i,
               'La Liga Hypermotion': /La Liga Hypermotion/i,
@@ -2057,7 +2058,7 @@
               'M+ Deportes': /M\+ Deportes/i,
               'M+ Plus': /M\+ Plus/i,
               'M+ Golf': /M\+ Golf/i,
-              'M+': /M\+/i,
+              'M+': /M\+(?!.*La Liga|.*Vamos|.*Deportes|.*Plus|.*Golf|.*Liga de Campeones)/i, // M+ Genérico (ajustado)
               '★EUROSPORT': /★EUROSPORT/i,
           };
           
@@ -2066,11 +2067,20 @@
 
           // 1. CREAR GRUPOS DE EVENTO y mapear nombres de canal
           eventChannels.forEach(channel => {
-              const eventGroupKey = `${channel.event.date}-${channel.event.time}-${channel.event.competition}-${channel.event.match}`;
+              // CLAVE DE AGRUPACIÓN: Fecha + Competición + Partido
+              const eventGroupKey = `${channel.event.date}###${channel.event.competition}###${channel.event.match}`; 
               const normalizedChannelName = normalizeText(channel.name);
               
               if (!groups[eventGroupKey]) {
-                  groups[eventGroupKey] = { name: `${channel.event.competition}: ${channel.event.match}`, channels: [], time: channel.event.time, date: channel.event.date, isEvent: true, sportEmoji: channel.event.sportEmoji, sportName: channel.event.sportName };
+                  groups[eventGroupKey] = { 
+                    name: `${channel.event.competition}: ${channel.event.match}`, 
+                    channels: [], 
+                    time: channel.event.time, 
+                    date: channel.event.date, 
+                    isEvent: true, 
+                    sportEmoji: channel.event.sportEmoji, 
+                    sportName: channel.event.sportName 
+                  };
               }
               
               const isDuplicateInGroup = groups[eventGroupKey].channels.some(c => c.id === channel.id);
@@ -2116,9 +2126,6 @@
                       groupFound = true;
                   } else {
                       for (const groupName of groupOrder) {
-                          if (groupName === 'DAZN' && /DAZN La Liga/i.test(channel.name)) {
-                              continue;
-                          }
                           if (groupRegexes[groupName] && groupRegexes[groupName].test(channel.name)) {
                               if (!groups[groupName]) {
                                   groups[groupName] = { name: groupName, channels: [] };
@@ -2140,12 +2147,18 @@
               }
           });
 
+          // ORDENACIÓN DE GRUPOS
           const sortedGroupKeys = Object.keys(groups).sort((a, b) => {
               const groupA = groups[a];
               const groupB = groups[b];
 
               if (groupA.isEvent && groupB.isEvent) {
-                  return compareEventDates(groupA, groupB);
+                  // Agrupación de eventos: compara la fecha real (para asegurar que 'Hoy' va primero)
+                  const dateCompare = compareEventDates(groupA, groupB); 
+                  if (dateCompare !== 0) return dateCompare;
+                  
+                  // Luego por hora, competición y partido (usa las claves de agrupación)
+                  return a.localeCompare(b);
               }
 
               if (groupA.isEvent && !groupB.isEvent) return -1;
@@ -2168,6 +2181,8 @@
           }
           
           const fragment = document.createDocumentFragment();
+          let lastDateRendered = null; // Variable para rastrear la última fecha renderizada
+          
           sortedGroupKeys.forEach(groupKey => {
               const group = groups[groupKey];
               
@@ -2199,23 +2214,37 @@
                   return 0;
               });
               
+              // **************** MODIFICACIÓN INICIO: Nuevo encabezado de fecha ****************
+              if (group.isEvent) {
+                if (group.date !== lastDateRendered) {
+                  const dateHeaderElement = document.createElement('h3');
+                  dateHeaderElement.className = 'event-date-header'; 
+                  dateHeaderElement.textContent = group.date;
+                  fragment.appendChild(dateHeaderElement);
+                  lastDateRendered = group.date; 
+                }
+              } else {
+                  lastDateRendered = null; // Reiniciar si no es un grupo de eventos
+              }
+              // **************** MODIFICACIÓN FIN: Nuevo encabezado de fecha ****************
+
               const groupElement = document.createElement('div');
               groupElement.className = 'channel-group';
 
               let groupTitleContent;
               if (group.isEvent) {
+                  // **************** MODIFICACIÓN: Se elimina la fecha del encabezado del grupo ****************
                   groupTitleContent = `
                       <div style="display: flex; flex-direction: column; width: 100%;">
-                        <div style="display: flex; justify-content: space-between; width: 100%;">
-                          <div>${group.date}</div>
-                          <div class="group-title-emoji">${group.sportEmoji}</div>
-                        </div>
                         <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-                          <div style="margin-right: 10px;">${group.channels[0].event.time}</div>
+                          <div style="margin-right: 10px; font-weight: bold;">${group.channels[0].event.time}</div>
                           <div class="marquee-container" style="flex: 1;">
                             <div class="competition-text">${group.channels[0].event.competition}</div>
                           </div>
-                          <div style="margin-left: 10px;">${group.channels[0].event.match}</div>
+                          <div style="margin-left: 10px;">
+                            ${group.channels[0].event.match}
+                            <span class="group-title-emoji" style="margin-left: 10px;">${group.sportEmoji}</span>
+                          </div>
                         </div>
                       </div>
                   `;
@@ -2235,13 +2264,17 @@
           });
           channelsGrid.appendChild(fragment);
 
+          // OPTIMIZACIÓN: Solo se evalúa el marquee después de la renderización
           document.querySelectorAll('.competition-text').forEach(textElement => {
               const container = textElement.closest('.marquee-container');
-              if (container && textElement.scrollWidth > container.clientWidth) {
-                  textElement.classList.add('is-overflowing');
-              } else {
-                  textElement.classList.remove('is-overflowing');
-              }
+              // Se añade un pequeño retraso para asegurar que el DOM ha calculado el layout
+              setTimeout(() => {
+                  if (container && textElement.scrollWidth > container.clientWidth) {
+                      textElement.classList.add('is-overflowing');
+                  } else {
+                      textElement.classList.remove('is-overflowing');
+                  }
+              }, 0); 
           });
       }
 
@@ -2354,6 +2387,12 @@
           }, 500);
       }
       
+      /**
+       * Lógica de puntuación de estabilidad de canales optimizada.
+       * Premia una duración larga, penaliza una duración corta SÓLO si se cambia a un canal
+       * con el mismo nombre (indicando búsqueda de un enlace funcional) o si la duración fue muy corta.
+       * Si se cambia a un canal con nombre diferente, el canal anterior no se penaliza.
+       */
       function handleChannelPlay(channel) {
           const now = new Date().getTime();
 
@@ -2365,37 +2404,39 @@
               let rating = state.channelRatings[previousChannelId] !== undefined ? state.channelRatings[previousChannelId] : 2.5;
               let newRating = rating;
 
-              // NUEVA LÓGICA: Si se pulsa el mismo enlace, no se penaliza (se mantiene el rating actual)
-              if (previousChannelId === channel.id) {
-                  newRating = rating; // Mantiene el rating sin cambios
-              } else { 
-                  // Lógica de puntuación SOLO si se cambia a un canal diferente
-                  const previousName = previousChannelData ? previousChannelData.name.toLowerCase().trim() : '';
+              if (previousChannelId !== channel.id && previousChannelData) {
+                  const previousName = previousChannelData.name.toLowerCase().trim();
                   const currentName = channel.name.toLowerCase().trim();
-
+                  
+                  // Lógica de puntuación SÓLO si se cambia a un canal diferente
                   if (previousName === currentName) {
-                      // Mismo nombre (diferentes IDs), asume intento de cambio por fallo
+                      // Mismo nombre (diferentes IDs) -> Asume intento de cambio por fallo
                       if (duration >= (30 * 60)) {
-                          newRating += 1.5;
+                          newRating += 1.5; // Muy estable
                       } else if (duration >= (15 * 60)) {
-                          newRating -= 0.5;
+                          newRating += 0.5; // Estable
                       } else if (duration >= (5 * 60)) {
-                          newRating -= 1;
+                          newRating -= 1; // Falló relativamente pronto
                       } else if (duration >= 10) {
-                          newRating -= 1.5;
+                          newRating -= 1.5; // Falló muy pronto
+                      } else {
+                          newRating -= 2; // Fallo inmediato
                       }
                   } else {
-                      // Cambio a canal diferente, penaliza si la duración fue muy corta
+                      // Cambio a canal diferente
                       if (duration >= (30 * 60)) {
-                          newRating += 1.5;
+                          newRating += 1.5; // Se premia la duración, fue estable
                       } else {
                           // Si se cerró y se fue a otro canal en menos de 30 min, NO se resta al anterior.
-                          // Esto evita penalizar al canal anterior cuando el usuario simplemente quería cambiar.
+                          // Esto evita penalizar al canal anterior cuando el usuario simplemente quería cambiar de programa.
                           newRating = rating; 
                       }
                   }
+              } else if (previousChannelId === channel.id) {
+                  // Mismo enlace pulsado de nuevo (sin cambio de ID)
+                  newRating = rating; // Mantiene el rating sin cambios
               }
-
+              
               state.channelRatings[previousChannelId] = Math.max(1, Math.min(5, newRating));
               saveRatings();
               renderResults();
@@ -2469,7 +2510,7 @@
         const rgb = hexToRgb(color);
         document.documentElement.style.setProperty('--primary-rgb', `${rgb.r}, ${rgb.g}, ${rgb.b}`);
         document.documentElement.style.setProperty('--primary', color);
-        // MODIFICACIÓN: Color oscuro simple, ya que la función shadeColor era ineficiente/incorrecta.
+        // MODIFICACIÓN: Color oscuro simple (el color predeterminado es #1e50c7)
         document.documentElement.style.setProperty('--primary-dark', color === '#2563eb' ? '#1e50c7' : color); 
         updatePrimaryLightColor();
         document.querySelectorAll('.color-option').forEach(btn => {
@@ -2486,8 +2527,6 @@
         const b = parseInt(hex.slice(5, 7), 16);
         return { r, g, b };
       }
-
-      // FUNCIÓN shadeColor ELIMINADA por ineficiencia/error.
 
       function updatePrimaryLightColor() {
         const rgb = hexToRgb(state.primaryColor);
@@ -2664,7 +2703,6 @@
           loadInitialChannels();
       });
 
-      // Se eliminó la lógica redundante y en conflicto de mousedown/mouseup/touchstart/touchend para detección de tap.
     </script>
 </body>
 </html>

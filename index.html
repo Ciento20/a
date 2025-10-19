@@ -1166,7 +1166,7 @@
           if (index > -1) {
               state.favorites.splice(index, 1);
           } else {
-              state.favorites.push(channelId);
+              state.favorites.push(index);
           }
           localStorage.setItem('favorites', JSON.stringify(state.favorites));
           
@@ -1982,6 +1982,100 @@
           return match ? parseInt(match[0], 10) : 1;
       }
 
+      /**
+       * NUEVA FUNCIÓN: Formatea la fecha del evento a '(Día de la semana) (XX) de (Mes)'
+       * @param {string} dateString - Cadena de fecha original (ej: "Hoy", "Mañana", "19/10/2025")
+       * @returns {string} Fecha formateada
+       */
+      function formatEventDate(dateString) {
+          if (dateString.toLowerCase() === 'hoy') {
+              return 'Hoy';
+          }
+          if (dateString.toLowerCase() === 'mañana') {
+              return 'Mañana';
+          }
+
+          const today = new Date();
+          const date = parseDateString(dateString, today);
+          
+          if (isNaN(date.getTime())) {
+              return dateString; 
+          }
+
+          const weekdays = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+          const months = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+
+          const dayOfWeek = weekdays[date.getDay()];
+          const dayOfMonth = date.getDate();
+          const monthName = months[date.getMonth()];
+          
+          // Comprueba si la fecha es igual a la actual (solo día, mes, año)
+          const isToday = date.getDate() === today.getDate() &&
+                          date.getMonth() === today.getMonth() &&
+                          date.getFullYear() === today.getFullYear();
+          
+          if (isToday) {
+              return 'Hoy';
+          }
+          
+          return `${dayOfWeek} ${dayOfMonth} de ${monthName}`;
+      }
+
+      function compareEventDates(eventA, eventB) {
+          const today = new Date();
+          
+          // Normaliza 'Hoy' y 'Mañana' para la comparación
+          const dateStringA = eventA.date.toLowerCase();
+          const dateStringB = eventB.date.toLowerCase();
+          
+          const isTodayA = dateStringA === 'hoy';
+          const isTodayB = dateStringB === 'hoy';
+          const isTomorrowA = dateStringA === 'mañana';
+          const isTomorrowB = dateStringB === 'mañana';
+          
+          if (isTodayA && !isTodayB) return -1;
+          if (!isTodayA && isTodayB) return 1;
+          if (isTodayA && isTodayB) return eventA.time.localeCompare(eventB.time); 
+
+          if (isTomorrowA && !isTomorrowB) return -1;
+          if (!isTomorrowA && isTomorrowB) return 1;
+          if (isTomorrowA && isTomorrowB) return eventA.time.localeCompare(eventB.time);
+          
+          if (isTodayA || isTodayB || isTomorrowA || isTomorrowB) {
+              const dateA = isTodayA ? today : (isTomorrowA ? new Date(today.getTime() + 86400000) : parseDateString(dateStringA, today));
+              const dateB = isTodayB ? today : (isTomorrowB ? new Date(today.getTime() + 86400000) : parseDateString(dateStringB, today));
+
+              if (dateA.getTime() !== dateB.getTime()) {
+                  return dateA.getTime() - dateB.getTime();
+              }
+              return eventA.time.localeCompare(eventB.time);
+          }
+          
+          const dateA = parseDateString(eventA.date, today);
+          const dateB = parseDateString(eventB.date, today);
+
+          if (dateA.getTime() !== dateB.getTime()) {
+              return dateA.getTime() - dateB.getTime();
+          }
+
+          return eventA.time.localeCompare(eventB.time);
+      }
+
+      function parseDateString(dateString, today) {
+          if (dateString.toLowerCase() === 'mañana') {
+              const tomorrow = new Date(today);
+              tomorrow.setDate(today.getDate() + 1);
+              return tomorrow;
+          }
+          const parts = dateString.split('/');
+          if (parts.length === 3) {
+              // Asume formato DD/MM/AAAA. Año actual si no está presente.
+              const year = parts[2] ? parseInt(parts[2], 10) : today.getFullYear(); 
+              return new Date(year, parseInt(parts[1]) - 1, parseInt(parts[0]));
+          }
+          return today;
+      }
+
       function renderResults() {
           const filteredChannels = filterChannels();
           const channelsGrid = document.getElementById('channelsGrid');
@@ -2216,13 +2310,14 @@
               
               // **************** MODIFICACIÓN INICIO: Nuevo encabezado de fecha ****************
               if (group.isEvent) {
-                if (group.date !== lastDateRendered) {
-                  const dateHeaderElement = document.createElement('h3');
-                  dateHeaderElement.className = 'event-date-header'; 
-                  dateHeaderElement.textContent = group.date;
-                  fragment.appendChild(dateHeaderElement);
-                  lastDateRendered = group.date; 
-                }
+                  const formattedDate = formatEventDate(group.date); // <-- APLICA EL NUEVO FORMATO
+                  if (formattedDate !== lastDateRendered) {
+                      const dateHeaderElement = document.createElement('h3');
+                      dateHeaderElement.className = 'event-date-header'; 
+                      dateHeaderElement.textContent = formattedDate;
+                      fragment.appendChild(dateHeaderElement);
+                      lastDateRendered = formattedDate; 
+                  }
               } else {
                   lastDateRendered = null; // Reiniciar si no es un grupo de eventos
               }
@@ -2233,7 +2328,7 @@
 
               let groupTitleContent;
               if (group.isEvent) {
-                  // **************** MODIFICACIÓN: Se elimina la fecha del encabezado del grupo ****************
+                  // Se elimina la fecha del encabezado del grupo
                   groupTitleContent = `
                       <div style="display: flex; flex-direction: column; width: 100%;">
                         <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
@@ -2243,7 +2338,7 @@
                           </div>
                           <div style="margin-left: 10px;">
                             ${group.channels[0].event.match}
-                            <span class="group-title-emoji" style="margin-left: 10px;">${group.sportEmoji}</span>
+                            <span class="group-title-emoji" style="margin-left: 10px;">${group.channels[0].event.sportEmoji}</span>
                           </div>
                         </div>
                       </div>
@@ -2276,45 +2371,6 @@
                   }
               }, 0); 
           });
-      }
-
-      function compareEventDates(eventA, eventB) {
-          const today = new Date();
-          const isTodayA = eventA.date.toLowerCase() === 'hoy';
-          const isTodayB = eventB.date.toLowerCase() === 'hoy';
-
-          if (isTodayA && !isTodayB) return -1;
-          if (!isTodayA && isTodayB) return 1;
-
-          if (isTodayA && isTodayB) {
-              const timeA = eventA.time.replace(':', '');
-              const timeB = eventB.time.replace(':', '');
-              return parseInt(timeA, 10) - parseInt(timeB, 10);
-          }
-
-          const dateA = parseDateString(eventA.date, today);
-          const dateB = parseDateString(eventB.date, today);
-
-          if (dateA.getTime() !== dateB.getTime()) {
-              return dateA.getTime() - dateB.getTime();
-          }
-
-          const timeA = eventA.time.replace(':', '');
-          const timeB = eventB.time.replace(':', '');
-          return parseInt(timeA, 10) - parseInt(timeB, 10);
-      }
-
-      function parseDateString(dateString, today) {
-          if (dateString.toLowerCase() === 'mañana') {
-              const tomorrow = new Date(today);
-              tomorrow.setDate(today.getDate() + 1);
-              return tomorrow;
-          }
-          const parts = dateString.split('/');
-          if (parts.length === 3) {
-              return new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
-          }
-          return today;
       }
 
       function createChannelCard(channel) {

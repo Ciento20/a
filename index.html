@@ -1191,7 +1191,7 @@
       }
       // ********************** FIN NUEVA FUNCIÓN DE DESCARGA M3U **********************
       
-      // 💡 FUNCIÓN DE EXPORTACIÓN A M3U MODIFICADA (Añadido Set de deduplicación)
+      // 💡 FUNCIÓN DE EXPORTACIÓN A M3U MODIFICADA (Añadido Set de deduplicación y Lógica de Ordenación)
       /**
        * Genera el contenido del archivo M3U para la lista de reproducción de VLC.
        * Incluye todos los canales que tengan un ID válido (AceStream ID de 40 caracteres) y se asegura de que no se repitan.
@@ -1200,45 +1200,121 @@
       function exportToM3U() {
           const header = '#EXTM3U\n';
           let content = '';
-          const exportedIds = new Set(); // <--- SET para la deduplicación
+          const exportedIds = new Set();
+          
+          // --- NUEVA LÓGICA DE FILTRADO Y DEDUPLICACIÓN ---
+          const allChannels = state.channelsData.filter(c => c.id && c.id.length === 40);
+          const uniqueChannelsMap = new Map();
+          
+          // Prioridad: GIST > SHICKAT > ELCANO > EVENTS
+          const sourcePriorityMap = { 'gist': 3, 'shickat': 2, 'elcano': 1, 'events': 0 }; 
 
-          // MODIFICACIÓN: Se elimina el filtro 'c.source !== 'events'' para incluir todos los canales.
-          const channelsToExport = state.channelsData.filter(c => 
-              c.id && c.id.length === 40
-          );
+          allChannels.forEach(channel => {
+              const pid = extractPID(channel.id);
+              
+              if (exportedIds.has(pid)) { 
+                  // Si el PID ya existe, verificar si la nueva fuente tiene mayor prioridad.
+                  const existingChannel = uniqueChannelsMap.get(pid);
+                  if (sourcePriorityMap[channel.source] > (sourcePriorityMap[existingChannel.source] || 0)) {
+                       uniqueChannelsMap.set(pid, channel);
+                  }
+              } else {
+                  uniqueChannelsMap.set(pid, channel);
+                  exportedIds.add(pid);
+              }
+          });
 
+          let channelsToExport = Array.from(uniqueChannelsMap.values());
+          
           if (channelsToExport.length === 0) {
               showStatusMessage("No hay canales válidos para exportar.", "warning");
               return null;
           }
+          
+          // --- LÓGICA DE ORDENACIÓN SOLICITADA ---
+          const groupOrder = [
+              'DAZN F1', 
+              'DAZN',
+              'DAZN La Liga',
+              'M+ La Liga', 
+              'Liga de Campeones', 
+              'La Liga Hypermotion', 
+              'M+ Vamos', 
+              'M+ Deportes',
+              'M+ Plus', 
+              'M+ Golf', 
+              'M+',
+              '★EUROSPORT'
+          ];
+          
+          // Regexes simplificados para la ordenación M3U
+          const groupRegexes = {
+              'DAZN F1': /DAZN F1/i,
+              'DAZN': /DAZN(?!.*F1|.*La Liga)/i,
+              'DAZN La Liga': /DAZN La Liga/i,
+              'Liga de Campeones': /Liga de Campeones/i,
+              'La Liga Hypermotion': /La Liga Hypermotion/i,
+              'M+ La Liga': /M\+ La Liga/i,
+              'M+ Vamos': /M\+ Vamos/i,
+              'M+ Deportes': /M\+ Deportes/i,
+              'M+ Plus': /M\+ Plus/i,
+              'M+ Golf': /M\+ Golf/i,
+              'M+': /M\+(?!.*La Liga|.*Vamos|.*Deportes|.*Plus|.*Golf|.*Liga de Campeones)/i,
+              '★EUROSPORT': /★EUROSPORT/i,
+          };
+          
+          function getChannelGroupIndex(channelName) {
+              for (let i = 0; i < groupOrder.length; i++) {
+                  const groupName = groupOrder[i];
+                  if (groupRegexes[groupName] && groupRegexes[groupName].test(channelName)) {
+                      return i;
+                  }
+              }
+              // Agrupa los canales de 'events' y 'otros' al final
+              return groupOrder.length; 
+          }
+
+          channelsToExport.sort((a, b) => {
+              const groupIndexA = getChannelGroupIndex(a.name);
+              const groupIndexB = getChannelGroupIndex(b.name);
+              
+              if (groupIndexA !== groupIndexB) {
+                  return groupIndexA - groupIndexB;
+              }
+
+              // Si están en el mismo grupo, ordenar por número/calidad/nombre
+              const nameNumberA = getChannelNumberFromName(a.name);
+              const nameNumberB = getChannelNumberFromName(b.name);
+              if (nameNumberA !== nameNumberB) {
+                  return nameNumberA - nameNumberB;
+              }
+              
+              const qualityMap = { '4K': 5, 'FHD': 4, 'HD': 3, 'SD': 2, 'N/A': 1, 'UHD': 6 };
+              const qualityA = qualityMap[standardizeQuality(a.quality)] || 0;
+              const qualityB = qualityMap[standardizeQuality(b.quality)] || 0;
+              if (qualityB !== qualityA) {
+                  return qualityB - qualityA;
+              }
+
+              return a.name.localeCompare(b.name);
+          });
+
+          // --- FIN LÓGICA DE ORDENACIÓN SOLICITADA ---
 
           channelsToExport.forEach(channel => {
-              const pid = extractPID(channel.id); 
-              
-              // ******************* LÓGICA DE DEDUPLICACIÓN *******************
-              if (exportedIds.has(pid)) { 
-                  return; // Saltar si el PID ya ha sido exportado
-              }
-              exportedIds.add(pid);
-              // ***************************************************************
-              
+              const pid = extractPID(channel.id);
               const vlcUrl = convertToVLCUrl(pid);
               
-              // Atributo 'group-title' con la fuente
-              const groupTitle = `group-title="${channel.source.toUpperCase()}"`; 
+              // Obtiene el nombre del grupo para el atributo group-title
+              const groupTitleName = groupOrder[getChannelGroupIndex(channel.name)] || (channel.source === 'events' ? 'Eventos' : 'Otros');
               
-              // Atributo 'tvg-id' con el AceStream ID (para herramientas avanzadas)
+              const groupTitle = `group-title="${groupTitleName}"`; 
               const tvgId = `tvg-id="${channel.id}"`; 
-              
-              // Atributo 'tvg-logo' con la calidad
               const tvgLogo = `tvg-logo="${standardizeQuality(channel.quality)}"`;
-
-              // Atributo 'tvg-name'
               const tvgName = `tvg-name="${channel.name}"`;
               
-              // La línea #EXTINF con la información del canal. Se añade la fuente al nombre para diferenciar en VLC.
+              // Se añade la fuente al nombre para diferenciar si es necesario
               content += `#EXTINF:-1 ${groupTitle} ${tvgId} ${tvgLogo} ${tvgName},[${channel.source.toUpperCase()}] ${channel.name}\n`; 
-              // La URL compatible con VLC
               content += `${vlcUrl}\n`; 
           });
 

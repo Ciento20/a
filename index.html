@@ -1058,7 +1058,18 @@
                     </div>
                     <button class="modal__btn" onclick="resetRatings()">Reiniciar</button>
                 </div>
-            </div>
+                
+                <div class="settings-item">
+                    <div class="settings-item__info">
+                        <span class="settings-icon">📤</span>
+                        <div>
+                            <span class="settings-label">Exportar a VLC (M3U)</span>
+                            <span class="settings-description">Copia la lista de canales no-evento al portapapeles en formato M3U</span>
+                        </div>
+                    </div>
+                    <button class="modal__btn" id="exportVlcM3UBtn">Exportar</button>
+                </div>
+                </div>
             
             <div class="modal__actions">
                 <button class="modal__btn modal__btn--primary" id="closeSettingsBtn">Cerrar</button>
@@ -1160,6 +1171,52 @@
           return `http://vlc.shickat.me:8000/pid/${pid}/stream.mp4`;
       }
       // 💡 FIN NUEVAS FUNCIONES DE CONVERSIÓN VLC
+      
+      // 💡 NUEVA FUNCIÓN DE EXPORTACIÓN A M3U
+      /**
+       * Genera el contenido del archivo M3U para la lista de reproducción de VLC.
+       * Solo incluye canales que NO son de evento ('events') y que tienen un ID válido.
+       * @returns {string} Contenido M3U.
+       */
+      function exportToM3U() {
+          const header = '#EXTM3U\n';
+          let content = '';
+
+          // Filtra los canales que no son de evento ('events') y que tienen un ID de AceStream (40 caracteres)
+          const channelsToExport = state.channelsData.filter(c => 
+              c.source !== 'events' && c.id && c.id.length === 40
+          );
+
+          if (channelsToExport.length === 0) {
+              showStatusMessage("No hay canales no-evento válidos para exportar.", "warning");
+              return null;
+          }
+
+          channelsToExport.forEach(channel => {
+              const pid = extractPID(channel.id); 
+              const vlcUrl = convertToVLCUrl(pid);
+              
+              // Atributo 'group-title' con la fuente
+              const groupTitle = `group-title="${channel.source.toUpperCase()}"`; 
+              
+              // Atributo 'tvg-id' con el AceStream ID (para herramientas avanzadas)
+              const tvgId = `tvg-id="${channel.id}"`; 
+              
+              // Atributo 'tvg-logo' con la calidad
+              const tvgLogo = `tvg-logo="${standardizeQuality(channel.quality)}"`;
+
+              // Atributo 'tvg-name'
+              const tvgName = `tvg-name="${channel.name}"`;
+              
+              // La línea #EXTINF con la información del canal
+              content += `#EXTINF:-1 ${groupTitle} ${tvgId} ${tvgLogo} ${tvgName},${channel.name}\n`;
+              // La URL compatible con VLC
+              content += `${vlcUrl}\n`; 
+          });
+
+          return header + content;
+      }
+      // 💡 FIN NUEVA FUNCIÓN DE EXPORTACIÓN A M3U
 
       function trackFirstSeen(channelId) {
           if (!state.firstSeen[channelId]) {
@@ -2682,6 +2739,7 @@
           const clearButton = document.getElementById('clearEmojiFilters');
           const copyModal = document.getElementById('copyModal');
           const cancelCopyBtn = document.getElementById('cancelCopyBtn');
+          const exportVlcM3UBtn = document.getElementById('exportVlcM3UBtn'); // Nuevo botón
 
           cleanupOldFirstSeenRecords();
 
@@ -2744,7 +2802,24 @@
                   hideCopyModal();
               }
           });
-
+          
+          // ****************** LISTENER PARA EXPORTAR M3U ******************
+          if (exportVlcM3UBtn) {
+              exportVlcM3UBtn.addEventListener('click', async () => {
+                  const m3uContent = exportToM3U();
+                  if (m3uContent) {
+                      try {
+                          await navigator.clipboard.writeText(m3uContent);
+                          document.getElementById('settingsModal').classList.remove('modal--active');
+                          showCopySuccessMessage('Lista M3U (VLC)');
+                      } catch (err) {
+                          console.error('Error al copiar el texto M3U: ', err);
+                          alert('No se pudo copiar la lista M3U. Por favor, revisa la consola para el contenido.');
+                      }
+                  }
+              });
+          }
+          // ****************** FIN LISTENER EXPORTAR M3U ******************
 
           document.getElementById('filterDAZN').addEventListener('click', () => applyFilter('dazn'));
           document.getElementById('filterMovistar').addEventListener('click', () => applyFilter('m+'));

@@ -1191,7 +1191,7 @@
       }
       // ********************** FIN NUEVA FUNCIÓN DE DESCARGA M3U **********************
       
-      // 💡 FUNCIÓN DE EXPORTACIÓN A M3U MODIFICADA (Añadido Set de deduplicación y Lógica de Ordenación)
+      // 💡 FUNCIÓN DE EXPORTACIÓN A M3U MODIFICADA (Eliminación del prefijo de fuente del nombre)
       /**
        * Genera el contenido del archivo M3U para la lista de reproducción de VLC.
        * Incluye todos los canales que tengan un ID válido (AceStream ID de 40 caracteres) y se asegura de que no se repitan.
@@ -1202,7 +1202,7 @@
           let content = '';
           const exportedIds = new Set();
           
-          // --- NUEVA LÓGICA DE FILTRADO Y DEDUPLICACIÓN ---
+          // --- LÓGICA DE FILTRADO Y DEDUPLICACIÓN ---
           const allChannels = state.channelsData.filter(c => c.id && c.id.length === 40);
           const uniqueChannelsMap = new Map();
           
@@ -1313,8 +1313,8 @@
               const tvgLogo = `tvg-logo="${standardizeQuality(channel.quality)}"`;
               const tvgName = `tvg-name="${channel.name}"`;
               
-              // Se añade la fuente al nombre para diferenciar si es necesario
-              content += `#EXTINF:-1 ${groupTitle} ${tvgId} ${tvgLogo} ${tvgName},[${channel.source.toUpperCase()}] ${channel.name}\n`; 
+              // MODIFICACIÓN: Se usa SOLAMENTE `channel.name` en la línea #EXTINF
+              content += `#EXTINF:-1 ${groupTitle} ${tvgId} ${tvgLogo} ${tvgName},${channel.name}\n`; 
               content += `${vlcUrl}\n`; 
           });
 

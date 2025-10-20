@@ -1064,7 +1064,7 @@
                         <span class="settings-icon">📤</span>
                         <div>
                             <span class="settings-label">Exportar a VLC (M3U)</span>
-                            <span class="settings-description">Copia la lista de canales (permanentes y eventos) al portapapeles en formato M3U</span>
+                            <span class="settings-description">Descarga la lista de canales (permanentes y eventos) en formato M3U</span>
                         </div>
                     </div>
                     <button class="modal__btn" id="exportVlcM3UBtn">Exportar</button>
@@ -1217,6 +1217,30 @@
           return header + content;
       }
       // 💡 FIN FUNCIÓN DE EXPORTACIÓN A M3U MODIFICADA
+      
+      // 💡 NUEVA FUNCIÓN PARA DESCARGA DE ARCHIVO
+      /**
+       * Crea un blob a partir del contenido M3U y fuerza la descarga del archivo.
+       * @param {string} content - El contenido del archivo M3U.
+       */
+      function downloadM3UFile(content) {
+          const filename = 'playlist.m3u';
+          const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+          
+          // Crear un enlace temporal para la descarga
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = filename;
+          
+          // Simular el clic para iniciar la descarga
+          document.body.appendChild(a);
+          a.click();
+          
+          // Limpiar el enlace y el objeto URL
+          document.body.removeChild(a);
+          URL.revokeObjectURL(a.href);
+      }
+      // 💡 FIN NUEVA FUNCIÓN PARA DESCARGA DE ARCHIVO
 
       function trackFirstSeen(channelId) {
           if (!state.firstSeen[channelId]) {
@@ -2739,7 +2763,7 @@
           const clearButton = document.getElementById('clearEmojiFilters');
           const copyModal = document.getElementById('copyModal');
           const cancelCopyBtn = document.getElementById('cancelCopyBtn');
-          const exportVlcM3UBtn = document.getElementById('exportVlcM3UBtn'); // Nuevo botón
+          const exportVlcM3UBtn = document.getElementById('exportVlcM3UBtn'); // Botón de Exportar
 
           cleanupOldFirstSeenRecords();
 
@@ -2803,23 +2827,20 @@
               }
           });
           
-          // ****************** LISTENER PARA EXPORTAR M3U ******************
+          // ****************** LISTENER PARA EXPORTAR M3U (MODIFICADO A DESCARGA TXT) ******************
           if (exportVlcM3UBtn) {
-              exportVlcM3UBtn.addEventListener('click', async () => {
+              exportVlcM3UBtn.addEventListener('click', () => {
                   const m3uContent = exportToM3U();
                   if (m3uContent) {
-                      try {
-                          await navigator.clipboard.writeText(m3uContent);
-                          document.getElementById('settingsModal').classList.remove('modal--active');
-                          showCopySuccessMessage('Lista M3U (VLC)');
-                      } catch (err) {
-                          console.error('Error al copiar el texto M3U: ', err);
-                          alert('No se pudo copiar la lista M3U. Por favor, revisa la consola para el contenido.');
-                      }
+                      // 💡 LLAMADA A LA NUEVA FUNCIÓN DE DESCARGA
+                      downloadM3UFile(m3uContent); 
+                      
+                      document.getElementById('settingsModal').classList.remove('modal--active');
+                      showStatusMessage("Archivo 'playlist.m3u' (TXT) descargado.", "success");
                   }
               });
           }
-          // ****************** FIN LISTENER EXPORTAR M3U ******************
+          // ****************** FIN LISTENER EXPORTAR M3U (MODIFICADO) ******************
 
           document.getElementById('filterDAZN').addEventListener('click', () => applyFilter('dazn'));
           document.getElementById('filterMovistar').addEventListener('click', () => applyFilter('m+'));

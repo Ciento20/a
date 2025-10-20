@@ -1064,7 +1064,7 @@
                         <span class="settings-icon">📤</span>
                         <div>
                             <span class="settings-label">Exportar a VLC (M3U)</span>
-                            <span class="settings-description">Copia la lista de canales (permanentes y eventos) al portapapeles en formato M3U</span>
+                            <span class="settings-description">Descarga la lista de canales (permanentes y eventos) en formato M3U</span>
                         </div>
                     </div>
                     <button class="modal__btn" id="exportVlcM3UBtn">Exportar</button>
@@ -1172,15 +1172,35 @@
       }
       // 💡 FIN NUEVAS FUNCIONES DE CONVERSIÓN VLC
       
-      // 💡 FUNCIÓN DE EXPORTACIÓN A M3U MODIFICADA
+      // ********************** NUEVA FUNCIÓN DE DESCARGA M3U **********************
+      /**
+       * Crea un archivo con el contenido M3U y lo fuerza a descargar.
+       * @param {string} content - El contenido de la lista M3U.
+       */
+      function downloadM3UFile(content) {
+          const blob = new Blob([content], { type: 'application/x-mpegurl' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          // Se asegura de que el nombre del archivo tenga la extensión .m3u
+          a.download = 'lista_canales.m3u'; 
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url); // Libera el objeto URL
+      }
+      // ********************** FIN NUEVA FUNCIÓN DE DESCARGA M3U **********************
+      
+      // 💡 FUNCIÓN DE EXPORTACIÓN A M3U MODIFICADA (Añadido Set de deduplicación)
       /**
        * Genera el contenido del archivo M3U para la lista de reproducción de VLC.
-       * Incluye todos los canales que tengan un ID válido (AceStream ID de 40 caracteres).
+       * Incluye todos los canales que tengan un ID válido (AceStream ID de 40 caracteres) y se asegura de que no se repitan.
        * @returns {string} Contenido M3U.
        */
       function exportToM3U() {
           const header = '#EXTM3U\n';
           let content = '';
+          const exportedIds = new Set(); // <--- SET para la deduplicación
 
           // MODIFICACIÓN: Se elimina el filtro 'c.source !== 'events'' para incluir todos los canales.
           const channelsToExport = state.channelsData.filter(c => 
@@ -1194,6 +1214,14 @@
 
           channelsToExport.forEach(channel => {
               const pid = extractPID(channel.id); 
+              
+              // ******************* LÓGICA DE DEDUPLICACIÓN *******************
+              if (exportedIds.has(pid)) { 
+                  return; // Saltar si el PID ya ha sido exportado
+              }
+              exportedIds.add(pid);
+              // ***************************************************************
+              
               const vlcUrl = convertToVLCUrl(pid);
               
               // Atributo 'group-title' con la fuente
@@ -1388,7 +1416,10 @@
             otherChannels.forEach(channel => {
                 if (channel.source === source) {
                     if (!eventIds.has(channel.id)) {
-                        uniqueOtherChannelsMap.set(channel.id, channel);
+                        // Prioriza la primera aparición por ID. La iteración por orderedOtherSources se encarga de la priorización por fuente (aunque elcano ya está ordenado al final de la lista)
+                        if (!uniqueOtherChannelsMap.has(channel.id)) { 
+                           uniqueOtherChannelsMap.set(channel.id, channel);
+                        }
                     }
                 }
             });
@@ -2803,18 +2834,19 @@
               }
           });
           
-          // ****************** LISTENER PARA EXPORTAR M3U ******************
+          // ****************** LISTENER PARA EXPORTAR M3U (MODIFICADO PARA DESCARGA) ******************
           if (exportVlcM3UBtn) {
-              exportVlcM3UBtn.addEventListener('click', async () => {
+              exportVlcM3UBtn.addEventListener('click', () => {
                   const m3uContent = exportToM3U();
                   if (m3uContent) {
                       try {
-                          await navigator.clipboard.writeText(m3uContent);
+                          // NUEVO COMPORTAMIENTO: Descargar el archivo M3U
+                          downloadM3UFile(m3uContent); 
                           document.getElementById('settingsModal').classList.remove('modal--active');
-                          showCopySuccessMessage('Lista M3U (VLC)');
+                          showStatusMessage("Archivo 'lista_canales.m3u' descargado. ¡Listo para VLC! 📥", "success");
                       } catch (err) {
-                          console.error('Error al copiar el texto M3U: ', err);
-                          alert('No se pudo copiar la lista M3U. Por favor, revisa la consola para el contenido.');
+                          console.error('Error al intentar descargar el archivo M3U: ', err);
+                          showStatusMessage("Error al descargar la lista M3U. Revisa la consola.", "error");
                       }
                   }
               });

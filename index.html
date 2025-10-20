@@ -1064,7 +1064,7 @@
                         <span class="settings-icon">📤</span>
                         <div>
                             <span class="settings-label">Exportar a VLC (M3U)</span>
-                            <span class="settings-description">Copia la lista de canales no-evento al portapapeles en formato M3U</span>
+                            <span class="settings-description">Copia la lista de canales (permanentes y eventos) al portapapeles en formato M3U</span>
                         </div>
                     </div>
                     <button class="modal__btn" id="exportVlcM3UBtn">Exportar</button>
@@ -1172,23 +1172,23 @@
       }
       // 💡 FIN NUEVAS FUNCIONES DE CONVERSIÓN VLC
       
-      // 💡 NUEVA FUNCIÓN DE EXPORTACIÓN A M3U
+      // 💡 FUNCIÓN DE EXPORTACIÓN A M3U MODIFICADA
       /**
        * Genera el contenido del archivo M3U para la lista de reproducción de VLC.
-       * Solo incluye canales que NO son de evento ('events') y que tienen un ID válido.
+       * Incluye todos los canales que tengan un ID válido (AceStream ID de 40 caracteres).
        * @returns {string} Contenido M3U.
        */
       function exportToM3U() {
           const header = '#EXTM3U\n';
           let content = '';
 
-          // Filtra los canales que no son de evento ('events') y que tienen un ID de AceStream (40 caracteres)
+          // MODIFICACIÓN: Se elimina el filtro 'c.source !== 'events'' para incluir todos los canales.
           const channelsToExport = state.channelsData.filter(c => 
-              c.source !== 'events' && c.id && c.id.length === 40
+              c.id && c.id.length === 40
           );
 
           if (channelsToExport.length === 0) {
-              showStatusMessage("No hay canales no-evento válidos para exportar.", "warning");
+              showStatusMessage("No hay canales válidos para exportar.", "warning");
               return null;
           }
 
@@ -1208,15 +1208,15 @@
               // Atributo 'tvg-name'
               const tvgName = `tvg-name="${channel.name}"`;
               
-              // La línea #EXTINF con la información del canal
-              content += `#EXTINF:-1 ${groupTitle} ${tvgId} ${tvgLogo} ${tvgName},${channel.name}\n`;
+              // La línea #EXTINF con la información del canal. Se añade la fuente al nombre para diferenciar en VLC.
+              content += `#EXTINF:-1 ${groupTitle} ${tvgId} ${tvgLogo} ${tvgName},[${channel.source.toUpperCase()}] ${channel.name}\n`; 
               // La URL compatible con VLC
               content += `${vlcUrl}\n`; 
           });
 
           return header + content;
       }
-      // 💡 FIN NUEVA FUNCIÓN DE EXPORTACIÓN A M3U
+      // 💡 FIN FUNCIÓN DE EXPORTACIÓN A M3U MODIFICADA
 
       function trackFirstSeen(channelId) {
           if (!state.firstSeen[channelId]) {

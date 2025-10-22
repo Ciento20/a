@@ -975,6 +975,37 @@
       .hide-event-details .event-date-header {
           display: none !important; 
       }
+      
+      /* Estilos para el botón flotante de favoritos */
+      .floating-save-button {
+          position: fixed;
+          bottom: 20px; 
+          right: 20px;
+          width: 50px;
+          height: 50px;
+          border-radius: 50%;
+          background-color: var(--primary);
+          color: white;
+          border: none;
+          box-shadow: 0 4px 8px rgba(0,0,0,0.25);
+          font-size: 1.5rem;
+          font-weight: bold;
+          cursor: pointer;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          z-index: 1000;
+          opacity: 0;
+          visibility: hidden;
+          transform: scale(0.8);
+          transition: all 0.3s ease-in-out;
+      }
+      
+      .floating-save-button--active {
+          opacity: 1;
+          visibility: visible;
+          transform: scale(1);
+      }
     </style>
 </head>
 <body>
@@ -1108,6 +1139,8 @@
 
     <div class="copy-message" id="copyMessage">URL copiada con éxito!</div>
     
+    <button class="floating-save-button" id="saveFavoritesButton" onclick="disableFavoriteMode()">&#10003;</button>
+    
     <script>
       const state = {
           allChannels: [],
@@ -1155,7 +1188,7 @@
       };
       
       const MAX_RETRIES = 3;
-      const BACKUP_EXPIRY_HOURS = 6;
+      const BACKUP_EXPIRY_HOURS = 480; // 20 días * 24 horas/día = 480 horas
       const HISTORY_EXPIRY_HOURS = 168;
       const SPORT_FILTER_BUTTON_IDS = ['filterFutbol', 'filterBaloncesto', 'filterTenis', 'filterBoxeo', 'filterCiclismo', 'filterMotorsport', 'filterF1'];
       const BRAND_FILTER_BUTTON_IDS = ['filterDAZN', 'filterMovistar', 'filterEurosport', 'filterFavorites', 'clearEmojiFilters'];
@@ -1343,6 +1376,28 @@
           
           renderResults();
       }
+      
+      function updateFavoriteModeVisuals() {
+          const saveButton = document.getElementById('saveFavoritesButton');
+          if (state.isFavoriteMode) {
+              saveButton.classList.add('floating-save-button--active');
+              document.getElementById('filterFavorites').classList.add('filter-button--active');
+          } else {
+              saveButton.classList.remove('floating-save-button--active');
+              if (state.currentFilter !== 'favorites') {
+                   document.getElementById('filterFavorites').classList.remove('filter-button--active');
+              }
+          }
+          renderResults();
+      }
+      
+      function disableFavoriteMode() {
+          if (state.isFavoriteMode) {
+              state.isFavoriteMode = false;
+              updateFavoriteModeVisuals();
+              showStatusMessage("Selección de favoritos guardada.", "success");
+          }
+      }
 
       function toggleDarkMode() {
         state.darkMode = !state.darkMode;
@@ -1376,6 +1431,7 @@
         document.getElementById('searchInput').value = '';
         state.searchTerm = '';
         state.sportFilter = 'all'; 
+        disableFavoriteMode(); 
 
         clearAllFilterVisuals();
         
@@ -1398,6 +1454,7 @@
           document.getElementById('searchInput').value = '';
           state.searchTerm = '';
           state.currentFilter = 'all'; 
+          disableFavoriteMode(); 
 
           clearAllFilterVisuals();
           
@@ -2277,6 +2334,10 @@
           
           channelsGrid.innerHTML = '';
           
+          // Actualizar el botón flotante de favoritos
+          const saveButton = document.getElementById('saveFavoritesButton');
+          saveButton.classList.toggle('floating-save-button--active', state.isFavoriteMode);
+
           if (filteredChannels.length === 0) {
             channelsGrid.innerHTML = `
                 <div class="no-results">
@@ -2696,6 +2757,7 @@
 
       function handleSearchInput() {
         state.searchTerm = document.getElementById('searchInput').value.trim();
+        disableFavoriteMode();
         
         clearAllFilterVisuals();
         
@@ -2828,12 +2890,12 @@
               favoriteButton, 
               () => {
                   state.isFavoriteMode = !state.isFavoriteMode;
+                  updateFavoriteModeVisuals();
                   if (state.isFavoriteMode) {
                       showStatusMessage("Modo de selección de favoritos activado. Pulsa un canal para marcarlo/desmarcarlo.");
                   } else {
                       showStatusMessage("Modo de selección de favoritos desactivado.", "success");
                   }
-                  renderResults();
               }, 
               () => applyFilter('favorites')
           );
@@ -2853,6 +2915,10 @@
           window.addEventListener('click', (event) => {
               if (event.target === copyModal) {
                   hideCopyModal();
+              }
+              
+              if (state.isFavoriteMode && !event.target.closest('.channel-card') && !event.target.closest('.floating-save-button') && !event.target.closest('.search-filters')) {
+                   disableFavoriteMode();
               }
           });
           

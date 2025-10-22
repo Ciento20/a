@@ -18,12 +18,10 @@
         --radius-sm: 6px;
         --shadow-sm: 0 1px 3px rgba(0,0,0,0.1);
         --primary-rgb: 37, 99, 235;
-        --secondary: #000000; /* Color usado para EN DIRECTO / LIVE */
+        --secondary: #000000;
         --success: #4cc9f0;
         --warning: #f8961e;
         --info: #4895ef;
-        
-        /* Colores consolidados */
         --movistar-blue: #0085C1;
         --eurosport-blue: #5e17eb;
         --dazn-black: #000000;
@@ -258,14 +256,9 @@
       .channel-card--favorite {
         border: 2px solid var(--primary);
       }
-      
-      /* Estilo para canal en directo (solo borde para claridad, sin pulse) */
       .channel-card--live {
-          /* border: 3px solid var(--secondary); */ /* LÍNEA ELIMINADA/COMENTADA SEGÚN SOLICITUD */
-          /* Eliminado animation: pulse */
       }
       
-      /* Eliminado @keyframes pulse */
 
       .channel-group {
         background: var(--card-bg);
@@ -984,7 +977,7 @@
           display: none !important; 
       }
       
-      /* Estilos para el botón flotante de favoritos */
+     
       .floating-save-button {
           position: fixed;
           bottom: 20px; 
@@ -1015,7 +1008,6 @@
           transform: scale(1);
       }
       
-      /* NUEVO: Clase para hacer parpadear la hora del evento */
       .live-time-blink {
           color: var(--secondary) !important;
           animation: soft-blink 1.5s infinite ease-in-out;
@@ -1030,7 +1022,15 @@
           opacity: 0.5;
         }
       }
-      /* FIN NUEVO */
+
+      .live-separator {
+          border: none;
+          border-top: 3px solid var(--primary);
+          border-radius: 5px;
+          margin: 1.5rem 0;
+          opacity: 0.7;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      }
     </style>
 </head>
 <body>
@@ -2365,17 +2365,6 @@
           return today;
       }
       
-      
-      /**
-       * NUEVA LÓGICA DE DETECCIÓN DE EVENTOS EN DIRECTO
-       */
-      
-      /**
-       * Comprueba si un canal de evento está actualmente en directo según las condiciones.
-       * @param {Object} channel - El objeto del canal con la propiedad `event`.
-       * @param {Array<Object>} allEventChannels - Todos los canales de evento para la comprobación de conflictos.
-       * @returns {boolean} - true si está en directo, false en caso contrario.
-       */
       function isChannelLive(channel, allEventChannels) {
           if (channel.source !== 'events' || !channel.event) {
               return false;
@@ -2405,12 +2394,6 @@
           return true;
       }
       
-      /**
-       * Implementa la lógica de "hermanos conflictivos".
-       * @param {Object} currentChannel - El canal a comprobar.
-       * @param {Array<Object>} allEventChannels - Todos los canales de evento.
-       * @returns {boolean} - true si hay un evento posterior en el mismo canal, false en caso contrario.
-       */
       function findConflictingSiblings(currentChannel, allEventChannels) {
           const currentChannelName = normalizeText(currentChannel.name);
           const currentStartTime = currentChannel.event.startTime;
@@ -2678,6 +2661,11 @@
           const fragment = document.createDocumentFragment();
           let lastDateRendered = null; 
           
+          // Bandera para el separador
+          let separatorAdded = false;
+          let hasLiveEvents = sortedGroupKeys.some(key => groups[key].isEvent && groups[key].channels.some(c => c.isLive));
+          let foundEndOfLiveGroups = false;
+          
           sortedGroupKeys.forEach(groupKey => {
               const group = groups[groupKey];
               
@@ -2773,6 +2761,37 @@
                   </div>
               `;
               fragment.appendChild(groupElement);
+
+              // Lógica de inserción del separador
+              if (!separatorAdded) {
+                  const nextGroupIndex = sortedGroupKeys.indexOf(groupKey) + 1;
+                  const nextGroupKey = sortedGroupKeys[nextGroupIndex];
+                  const nextGroup = nextGroupKey ? groups[nextGroupKey] : null;
+
+                  // 1. Si el grupo actual es de evento Y no es de directo (solo si había directos antes)
+                  //    O si el grupo actual es de evento Y es el último grupo de evento Y no tiene directos.
+                  //    O si el siguiente grupo NO es de evento (es decir, es un canal permanente).
+                  
+                  const isLastEventGroup = !nextGroup || !nextGroup.isEvent;
+                  const isAfterLive = hasLiveEvents && !group.hasLive;
+                  const isLastLiveEventGroup = group.hasLive && (isLastEventGroup || !nextGroup.hasLive); 
+                  
+                  
+                  if (isLastLiveEventGroup) {
+                      const separator = document.createElement('hr');
+                      separator.className = 'live-separator';
+                      fragment.appendChild(separator);
+                      separatorAdded = true; 
+                  } else if (isLastEventGroup && !hasLiveEvents && group.isEvent) { 
+                      // Caso: No hay directos en absoluto, pero el grupo actual es el último de eventos.
+                      const separator = document.createElement('hr');
+                      separator.className = 'live-separator';
+                      fragment.appendChild(separator);
+                      separatorAdded = true; 
+                  }
+                  
+              }
+              
           });
           channelsGrid.appendChild(fragment);
 

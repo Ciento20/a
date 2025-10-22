@@ -8,7 +8,7 @@
       :root {
         --primary: #2563eb;
         --primary-light: rgba(37, 99, 235, 0.1);
-        --primary-dark: #1e50c7; /* Color oscuro simple */
+        --primary-dark: #1e50c7; 
         --bg-light: #f1f5f9;
         --card-bg: #ffffff;
         --text: #1e293b;
@@ -29,7 +29,7 @@
         --dazn-black: #000000;
         --f1-red:#ff3535;
         --action-red: #ff544d;
-        --cinema-red: #fa3732; /* Consolida classics, hits, premieres, indie, drama, spanish-film */
+        --cinema-red: #fa3732; 
         --sports-green: #11a45b;
         --vamos-green: #1fc23d;
         --copadelrey-green: #449653;
@@ -593,7 +593,7 @@
       .dazn { color: var(--dazn-black) !important; }
       .f1 { color: var(--f1-red) !important; }
       .action { color: var(--action-red) !important; }
-      .cinema-red { color: var(--cinema-red) !important; } /* Clase consolidada */
+      .cinema-red { color: var(--cinema-red) !important; } 
       .sports { color: var(--sports-green) !important; }
       .vamos { color: var(--vamos-green) !important; }
       .copadelrey { color: var(--copadelrey-green) !important; }
@@ -821,7 +821,7 @@
         font-family: monospace;
         word-break: break-all;
         font-size: 0.85rem;
-        display: block; /* Asegurarse de que se muestre si es necesario para depuración */
+        display: block; 
       }
       
       body.dark-mode .copy-modal-url {
@@ -958,10 +958,6 @@
         }
       }
       
-      .copy-link-btn {
-          display: none; 
-      }
-      
       .event-date-header {
         font-size: 1.2rem; 
         font-weight: 600; 
@@ -973,16 +969,12 @@
         padding-left: 10px;
       }
       
-      /* --- 💡 NUEVO CSS PARA OCULTAR DETALLES DEL EVENTO --- */
       .hide-event-details .channel-group.event-group .channel-group__header {
-          /* Oculta la información de fecha, hora, competición, etc. */
           display: none !important; 
       }
       .hide-event-details .event-date-header {
-          /* Oculta los encabezados de fecha (Hoy, Mañana, etc.) */
           display: none !important; 
       }
-      /* --- 💡 FIN NUEVO CSS --- */
     </style>
 </head>
 <body>
@@ -1139,8 +1131,6 @@
           firstSeen: JSON.parse(localStorage.getItem('firstSeen')) || {},
           
           sportFilter: 'all',
-          // ELIMINADO: Se ha quitado disableEvents del estado
-          // 💡 NUEVO ESTADO: Controla si los detalles de los eventos deben ocultarse
           hideEventDetails: localStorage.getItem('hideEventDetails') === 'true'
       };
 
@@ -1148,11 +1138,9 @@
           'https://api.allorigins.win/raw?url=',
           'https://cors-anywhere.herokuapp.com/',
           'https://api.codetabs.com/v1/proxy/?quest=',
-          // PROXIES ADICIONALES
           'https://proxy-cors-simple.vercel.app/api?url=', 
           'https://yacdn.org/proxy/',                       
           'https://cors-proxy.fringe.co.kr/?'              
-          // FIN PROXIES ADICIONALES
       ];
       const GIST_URL = "https://gist.githubusercontent.com/Ciento20/f7847e86d06e5011706fa76f2dab90be/raw";
       const ELCANO_URL = 'https://ipfs.io/ipns/elcano.top';
@@ -1172,13 +1160,11 @@
       const SPORT_FILTER_BUTTON_IDS = ['filterFutbol', 'filterBaloncesto', 'filterTenis', 'filterBoxeo', 'filterCiclismo', 'filterMotorsport', 'filterF1'];
       const BRAND_FILTER_BUTTON_IDS = ['filterDAZN', 'filterMovistar', 'filterEurosport', 'filterFavorites', 'clearEmojiFilters'];
       
-      // Función auxiliar para normalizar texto (eliminar tildes y convertir a minúsculas)
       function normalizeText(text) {
           if (!text) return '';
           return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
       }
       
-      // ********************** FUNCIONES VLC/M3U **********************
       function extractPID(enlace) {
           if (!enlace) return '';
           return enlace.replace('acestream://', '').trim();
@@ -1318,7 +1304,6 @@
 
           return header + content;
       }
-      // ********************** FIN FUNCIONES VLC/M3U **********************
       
       function trackFirstSeen(channelId) {
           if (!state.firstSeen[channelId]) {
@@ -1356,7 +1341,6 @@
           }
           localStorage.setItem('favorites', JSON.stringify(state.favorites));
           
-          // Re-renderizado optimizado si solo se altera un favorito
           renderResults();
       }
 
@@ -1368,15 +1352,12 @@
         updatePrimaryLightColor();
       }
       
-      // ELIMINADO: Se ha quitado la función toggleDisableEvents()
-      
       function toggleHideEventDetails() {
           state.hideEventDetails = !state.hideEventDetails;
           localStorage.setItem('hideEventDetails', state.hideEventDetails);
           document.getElementById('hideEventDetailsCheckbox').checked = state.hideEventDetails;
           document.body.classList.toggle('hide-event-details', state.hideEventDetails);
-          // showStatusMessage(state.hideEventDetails ? "Detalles de eventos ocultos." : "Detalles de eventos visibles.", "info");
-          renderResults(); // Vuelve a renderizar para aplicar el estilo y el nuevo agrupamiento
+          renderResults(); 
       }
       
       function clearAllFilterVisuals() {
@@ -1413,10 +1394,10 @@
       }
       
       function applySportFilter(sportKey) {
-          state.sportFilter = state.sportFilter === sportKey ? 'all' : sportKey; // Alterna el filtro
+          state.sportFilter = state.sportFilter === sportKey ? 'all' : sportKey; 
           document.getElementById('searchInput').value = '';
           state.searchTerm = '';
-          state.currentFilter = 'all'; // Desactiva filtro de marca
+          state.currentFilter = 'all'; 
 
           clearAllFilterVisuals();
           
@@ -1484,7 +1465,6 @@
       }
       
       function mergeChannels(channelsArray) {
-        // La lógica de exclusión de 'events' basada en disableEvents ha sido eliminada.
         const allChannels = channelsArray; 
             
         const eventChannels = allChannels.filter(channel => channel.source === 'events');
@@ -2025,7 +2005,7 @@
               { name: 'F1', class: 'f1' },
               { name: 'Acción', class: 'action' },
               { name: 'Deportes', class: 'sports' },
-              { name: 'Clásicos', class: 'cinema-red' }, /* CONSOLIDADO */
+              { name: 'Clásicos', class: 'cinema-red' }, 
               { name: 'Vamos', class: 'vamos' },
               { name: 'Copa del Rey', class: 'copadelrey' },
               { name: 'Liga de Campeones', class: 'champions' },
@@ -2038,11 +2018,11 @@
               { name: 'Western', class: 'western' },
               { name: 'Documentales', class: 'documentary' },
               { name: 'Originales', class: 'originals' },
-              { name: 'Hits', class: 'cinema-red' }, /* CONSOLIDADO */
-              { name: 'Estrenos', class: 'cinema-red' }, /* CONSOLIDADO */
-              { name: 'Indie', class: 'cinema-red' }, /* CONSOLIDADO */
-              { name: 'Cine Español', class: 'cinema-red' }, /* CONSOLIDADO */
-              { name: 'Drama', class: 'cinema-red' }, /* CONSOLIDADO */
+              { name: 'Hits', class: 'cinema-red' }, 
+              { name: 'Estrenos', class: 'cinema-red' }, 
+              { name: 'Indie', class: 'cinema-red' }, 
+              { name: 'Cine Español', class: 'cinema-red' }, 
+              { name: 'Drama', class: 'cinema-red' }, 
               { name: 'Ellas', class: 'ellas' },
               { name: 'Series', class: 'series' }
           ];
@@ -2071,16 +2051,12 @@
         
         let currentFilter = state.currentFilter;
         
-        // 0. Filtrado por Deshabilitar Eventos (ELIMINADO)
-        
-        // 1. Filtrado por Marca (DAZN, Movistar, Eurosport, etc.)
         if(currentFilter !== 'all' && currentFilter !== 'favorites' && currentFilter !== 'history') {
              filteredChannels = filteredChannels.filter(channel =>
                 normalizeText(channel.name).includes(normalizeText(currentFilter))
             );
         }
 
-        // 2. Filtrado por Favoritos/Historial
         if (state.currentFilter === 'favorites') {
             filteredChannels = filteredChannels.filter(c => state.favorites.includes(c.id));
         } else if (state.currentFilter === 'history') {
@@ -2098,7 +2074,6 @@
             filteredChannels = historyChannels;
         }
 
-        // 3. FILTRADO POR DEPORTE
         if (state.sportFilter !== 'all') {
             const normalizedSportFilter = normalizeText(state.sportFilter);
             
@@ -2108,7 +2083,6 @@
                 'tenis': ['tenis', 'wimbledon', 'roland garros', 'us open', 'atp', 'wta'],
                 'boxeo': ['boxeo', 'boxing', 'lucha', 'ufc', 'mma'],
                 'ciclismo': ['ciclismo', 'tour', 'giro', 'vuelta'],
-                // OPTIMIZACIÓN: Se usa la lógica de f1 para motorsport
                 'motorsport': ['motor', 'f1', 'fórmula', 'formula', 'moto', 'motociclismo', 'dakar', 'rally', 'motogp', 'wrc', 'nascar'],
                 'f1': ['f1', 'fórmula 1', 'formula 1', 'formulaone', 'fórmulaone']
             };
@@ -2134,7 +2108,6 @@
             });
         }
 
-        // 4. Filtrado por Término de Búsqueda
         if (searchTerm) {
           filteredChannels = filteredChannels.filter(channel => {
             const normalizedSearchTerm = normalizeText(searchTerm);
@@ -2296,7 +2269,6 @@
           '★EUROSPORT': /★EUROSPORT/i,
       };
 
-      // ****************** MODIFICACIÓN CLAVE: LÓGICA DE AGRUPACIÓN EN renderResults ******************
       function renderResults() {
           const filteredChannels = filterChannels();
           const channelsGrid = document.getElementById('channelsGrid');
@@ -2316,7 +2288,6 @@
             return;
           }
 
-          // ORDENACIÓN DE CANALES
           const sortedChannels = [...filteredChannels].sort((a, b) => {
               const aIsOff = a.name.includes('(OFF)');
               const bIsOff = b.name.includes('(OFF)');
@@ -2353,7 +2324,6 @@
           const eventChannels = sortedChannels.filter(c => c.source === 'events' && c.event);
           const otherChannels = sortedChannels.filter(c => !(c.source === 'events' && c.event));
           
-          // Función auxiliar para determinar el grupo de marca
           function determineBrandGroup(channel) {
               for (const groupName of groupOrder) {
                   if (groupRegexes[groupName] && groupRegexes[groupName].test(channel.name)) {
@@ -2370,15 +2340,12 @@
               let isEventGroup = false;
 
               if (state.hideEventDetails) {
-                  // MODO OCULTAR DETALLES: Agrupar por nombre de marca
                   groupName = determineBrandGroup(channel);
               } else {
-                  // MODO NORMAL: Agrupar por evento
                   const eventGroupKey = `${channel.event.date}###${channel.event.competition}###${channel.event.match}`; 
                   groupName = eventGroupKey;
                   isEventGroup = true;
                   
-                  // Mapeo solo si NO estamos en el modo de ocultar detalles
                   const normalizedChannelName = normalizeText(channel.name);
                   if (!eventGroupKeysByChannelName.has(normalizedChannelName)) {
                       eventGroupKeysByChannelName.set(normalizedChannelName, new Set());
@@ -2411,7 +2378,6 @@
               let groupFound = false;
               const normalizedChannelName = normalizeText(channel.name);
               
-              // **PRIORIDAD 1: Intenta agrupar por nombre de canal en un evento existente (Solo si NO se ocultan detalles)**
               if (!state.hideEventDetails && eventGroupKeysByChannelName.has(normalizedChannelName)) {
                   const eventGroupKeys = eventGroupKeysByChannelName.get(normalizedChannelName);
                   
@@ -2428,7 +2394,6 @@
                   }
               }
               
-              // PRIO 2: Si no se agrupa en un evento, usa la lógica de grupos de marca (actual)
               if (!groupFound) {
                   const groupName = determineBrandGroup(channel);
                   if (!groups[groupName]) {
@@ -2443,7 +2408,6 @@
               const groupA = groups[a];
               const groupB = groups[b];
 
-              // Prioridad: Grupos de Evento > Grupos de Marca
               if (groupA.isEvent && groupB.isEvent) {
                   const dateCompare = compareEventDates(groupA, groupB); 
                   if (dateCompare !== 0) return dateCompare;
@@ -2453,7 +2417,6 @@
               if (groupA.isEvent && !groupB.isEvent) return -1;
               if (!groupA.isEvent && groupB.isEvent) return 1;
 
-              // Grupos de Marca: Orden predefinido
               const indexA = groupOrder.indexOf(a);
               const indexB = groupOrder.indexOf(b);
               
@@ -2476,7 +2439,6 @@
           sortedGroupKeys.forEach(groupKey => {
               const group = groups[groupKey];
               
-              // Ordenación de canales dentro del grupo de evento (prioridad de fuente/calidad)
               if (group.isEvent) {
                   group.channels.sort((a, b) => {
                       const sourcePriorityMap = { 'events': 4, 'gist': 3, 'shickat': 2, 'elcano': 1, 'history': 0 };
@@ -2495,7 +2457,6 @@
                   });
               }
               
-              // Ordenación de favoritos al principio del grupo
               group.channels.sort((a, b) => {
                   const aIsFavorite = state.favorites.includes(a.id);
                   const bIsFavorite = state.favorites.includes(b.id);
@@ -2506,7 +2467,6 @@
                   return 0;
               });
               
-              // Encabezado de fecha solo si el grupo es un evento y NO se ocultan detalles
               if (group.isEvent && !state.hideEventDetails) {
                   const formattedDate = formatEventDate(group.date); 
                   if (formattedDate !== lastDateRendered) {
@@ -2517,7 +2477,7 @@
                       lastDateRendered = formattedDate; 
                   }
               } else {
-                  lastDateRendered = null; // Reiniciar si no es un grupo de eventos visible
+                  lastDateRendered = null; 
               }
 
               const groupElement = document.createElement('div');
@@ -2526,7 +2486,6 @@
 
               let groupTitleContent;
               if (group.isEvent && !state.hideEventDetails) {
-                  // Encabezado de grupo de evento (modo normal)
                   groupTitleContent = `
                       <div style="display: flex; flex-direction: column; width: 100%;">
                         <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
@@ -2542,7 +2501,6 @@
                       </div>
                   `;
               } else {
-                  // Encabezado de grupo de marca (incluye canales de evento si se ocultan detalles)
                   groupTitleContent = `<div>${group.name}</div>`;
               }
 
@@ -2558,7 +2516,6 @@
           });
           channelsGrid.appendChild(fragment);
 
-          // Lógica Marquee
           document.querySelectorAll('.competition-text').forEach(textElement => {
               const container = textElement.closest('.marquee-container');
               setTimeout(() => {
@@ -2570,7 +2527,6 @@
               }, 0); 
           });
       }
-      // ****************** FIN MODIFICACIÓN CLAVE ******************
 
       function createChannelCard(channel) {
           const isFavorite = state.favorites.includes(channel.id);
@@ -2760,7 +2716,7 @@
         const rgb = hexToRgb(color);
         document.documentElement.style.setProperty('--primary-rgb', `${rgb.r}, ${rgb.g}, ${rgb.b}`);
         document.documentElement.style.setProperty('--primary', color);
-        // MODIFICACIÓN: Color oscuro simple (el color predeterminado es #1e50c7)
+        
         document.documentElement.style.setProperty('--primary-dark', color === '#2563eb' ? '#1e50c7' : color); 
         updatePrimaryLightColor();
         document.querySelectorAll('.color-option').forEach(btn => {
@@ -2828,8 +2784,6 @@
           document.body.classList.toggle('dark-mode', state.darkMode);
           document.getElementById('darkModeCheckbox').checked = state.darkMode;
           
-          // ELIMINADO: Se ha quitado la inicialización y uso de disableEventsCheckbox
-          
           document.getElementById('hideEventDetailsCheckbox').checked = state.hideEventDetails;
           document.body.classList.toggle('hide-event-details', state.hideEventDetails);
 
@@ -2843,7 +2797,6 @@
 
           cleanupOldFirstSeenRecords();
 
-          // Lógica de MOUSE/TOUCH para MODO FAVORITOS
           const setupLongPress = (btn, onLongPress, onClick) => {
               let pressTimer = null;
               let isLongPress = false;
@@ -2934,8 +2887,6 @@
           
           document.getElementById('hideEventDetailsCheckbox').addEventListener('change', toggleHideEventDetails); 
           
-          // ELIMINADO: Listener para disableEventsCheckbox
-          
           document.getElementById('closeSettingsBtn').addEventListener('click', () => document.getElementById('settingsModal').classList.remove('modal--active'));
 
           document.querySelectorAll('.color-option').forEach(btn => {
@@ -2943,7 +2894,6 @@
           });
           changePrimaryColor(state.primaryColor);
           
-          // Listener delegado para el botón de copia (el indicador de número)
           document.addEventListener('click', (e) => {
               if (e.target.closest('.channel-number-badge-button')) {
                   const button = e.target.closest('.channel-number-badge-button');
@@ -2953,7 +2903,6 @@
               }
           });
           
-          // Listener delegado de clic/tap para la reproducción y favoritos
           document.addEventListener('click', (e) => {
               const card = e.target.closest('.channel-card');
               const numberButton = e.target.closest('.channel-number-badge-button');

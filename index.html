@@ -2687,12 +2687,22 @@
                       if (a.isLive && !b.isLive) return -1;
                       if (!a.isLive && b.isLive) return 1;
                       
+                      // NUEVA PRIORIDAD 2: Canales con '4' al final del nombre (van al final)
+                      const aHasSuffix4 = normalizeText(a.name).trim().endsWith('4');
+                      const bHasSuffix4 = normalizeText(b.name).trim().endsWith('4');
+
+                      if (aHasSuffix4 && !bHasSuffix4) return 1; // 'a' va después de 'b'
+                      if (!aHasSuffix4 && bHasSuffix4) return -1; // 'a' va antes de 'b'
+                      
+                      // Prioridad 3 (Original Prioridad 2): Fuente
                       const sourcePriorityMap = { 'events': 4, 'gist': 3, 'shickat': 2, 'elcano': 1, 'history': 0 };
                       const sourceA = sourcePriorityMap[a.source] || 0;
                       const sourceB = sourcePriorityMap[b.source] || 0;
                       if (sourceB !== sourceA) {
                           return sourceB - sourceA;
                       }
+                      
+                      // Prioridad 4 (Original Prioridad 3): Calidad
                       const qualityMap = { '4K': 5, 'FHD': 4, 'HD': 3, 'SD': 2, 'N/A': 1, 'UHD': 6 };
                       const qualityA = qualityMap[standardizeQuality(a.quality)] || 0;
                       const qualityB = qualityMap[standardizeQuality(b.quality)] || 0;

@@ -969,9 +969,20 @@
         margin-top: 1rem; 
         margin-bottom: 0.5rem; 
         padding-left: 0.5rem;
-        border-left: 4px solid var(--primary); /* Estilo visual mejorado para la fecha */
+        border-left: 4px solid var(--primary); 
         padding-left: 10px;
       }
+      
+      /* --- 💡 NUEVO CSS PARA OCULTAR DETALLES DEL EVENTO --- */
+      .hide-event-details .channel-group.event-group .channel-group__header {
+          /* Oculta la información de fecha, hora, competición, etc. */
+          display: none !important; 
+      }
+      .hide-event-details .event-date-header {
+          /* Oculta los encabezados de fecha (Hoy, Mañana, etc.) */
+          display: none !important; 
+      }
+      /* --- 💡 FIN NUEVO CSS --- */
     </style>
 </head>
 <body>
@@ -1050,6 +1061,20 @@
                 
                 <div class="settings-item">
                     <div class="settings-item__info">
+                        <span class="settings-icon">📅</span>
+                        <div>
+                            <span class="settings-label">Ocultar detalles de evento</span>
+                            <span class="settings-description">Oculta fecha, hora y deporte de los grupos.</span>
+                        </div>
+                    </div>
+                    <label class="settings-switch">
+                        <input type="checkbox" id="hideEventDetailsCheckbox">
+                        <span class="settings-slider"></span>
+                    </label>
+                </div>
+                
+                <div class="settings-item">
+                    <div class="settings-item__info">
                         <span class="settings-icon">⭐</span>
                         <div>
                             <span class="settings-label">Restablecer puntuaciones</span>
@@ -1113,7 +1138,10 @@
           lastChannelPlay: JSON.parse(localStorage.getItem('lastChannelPlay')) || null,
           firstSeen: JSON.parse(localStorage.getItem('firstSeen')) || {},
           
-          sportFilter: 'all' 
+          sportFilter: 'all',
+          // ELIMINADO: Se ha quitado disableEvents del estado
+          // 💡 NUEVO ESTADO: Controla si los detalles de los eventos deben ocultarse
+          hideEventDetails: localStorage.getItem('hideEventDetails') === 'true'
       };
 
       const PROXIES = [
@@ -1150,71 +1178,83 @@
           return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
       }
       
-      // 💡 NUEVAS FUNCIONES DE CONVERSIÓN VLC
-      /**
-       * Extrae el AceStream PID del enlace.
-       * @param {string} enlace - URL completa o solo el PID.
-       * @returns {string} El AceStream PID (hash) puro.
-       */
+      // ********************** FUNCIONES VLC/M3U **********************
       function extractPID(enlace) {
           if (!enlace) return '';
           return enlace.replace('acestream://', '').trim();
       }
 
-      /**
-       * Convierte un AceStream PID en una URL de VLC.
-       * @param {string} pid - El AceStream PID puro.
-       * @returns {string} La URL compatible con VLC.
-       */
       function convertToVLCUrl(pid) {
           if (!pid) return '';
           return `http://vlc.shickat.me:8000/pid/${pid}/stream.mp4`;
       }
-      // 💡 FIN NUEVAS FUNCIONES DE CONVERSIÓN VLC
       
-      // ********************** NUEVA FUNCIÓN DE DESCARGA M3U **********************
-      /**
-       * Crea un archivo con el contenido M3U y lo fuerza a descargar.
-       * @param {string} content - El contenido de la lista M3U.
-       */
       function downloadM3UFile(content) {
-          // MODIFICADO: Cambiar el tipo MIME y la extensión del archivo a .txt
           const blob = new Blob([content], { type: 'text/plain' }); 
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
           a.href = url;
-          // MODIFICADO: El nombre del archivo ahora es .txt
           a.download = 'lista_canales.txt'; 
           document.body.appendChild(a);
           a.click();
           document.body.removeChild(a);
-          URL.revokeObjectURL(url); // Libera el objeto URL
+          URL.revokeObjectURL(url); 
       }
-      // ********************** FIN NUEVA FUNCIÓN DE DESCARGA M3U **********************
       
-      // 💡 FUNCIÓN DE EXPORTACIÓN A M3U MODIFICADA (Eliminación del prefijo de fuente del nombre)
-      /**
-       * Genera el contenido del archivo M3U para la lista de reproducción de VLC.
-       * Incluye todos los canales que tengan un ID válido (AceStream ID de 40 caracteres) y se asegura de que no se repitan.
-       * @returns {string} Contenido M3U.
-       */
+      function getChannelGroupIndex(channelName) {
+           const groupOrder = [
+              'DAZN F1', 
+              'DAZN',
+              'DAZN La Liga',
+              'M+ La Liga', 
+              'Liga de Campeones', 
+              'La Liga Hypermotion', 
+              'M+ Vamos', 
+              'M+ Deportes',
+              'M+ Plus', 
+              'M+ Golf', 
+              'M+',
+              '★EUROSPORT'
+          ];
+          
+          const groupRegexes = {
+              'DAZN F1': /DAZN F1/i,
+              'DAZN': /DAZN(?!.*F1|.*La Liga)/i,
+              'DAZN La Liga': /DAZN La Liga/i,
+              'Liga de Campeones': /Liga de Campeones/i,
+              'La Liga Hypermotion': /La Liga Hypermotion/i,
+              'M+ La Liga': /M\+ La Liga/i,
+              'M+ Vamos': /M\+ Vamos/i,
+              'M+ Deportes': /M\+ Deportes/i,
+              'M+ Plus': /M\+ Plus/i,
+              'M+ Golf': /M\+ Golf/i,
+              'M+': /M\+(?!.*La Liga|.*Vamos|.*Deportes|.*Plus|.*Golf|.*Liga de Campeones)/i,
+              '★EUROSPORT': /★EUROSPORT/i,
+          };
+          
+          for (let i = 0; i < groupOrder.length; i++) {
+              const groupName = groupOrder[i];
+              if (groupRegexes[groupName] && groupRegexes[groupName].test(channelName)) {
+                  return i;
+              }
+          }
+          return groupOrder.length; 
+      }
+
       function exportToM3U() {
           const header = '#EXTM3U\n';
           let content = '';
           const exportedIds = new Set();
           
-          // --- LÓGICA DE FILTRADO Y DEDUPLICACIÓN ---
           const allChannels = state.channelsData.filter(c => c.id && c.id.length === 40);
           const uniqueChannelsMap = new Map();
           
-          // Prioridad: GIST > SHICKAT > ELCANO > EVENTS
           const sourcePriorityMap = { 'gist': 3, 'shickat': 2, 'elcano': 1, 'events': 0 }; 
 
           allChannels.forEach(channel => {
               const pid = extractPID(channel.id);
               
               if (exportedIds.has(pid)) { 
-                  // Si el PID ya existe, verificar si la nueva fuente tiene mayor prioridad.
                   const existingChannel = uniqueChannelsMap.get(pid);
                   if (sourcePriorityMap[channel.source] > (sourcePriorityMap[existingChannel.source] || 0)) {
                        uniqueChannelsMap.set(pid, channel);
@@ -1232,48 +1272,10 @@
               return null;
           }
           
-          // --- LÓGICA DE ORDENACIÓN SOLICITADA ---
           const groupOrder = [
-              'DAZN F1', 
-              'DAZN',
-              'DAZN La Liga',
-              'M+ La Liga', 
-              'Liga de Campeones', 
-              'La Liga Hypermotion', 
-              'M+ Vamos', 
-              'M+ Deportes',
-              'M+ Plus', 
-              'M+ Golf', 
-              'M+',
-              '★EUROSPORT'
+              'DAZN F1', 'DAZN', 'DAZN La Liga', 'M+ La Liga', 'Liga de Campeones', 'La Liga Hypermotion', 
+              'M+ Vamos', 'M+ Deportes', 'M+ Plus', 'M+ Golf', 'M+', '★EUROSPORT'
           ];
-          
-          // Regexes simplificados para la ordenación M3U
-          const groupRegexes = {
-              'DAZN F1': /DAZN F1/i,
-              'DAZN': /DAZN(?!.*F1|.*La Liga)/i,
-              'DAZN La Liga': /DAZN La Liga/i,
-              'Liga de Campeones': /Liga de Campeones/i,
-              'La Liga Hypermotion': /La Liga Hypermotion/i,
-              'M+ La Liga': /M\+ La Liga/i,
-              'M+ Vamos': /M\+ Vamos/i,
-              'M+ Deportes': /M\+ Deportes/i,
-              'M+ Plus': /M\+ Plus/i,
-              'M+ Golf': /M\+ Golf/i,
-              'M+': /M\+(?!.*La Liga|.*Vamos|.*Deportes|.*Plus|.*Golf|.*Liga de Campeones)/i,
-              '★EUROSPORT': /★EUROSPORT/i,
-          };
-          
-          function getChannelGroupIndex(channelName) {
-              for (let i = 0; i < groupOrder.length; i++) {
-                  const groupName = groupOrder[i];
-                  if (groupRegexes[groupName] && groupRegexes[groupName].test(channelName)) {
-                      return i;
-                  }
-              }
-              // Agrupa los canales de 'events' y 'otros' al final
-              return groupOrder.length; 
-          }
 
           channelsToExport.sort((a, b) => {
               const groupIndexA = getChannelGroupIndex(a.name);
@@ -1283,7 +1285,6 @@
                   return groupIndexA - groupIndexB;
               }
 
-              // Si están en el mismo grupo, ordenar por número/calidad/nombre
               const nameNumberA = getChannelNumberFromName(a.name);
               const nameNumberB = getChannelNumberFromName(b.name);
               if (nameNumberA !== nameNumberB) {
@@ -1300,13 +1301,10 @@
               return a.name.localeCompare(b.name);
           });
 
-          // --- FIN LÓGICA DE ORDENACIÓN SOLICITADA ---
-
           channelsToExport.forEach(channel => {
               const pid = extractPID(channel.id);
               const vlcUrl = convertToVLCUrl(pid);
               
-              // Obtiene el nombre del grupo para el atributo group-title
               const groupTitleName = groupOrder[getChannelGroupIndex(channel.name)] || (channel.source === 'events' ? 'Eventos' : 'Otros');
               
               const groupTitle = `group-title="${groupTitleName}"`; 
@@ -1314,15 +1312,14 @@
               const tvgLogo = `tvg-logo="${standardizeQuality(channel.quality)}"`;
               const tvgName = `tvg-name="${channel.name}"`;
               
-              // MODIFICACIÓN: Se usa SOLAMENTE `channel.name` en la línea #EXTINF
               content += `#EXTINF:-1 ${groupTitle} ${tvgId} ${tvgLogo} ${tvgName},${channel.name}\n`; 
               content += `${vlcUrl}\n`; 
           });
 
           return header + content;
       }
-      // 💡 FIN FUNCIÓN DE EXPORTACIÓN A M3U MODIFICADA
-
+      // ********************** FIN FUNCIONES VLC/M3U **********************
+      
       function trackFirstSeen(channelId) {
           if (!state.firstSeen[channelId]) {
               state.firstSeen[channelId] = new Date().getTime();
@@ -1371,7 +1368,17 @@
         updatePrimaryLightColor();
       }
       
-      // Función auxiliar para limpiar la activación de filtros
+      // ELIMINADO: Se ha quitado la función toggleDisableEvents()
+      
+      function toggleHideEventDetails() {
+          state.hideEventDetails = !state.hideEventDetails;
+          localStorage.setItem('hideEventDetails', state.hideEventDetails);
+          document.getElementById('hideEventDetailsCheckbox').checked = state.hideEventDetails;
+          document.body.classList.toggle('hide-event-details', state.hideEventDetails);
+          // showStatusMessage(state.hideEventDetails ? "Detalles de eventos ocultos." : "Detalles de eventos visibles.", "info");
+          renderResults(); // Vuelve a renderizar para aplicar el estilo y el nuevo agrupamiento
+      }
+      
       function clearAllFilterVisuals() {
           BRAND_FILTER_BUTTON_IDS.forEach(id => {
               const btn = document.getElementById(id);
@@ -1383,12 +1390,11 @@
           });
       }
 
-      // MODIFICACIÓN de applyFilter para filtros de marca (OPTIMIZADO)
       function applyFilter(filter) {
         state.currentFilter = filter;
         document.getElementById('searchInput').value = '';
         state.searchTerm = '';
-        state.sportFilter = 'all'; // Desactiva filtro de deporte
+        state.sportFilter = 'all'; 
 
         clearAllFilterVisuals();
         
@@ -1406,7 +1412,6 @@
         renderResults();
       }
       
-      // NUEVA FUNCIÓN para filtros de deporte (OPTIMIZADA)
       function applySportFilter(sportKey) {
           state.sportFilter = state.sportFilter === sportKey ? 'all' : sportKey; // Alterna el filtro
           document.getElementById('searchInput').value = '';
@@ -1418,7 +1423,6 @@
           if (state.sportFilter !== 'all') {
               document.querySelector(`.sport-filter-button[data-sport-key="${sportKey}"]`).classList.add('filter-button--active');
           } else {
-              // Si se desactiva el filtro de deporte, activar el filtro 'x' (all)
               document.getElementById('clearEmojiFilters').classList.add('filter-button--active');
           }
 
@@ -1480,8 +1484,11 @@
       }
       
       function mergeChannels(channelsArray) {
-        const eventChannels = channelsArray.filter(channel => channel.source === 'events');
-        const otherChannels = channelsArray.filter(channel => channel.source !== 'events');
+        // La lógica de exclusión de 'events' basada en disableEvents ha sido eliminada.
+        const allChannels = channelsArray; 
+            
+        const eventChannels = allChannels.filter(channel => channel.source === 'events');
+        const otherChannels = allChannels.filter(channel => channel.source !== 'events');
 
         const eventIds = new Set(eventChannels.map(channel => channel.id));
 
@@ -1493,7 +1500,6 @@
             otherChannels.forEach(channel => {
                 if (channel.source === source) {
                     if (!eventIds.has(channel.id)) {
-                        // Prioriza la primera aparición por ID. La iteración por orderedOtherSources se encarga de la priorización por fuente (aunque elcano ya está ordenado al final de la lista)
                         if (!uniqueOtherChannelsMap.has(channel.id)) { 
                            uniqueOtherChannelsMap.set(channel.id, channel);
                         }
@@ -1595,7 +1601,7 @@
           });
           
           if (allChannels.length > 0) {
-              const newChannels = mergeChannels(allChannels);
+              const newChannels = mergeChannels(allChannels); 
               state.channelsData = newChannels;
               processChannelNames();
               renderResults(); 
@@ -2011,7 +2017,6 @@
           return numberedChannels;
       }
       
-      // MODIFICACIÓN: Consolidación de reemplazos de color a la clase '.cinema-red'
       function processChannelNames() {
           const brands = [
               { name: 'M+', class: 'movistar' },
@@ -2066,6 +2071,8 @@
         
         let currentFilter = state.currentFilter;
         
+        // 0. Filtrado por Deshabilitar Eventos (ELIMINADO)
+        
         // 1. Filtrado por Marca (DAZN, Movistar, Eurosport, etc.)
         if(currentFilter !== 'all' && currentFilter !== 'favorites' && currentFilter !== 'history') {
              filteredChannels = filteredChannels.filter(channel =>
@@ -2108,7 +2115,6 @@
             
             let targetTerms = sportSearchTerms[normalizedSportFilter] || [normalizedSportFilter];
             
-            // Si el filtro es motorsport, se añaden los términos de f1 para que funcione con ambos botones (f1 es subconjunto de motorsport)
             if (normalizedSportFilter === 'motorsport' && sportSearchTerms['f1']) {
                 targetTerms = targetTerms.concat(sportSearchTerms['f1']);
             }
@@ -2174,11 +2180,6 @@
           return match ? parseInt(match[0], 10) : 1;
       }
 
-      /**
-       * NUEVA FUNCIÓN: Formatea la fecha del evento a '(Día de la semana) (XX) de (Mes)'
-       * @param {string} dateString - Cadena de fecha original (ej: "Hoy", "Mañana", "19/10/2025")
-       * @returns {string} Fecha formateada
-       */
       function formatEventDate(dateString) {
           if (dateString.toLowerCase() === 'hoy') {
               return 'Hoy';
@@ -2201,7 +2202,6 @@
           const dayOfMonth = date.getDate();
           const monthName = months[date.getMonth()];
           
-          // Comprueba si la fecha es igual a la actual (solo día, mes, año)
           const isToday = date.getDate() === today.getDate() &&
                           date.getMonth() === today.getMonth() &&
                           date.getFullYear() === today.getFullYear();
@@ -2216,7 +2216,6 @@
       function compareEventDates(eventA, eventB) {
           const today = new Date();
           
-          // Normaliza 'Hoy' y 'Mañana' para la comparación
           const dateStringA = eventA.date.toLowerCase();
           const dateStringB = eventB.date.toLowerCase();
           
@@ -2261,16 +2260,48 @@
           }
           const parts = dateString.split('/');
           if (parts.length === 3) {
-              // Asume formato DD/MM/AAAA. Año actual si no está presente.
               const year = parts[2] ? parseInt(parts[2], 10) : today.getFullYear(); 
               return new Date(year, parseInt(parts[1]) - 1, parseInt(parts[0]));
           }
           return today;
       }
+      
+      const groupOrder = [
+          'DAZN F1', 
+          'DAZN',
+          'DAZN La Liga',
+          'M+ La Liga', 
+          'Liga de Campeones', 
+          'La Liga Hypermotion', 
+          'M+ Vamos', 
+          'M+ Deportes',
+          'M+ Plus', 
+          'M+ Golf', 
+          'M+',
+          '★EUROSPORT'
+      ];
 
+      const groupRegexes = {
+          'DAZN F1': /DAZN F1/i,
+          'DAZN': /DAZN(?!.*F1|.*La Liga)/i, 
+          'DAZN La Liga': /DAZN La Liga/i,
+          'Liga de Campeones': /Liga de Campeones/i,
+          'La Liga Hypermotion': /La Liga Hypermotion/i,
+          'M+ La Liga': /M\+ La Liga/i,
+          'M+ Vamos': /M\+ Vamos/i,
+          'M+ Deportes': /M\+ Deportes/i,
+          'M+ Plus': /M\+ Plus/i,
+          'M+ Golf': /M\+ Golf/i,
+          'M+': /M\+(?!.*La Liga|.*Vamos|.*Deportes|.*Plus|.*Golf|.*Liga de Campeones)/i, 
+          '★EUROSPORT': /★EUROSPORT/i,
+      };
+
+      // ****************** MODIFICACIÓN CLAVE: LÓGICA DE AGRUPACIÓN EN renderResults ******************
       function renderResults() {
           const filteredChannels = filterChannels();
           const channelsGrid = document.getElementById('channelsGrid');
+          
+          document.body.classList.toggle('hide-event-details', state.hideEventDetails);
           
           channelsGrid.innerHTML = '';
           
@@ -2285,6 +2316,7 @@
             return;
           }
 
+          // ORDENACIÓN DE CANALES
           const sortedChannels = [...filteredChannels].sort((a, b) => {
               const aIsOff = a.name.includes('(OFF)');
               const bIsOff = b.name.includes('(OFF)');
@@ -2318,66 +2350,60 @@
           const groups = {};
           const eventGroupKeysByChannelName = new Map();
 
-          const groupOrder = [
-              'DAZN F1', 
-              'DAZN',
-              'DAZN La Liga',
-              'M+ La Liga', 
-              'Liga de Campeones', 
-              'La Liga Hypermotion', 
-              'M+ Vamos', 
-              'M+ Deportes',
-              'M+ Plus', 
-              'M+ Golf', 
-              'M+',
-              '★EUROSPORT'
-          ];
-
-          const groupRegexes = {
-              'DAZN F1': /DAZN F1/i,
-              'DAZN': /DAZN(?!.*F1|.*La Liga)/i, // Excluir F1 y La Liga para DAZN general
-              'DAZN La Liga': /DAZN La Liga/i,
-              'Liga de Campeones': /Liga de Campeones/i,
-              'La Liga Hypermotion': /La Liga Hypermotion/i,
-              'M+ La Liga': /M\+ La Liga/i,
-              'M+ Vamos': /M\+ Vamos/i,
-              'M+ Deportes': /M\+ Deportes/i,
-              'M+ Plus': /M\+ Plus/i,
-              'M+ Golf': /M\+ Golf/i,
-              'M+': /M\+(?!.*La Liga|.*Vamos|.*Deportes|.*Plus|.*Golf|.*Liga de Campeones)/i, // M+ Genérico (ajustado)
-              '★EUROSPORT': /★EUROSPORT/i,
-          };
-          
           const eventChannels = sortedChannels.filter(c => c.source === 'events' && c.event);
           const otherChannels = sortedChannels.filter(c => !(c.source === 'events' && c.event));
+          
+          // Función auxiliar para determinar el grupo de marca
+          function determineBrandGroup(channel) {
+              for (const groupName of groupOrder) {
+                  if (groupRegexes[groupName] && groupRegexes[groupName].test(channel.name)) {
+                      return groupName;
+                  }
+              }
+              return 'Otros';
+          }
 
-          // 1. CREAR GRUPOS DE EVENTO y mapear nombres de canal
+
+          // 1. AGRUPAR CANALES DE EVENTO (con o sin ocultar detalles)
           eventChannels.forEach(channel => {
-              // CLAVE DE AGRUPACIÓN: Fecha + Competición + Partido
-              const eventGroupKey = `${channel.event.date}###${channel.event.competition}###${channel.event.match}`; 
-              const normalizedChannelName = normalizeText(channel.name);
-              
-              if (!groups[eventGroupKey]) {
-                  groups[eventGroupKey] = { 
-                    name: `${channel.event.competition}: ${channel.event.match}`, 
+              let groupName;
+              let isEventGroup = false;
+
+              if (state.hideEventDetails) {
+                  // MODO OCULTAR DETALLES: Agrupar por nombre de marca
+                  groupName = determineBrandGroup(channel);
+              } else {
+                  // MODO NORMAL: Agrupar por evento
+                  const eventGroupKey = `${channel.event.date}###${channel.event.competition}###${channel.event.match}`; 
+                  groupName = eventGroupKey;
+                  isEventGroup = true;
+                  
+                  // Mapeo solo si NO estamos en el modo de ocultar detalles
+                  const normalizedChannelName = normalizeText(channel.name);
+                  if (!eventGroupKeysByChannelName.has(normalizedChannelName)) {
+                      eventGroupKeysByChannelName.set(normalizedChannelName, new Set());
+                  }
+                  eventGroupKeysByChannelName.get(normalizedChannelName).add(eventGroupKey);
+              }
+
+              if (!groups[groupName]) {
+                  groups[groupName] = { 
+                    name: groupName, 
                     channels: [], 
-                    time: channel.event.time, 
-                    date: channel.event.date, 
-                    isEvent: true, 
-                    sportEmoji: channel.event.sportEmoji, 
-                    sportName: channel.event.sportName 
+                    isEvent: isEventGroup, 
+                    time: isEventGroup ? channel.event.time : null, 
+                    date: isEventGroup ? channel.event.date : null, 
+                    sportEmoji: isEventGroup ? channel.event.sportEmoji : null, 
+                    sportName: isEventGroup ? channel.event.sportName : null,
+                    competition: isEventGroup ? channel.event.competition : null,
+                    match: isEventGroup ? channel.event.match : null
                   };
               }
               
-              const isDuplicateInGroup = groups[eventGroupKey].channels.some(c => c.id === channel.id);
+              const isDuplicateInGroup = groups[groupName].channels.some(c => c.id === channel.id);
               if (!isDuplicateInGroup) {
-                  groups[eventGroupKey].channels.push(channel);
+                  groups[groupName].channels.push(channel);
               }
-              
-              if (!eventGroupKeysByChannelName.has(normalizedChannelName)) {
-                  eventGroupKeysByChannelName.set(normalizedChannelName, new Set());
-              }
-              eventGroupKeysByChannelName.get(normalizedChannelName).add(eventGroupKey);
           });
           
           // 2. AGRUPAR CANALES NO-EVENTO (GIST, ELCANO, SHICKAT)
@@ -2385,8 +2411,8 @@
               let groupFound = false;
               const normalizedChannelName = normalizeText(channel.name);
               
-              // **PRIORIDAD 1: Intenta agrupar por nombre de canal en un evento existente**
-              if (eventGroupKeysByChannelName.has(normalizedChannelName)) {
+              // **PRIORIDAD 1: Intenta agrupar por nombre de canal en un evento existente (Solo si NO se ocultan detalles)**
+              if (!state.hideEventDetails && eventGroupKeysByChannelName.has(normalizedChannelName)) {
                   const eventGroupKeys = eventGroupKeysByChannelName.get(normalizedChannelName);
                   
                   for (const eventGroupKey of eventGroupKeys) {
@@ -2404,32 +2430,11 @@
               
               // PRIO 2: Si no se agrupa en un evento, usa la lógica de grupos de marca (actual)
               if (!groupFound) {
-                  if (channel.name.toUpperCase().includes('ELEVEN DAZN') || channel.name.toUpperCase().includes('DAZN EVENTOS')) {
-                      if (!groups['Otros']) {
-                          groups['Otros'] = { name: 'Otros', channels: [] };
-                      }
-                      groups['Otros'].channels.push(channel);
-                      groupFound = true;
-                  } else {
-                      for (const groupName of groupOrder) {
-                          if (groupRegexes[groupName] && groupRegexes[groupName].test(channel.name)) {
-                              if (!groups[groupName]) {
-                                  groups[groupName] = { name: groupName, channels: [] };
-                              }
-                              groups[groupName].channels.push(channel);
-                              groupFound = true;
-                              break;
-                          }
-                      }
+                  const groupName = determineBrandGroup(channel);
+                  if (!groups[groupName]) {
+                      groups[groupName] = { name: groupName, channels: [], isEvent: false };
                   }
-              }
-              
-              // PRIO 3: Si nada funciona, al grupo "Otros"
-              if (!groupFound) {
-                  if (!groups['Otros']) {
-                      groups['Otros'] = { name: 'Otros', channels: [] };
-                  }
-                  groups['Otros'].channels.push(channel);
+                  groups[groupName].channels.push(channel);
               }
           });
 
@@ -2438,18 +2443,17 @@
               const groupA = groups[a];
               const groupB = groups[b];
 
+              // Prioridad: Grupos de Evento > Grupos de Marca
               if (groupA.isEvent && groupB.isEvent) {
-                  // Agrupación de eventos: compara la fecha real (para asegurar que 'Hoy' va primero)
                   const dateCompare = compareEventDates(groupA, groupB); 
                   if (dateCompare !== 0) return dateCompare;
-                  
-                  // Luego por hora, competición y partido (usa las claves de agrupación)
                   return a.localeCompare(b);
               }
 
               if (groupA.isEvent && !groupB.isEvent) return -1;
               if (!groupA.isEvent && groupB.isEvent) return 1;
 
+              // Grupos de Marca: Orden predefinido
               const indexA = groupOrder.indexOf(a);
               const indexB = groupOrder.indexOf(b);
               
@@ -2467,11 +2471,12 @@
           }
           
           const fragment = document.createDocumentFragment();
-          let lastDateRendered = null; // Variable para rastrear la última fecha renderizada
+          let lastDateRendered = null; 
           
           sortedGroupKeys.forEach(groupKey => {
               const group = groups[groupKey];
               
+              // Ordenación de canales dentro del grupo de evento (prioridad de fuente/calidad)
               if (group.isEvent) {
                   group.channels.sort((a, b) => {
                       const sourcePriorityMap = { 'events': 4, 'gist': 3, 'shickat': 2, 'elcano': 1, 'history': 0 };
@@ -2490,6 +2495,7 @@
                   });
               }
               
+              // Ordenación de favoritos al principio del grupo
               group.channels.sort((a, b) => {
                   const aIsFavorite = state.favorites.includes(a.id);
                   const bIsFavorite = state.favorites.includes(b.id);
@@ -2500,9 +2506,9 @@
                   return 0;
               });
               
-              // **************** MODIFICACIÓN INICIO: Nuevo encabezado de fecha ****************
-              if (group.isEvent) {
-                  const formattedDate = formatEventDate(group.date); // <-- APLICA EL NUEVO FORMATO
+              // Encabezado de fecha solo si el grupo es un evento y NO se ocultan detalles
+              if (group.isEvent && !state.hideEventDetails) {
+                  const formattedDate = formatEventDate(group.date); 
                   if (formattedDate !== lastDateRendered) {
                       const dateHeaderElement = document.createElement('h3');
                       dateHeaderElement.className = 'event-date-header'; 
@@ -2511,31 +2517,32 @@
                       lastDateRendered = formattedDate; 
                   }
               } else {
-                  lastDateRendered = null; // Reiniciar si no es un grupo de eventos
+                  lastDateRendered = null; // Reiniciar si no es un grupo de eventos visible
               }
-              // **************** MODIFICACIÓN FIN: Nuevo encabezado de fecha ****************
 
               const groupElement = document.createElement('div');
-              groupElement.className = 'channel-group';
+              const isEventGroup = group.isEvent ? 'event-group' : '';
+              groupElement.className = `channel-group ${isEventGroup}`; 
 
               let groupTitleContent;
-              if (group.isEvent) {
-                  // Se elimina la fecha del encabezado del grupo
+              if (group.isEvent && !state.hideEventDetails) {
+                  // Encabezado de grupo de evento (modo normal)
                   groupTitleContent = `
                       <div style="display: flex; flex-direction: column; width: 100%;">
                         <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-                          <div style="margin-right: 10px; font-weight: bold;">${group.channels[0].event.time}</div>
+                          <div style="margin-right: 10px; font-weight: bold;">${group.time}</div>
                           <div class="marquee-container" style="flex: 1;">
-                            <div class="competition-text">${group.channels[0].event.competition}</div>
+                            <div class="competition-text">${group.competition}</div>
                           </div>
                           <div style="margin-left: 10px;">
-                            ${group.channels[0].event.match}
-                            <span class="group-title-emoji" style="margin-left: 10px;">${group.channels[0].event.sportEmoji}</span>
+                            ${group.match}
+                            <span class="group-title-emoji" style="margin-left: 10px;">${group.sportEmoji}</span>
                           </div>
                         </div>
                       </div>
                   `;
               } else {
+                  // Encabezado de grupo de marca (incluye canales de evento si se ocultan detalles)
                   groupTitleContent = `<div>${group.name}</div>`;
               }
 
@@ -2551,10 +2558,9 @@
           });
           channelsGrid.appendChild(fragment);
 
-          // OPTIMIZACIÓN: Solo se evalúa el marquee después de la renderización
+          // Lógica Marquee
           document.querySelectorAll('.competition-text').forEach(textElement => {
               const container = textElement.closest('.marquee-container');
-              // Se añade un pequeño retraso para asegurar que el DOM ha calculado el layout
               setTimeout(() => {
                   if (container && textElement.scrollWidth > container.clientWidth) {
                       textElement.classList.add('is-overflowing');
@@ -2564,6 +2570,7 @@
               }, 0); 
           });
       }
+      // ****************** FIN MODIFICACIÓN CLAVE ******************
 
       function createChannelCard(channel) {
           const isFavorite = state.favorites.includes(channel.id);
@@ -2635,12 +2642,6 @@
           }, 500);
       }
       
-      /**
-       * Lógica de puntuación de estabilidad de canales optimizada.
-       * Premia una duración larga, penaliza una duración corta SÓLO si se cambia a un canal
-       * con el mismo nombre (indicando búsqueda de un enlace funcional) o si la duración fue muy corta.
-       * Si se cambia a un canal con nombre diferente, el canal anterior no se penaliza.
-       */
       function handleChannelPlay(channel) {
           const now = new Date().getTime();
 
@@ -2656,33 +2657,27 @@
                   const previousName = previousChannelData.name.toLowerCase().trim();
                   const currentName = channel.name.toLowerCase().trim();
                   
-                  // Lógica de puntuación SÓLO si se cambia a un canal diferente
                   if (previousName === currentName) {
-                      // Mismo nombre (diferentes IDs) -> Asume intento de cambio por fallo
                       if (duration >= (30 * 60)) {
-                          newRating += 1.5; // Muy estable
+                          newRating += 1.5; 
                       } else if (duration >= (15 * 60)) {
-                          newRating += 0.5; // Estable
+                          newRating += 0.5; 
                       } else if (duration >= (5 * 60)) {
-                          newRating -= 1; // Falló relativamente pronto
+                          newRating -= 1; 
                       } else if (duration >= 10) {
-                          newRating -= 1.5; // Falló muy pronto
+                          newRating -= 1.5; 
                       } else {
-                          newRating -= 2; // Fallo inmediato
+                          newRating -= 2; 
                       }
                   } else {
-                      // Cambio a canal diferente
                       if (duration >= (30 * 60)) {
-                          newRating += 1.5; // Se premia la duración, fue estable
+                          newRating += 1.5; 
                       } else {
-                          // Si se cerró y se fue a otro canal en menos de 30 min, NO se resta al anterior.
-                          // Esto evita penalizar al canal anterior cuando el usuario simplemente quería cambiar de programa.
                           newRating = rating; 
                       }
                   }
               } else if (previousChannelId === channel.id) {
-                  // Mismo enlace pulsado de nuevo (sin cambio de ID)
-                  newRating = rating; // Mantiene el rating sin cambios
+                  newRating = rating; 
               }
               
               state.channelRatings[previousChannelId] = Math.max(1, Math.min(5, newRating));
@@ -2699,7 +2694,6 @@
           playChannel(channel.id);
       }
 
-      // 💡 MODIFICACIÓN DE showCopyModal
       function showCopyModal(acestreamId) {
           const acestreamUrl = `acestream://${acestreamId}`;
           const pid = extractPID(acestreamUrl);
@@ -2711,11 +2705,9 @@
           const urlDisplayAceStream = document.getElementById('copyUrlDisplayAceStream');
           const urlDisplayVLC = document.getElementById('copyUrlDisplayVLC');
 
-          // Almacenar las URLs en el display (oculto por CSS)
           urlDisplayAceStream.textContent = acestreamUrl;
           urlDisplayVLC.textContent = vlcUrl;
 
-          // Asignar handlers para copiar la URL correcta y el formato
           copyAceStreamBtn.onclick = () => copyUrlToClipboard(acestreamUrl, 'AceStream');
           copyVLCBtn.onclick = () => copyUrlToClipboard(vlcUrl, 'VLC');
           
@@ -2726,7 +2718,6 @@
           document.getElementById('copyModal').classList.remove('active');
       }
 
-      // 💡 MODIFICACIÓN DE showCopySuccessMessage
       function showCopySuccessMessage(format = 'AceStream') {
           const messageElement = document.getElementById('copyMessage');
           messageElement.textContent = `${format} URL copiada con éxito!`; 
@@ -2736,7 +2727,6 @@
           }, 2000);
       }
 
-      // 💡 MODIFICACIÓN DE copyUrlToClipboard
       async function copyUrlToClipboard(urlToCopy, format) {
           try {
               await navigator.clipboard.writeText(urlToCopy);
@@ -2748,7 +2738,6 @@
           }
       }
 
-      // OPTIMIZACIÓN: Lógica de búsqueda simplificada
       function handleSearchInput() {
         state.searchTerm = document.getElementById('searchInput').value.trim();
         
@@ -2839,15 +2828,18 @@
           document.body.classList.toggle('dark-mode', state.darkMode);
           document.getElementById('darkModeCheckbox').checked = state.darkMode;
           
-          let pressTimerFav;
+          // ELIMINADO: Se ha quitado la inicialización y uso de disableEventsCheckbox
+          
+          document.getElementById('hideEventDetailsCheckbox').checked = state.hideEventDetails;
+          document.body.classList.toggle('hide-event-details', state.hideEventDetails);
+
           const favoriteButton = document.getElementById('filterFavorites');
           const LONG_PRESS_THRESHOLD = 500;
           
-          let pressTimerClear;
           const clearButton = document.getElementById('clearEmojiFilters');
           const copyModal = document.getElementById('copyModal');
           const cancelCopyBtn = document.getElementById('cancelCopyBtn');
-          const exportVlcM3UBtn = document.getElementById('exportVlcM3UBtn'); // Nuevo botón
+          const exportVlcM3UBtn = document.getElementById('exportVlcM3UBtn'); 
 
           cleanupOldFirstSeenRecords();
 
@@ -2911,13 +2903,11 @@
               }
           });
           
-          // ****************** LISTENER PARA EXPORTAR M3U (MODIFICADO PARA DESCARGA) ******************
           if (exportVlcM3UBtn) {
               exportVlcM3UBtn.addEventListener('click', () => {
                   const m3uContent = exportToM3U();
                   if (m3uContent) {
                       try {
-                          // NUEVO COMPORTAMIENTO: Descargar el archivo M3U
                           downloadM3UFile(m3uContent); 
                           document.getElementById('settingsModal').classList.remove('modal--active');
                           showStatusMessage("Archivo 'lista_canales.txt' descargado. ¡Listo para VLC! 📥", "success");
@@ -2928,7 +2918,6 @@
                   }
               });
           }
-          // ****************** FIN LISTENER EXPORTAR M3U ******************
 
           document.getElementById('filterDAZN').addEventListener('click', () => applyFilter('dazn'));
           document.getElementById('filterMovistar').addEventListener('click', () => applyFilter('m+'));
@@ -2942,6 +2931,11 @@
           
           document.getElementById('searchInput').addEventListener('input', handleSearchInput);
           document.getElementById('darkModeCheckbox').addEventListener('change', toggleDarkMode);
+          
+          document.getElementById('hideEventDetailsCheckbox').addEventListener('change', toggleHideEventDetails); 
+          
+          // ELIMINADO: Listener para disableEventsCheckbox
+          
           document.getElementById('closeSettingsBtn').addEventListener('click', () => document.getElementById('settingsModal').classList.remove('modal--active'));
 
           document.querySelectorAll('.color-option').forEach(btn => {
@@ -2959,7 +2953,7 @@
               }
           });
           
-          // Listener delegado de clic/tap para la reproducción y favoritos (OPTIMIZADO - Única fuente de acción de tarjeta)
+          // Listener delegado de clic/tap para la reproducción y favoritos
           document.addEventListener('click', (e) => {
               const card = e.target.closest('.channel-card');
               const numberButton = e.target.closest('.channel-number-badge-button');
@@ -2977,7 +2971,6 @@
               }
           });
           
-          // Asegurar que el filtro 'all' se active visualmente al inicio
           applyFilter('all');
           
           loadInitialChannels();

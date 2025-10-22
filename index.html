@@ -1178,12 +1178,13 @@
        * @param {string} content - El contenido de la lista M3U.
        */
       function downloadM3UFile(content) {
-          const blob = new Blob([content], { type: 'application/x-mpegurl' });
+          // MODIFICADO: Cambiar el tipo MIME y la extensión del archivo a .txt
+          const blob = new Blob([content], { type: 'text/plain' }); 
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
           a.href = url;
-          // Se asegura de que el nombre del archivo tenga la extensión .m3u
-          a.download = 'lista_canales.m3u'; 
+          // MODIFICADO: El nombre del archivo ahora es .txt
+          a.download = 'lista_canales.txt'; 
           document.body.appendChild(a);
           a.click();
           document.body.removeChild(a);
@@ -1382,7 +1383,7 @@
           });
       }
 
-      // MODIFICACIÓN DE applyFilter para filtros de marca (OPTIMIZADO)
+      // MODIFICACIÓN de applyFilter para filtros de marca (OPTIMIZADO)
       function applyFilter(filter) {
         state.currentFilter = filter;
         document.getElementById('searchInput').value = '';
@@ -2919,7 +2920,7 @@
                           // NUEVO COMPORTAMIENTO: Descargar el archivo M3U
                           downloadM3UFile(m3uContent); 
                           document.getElementById('settingsModal').classList.remove('modal--active');
-                          showStatusMessage("Archivo 'lista_canales.m3u' descargado. ¡Listo para VLC! 📥", "success");
+                          showStatusMessage("Archivo 'lista_canales.txt' descargado. ¡Listo para VLC! 📥", "success");
                       } catch (err) {
                           console.error('Error al intentar descargar el archivo M3U: ', err);
                           showStatusMessage("Error al descargar la lista M3U. Revisa la consola.", "error");

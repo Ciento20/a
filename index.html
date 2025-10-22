@@ -18,7 +18,7 @@
         --radius-sm: 6px;
         --shadow-sm: 0 1px 3px rgba(0,0,0,0.1);
         --primary-rgb: 37, 99, 235;
-        --secondary: #f72585;
+        --secondary: #f72585; /* Color usado para EN DIRECTO / LIVE */
         --success: #4cc9f0;
         --warning: #f8961e;
         --info: #4895ef;
@@ -258,6 +258,14 @@
       .channel-card--favorite {
         border: 2px solid var(--primary);
       }
+      
+      /* Estilo para canal en directo (solo borde para claridad, sin pulse) */
+      .channel-card--live {
+          /* border: 3px solid var(--secondary); */ /* LÍNEA ELIMINADA/COMENTADA SEGÚN SOLICITUD */
+          /* Eliminado animation: pulse */
+      }
+      
+      /* Eliminado @keyframes pulse */
 
       .channel-group {
         background: var(--card-bg);
@@ -1006,6 +1014,23 @@
           visibility: visible;
           transform: scale(1);
       }
+      
+      /* NUEVO: Clase para hacer parpadear la hora del evento */
+      .live-time-blink {
+          color: var(--secondary) !important;
+          animation: soft-blink 1.5s infinite ease-in-out;
+          font-weight: bold;
+      }
+      
+      @keyframes soft-blink {
+        0%, 100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.5;
+        }
+      }
+      /* FIN NUEVO */
     </style>
 </head>
 <body>
@@ -1188,7 +1213,7 @@
       };
       
       const MAX_RETRIES = 3;
-      const BACKUP_EXPIRY_HOURS = 480; // 20 días * 24 horas/día = 480 horas
+      const BACKUP_EXPIRY_HOURS = 480; 
       const HISTORY_EXPIRY_HOURS = 168;
       const SPORT_FILTER_BUTTON_IDS = ['filterFutbol', 'filterBaloncesto', 'filterTenis', 'filterBoxeo', 'filterCiclismo', 'filterMotorsport', 'filterF1'];
       const BRAND_FILTER_BUTTON_IDS = ['filterDAZN', 'filterMovistar', 'filterEurosport', 'filterFavorites', 'clearEmojiFilters'];
@@ -1973,7 +1998,46 @@
 
           return numberedChannels;
       }
-
+      
+      function calculateDuration(sportName) {
+          const normalizedName = normalizeText(sportName);
+          if (normalizedName.includes('futbol')) return 120;
+          if (normalizedName.includes('baloncesto') || normalizedName.includes('nba')) return 150;
+          if (normalizedName.includes('tenis')) return 300;
+          if (normalizedName.includes('formula 1') || normalizedName.includes('f1')) return 180;
+          
+          if (normalizedName.includes('motor')) return 120;
+          if (normalizedName.includes('ciclismo')) return 180;
+          if (normalizedName.includes('boxeo')) return 120;
+          
+          return 105; 
+      }
+      
+      function getEventTime(dateString, timeString) {
+          const now = new Date();
+          const date = parseDateString(dateString, now);
+          
+          if (date.getTime() === now.getTime()) {
+              date.setHours(now.getHours());
+              date.setMinutes(now.getMinutes());
+          }
+          
+          const [hours, minutes] = timeString.split(':').map(Number);
+          
+          const eventTime = new Date(date);
+          eventTime.setHours(hours, minutes, 0, 0);
+          
+          const todayYear = now.getFullYear();
+          const todayMonth = now.getMonth();
+          const todayDate = now.getDate();
+          
+          if (dateString.toLowerCase() === 'hoy' || (eventTime.getDate() === todayDate && eventTime.getMonth() === todayMonth && eventTime.getFullYear() === todayYear)) {
+              return eventTime;
+          }
+          
+          return eventTime;
+      }
+      
       function processEventsData(htmlContent) {
           const numberedChannels = [];
           const parser = new DOMParser();
@@ -2011,6 +2075,11 @@
                           const links = canalesCell.querySelectorAll('a[href^="acestream://"]');
                           
                           if (links.length > 0) {
+                              
+                              const eventStartTime = getEventTime(date, time);
+                              const durationMinutes = calculateDuration(sportName);
+                              const eventEndTime = new Date(eventStartTime.getTime() + durationMinutes * 60000);
+                              
                               links.forEach(link => {
                                   const acestreamId = link.href.split('://')[1];
                                   let channelName = link.textContent.trim();
@@ -2041,7 +2110,7 @@
                                       multiAudio: multiAudio,
                                       isKnown: true,
                                       source: 'events',
-                                      event: { time, competition, match, date, sportEmoji, sportName }
+                                      event: { time, competition, match, date, sportEmoji, sportName, startTime: eventStartTime.getTime(), endTime: eventEndTime.getTime() }
                                   });
                                   trackFirstSeen(acestreamId);
                               });
@@ -2296,6 +2365,89 @@
           return today;
       }
       
+      
+      /**
+       * NUEVA LÓGICA DE DETECCIÓN DE EVENTOS EN DIRECTO
+       */
+      
+      /**
+       * Comprueba si un canal de evento está actualmente en directo según las condiciones.
+       * @param {Object} channel - El objeto del canal con la propiedad `event`.
+       * @param {Array<Object>} allEventChannels - Todos los canales de evento para la comprobación de conflictos.
+       * @returns {boolean} - true si está en directo, false en caso contrario.
+       */
+      function isChannelLive(channel, allEventChannels) {
+          if (channel.source !== 'events' || !channel.event) {
+              return false;
+          }
+          
+          const now = new Date().getTime();
+          const event = channel.event;
+          
+          // Condición 1: Hora del evento (Margen de 15 minutos antes)
+          const liveStartTime = event.startTime - (15 * 60 * 1000); 
+          const liveEndTime = event.endTime;
+
+          const isTimeframeLive = now >= liveStartTime && now <= liveEndTime;
+          
+          if (!isTimeframeLive) {
+              // Si no está en el rango de inicio a fin + duración + margen, NO está en directo.
+              return false;
+          }
+          
+          // Condición 3: No tener "hermanos conflictivos" (eventos posteriores en el mismo canal)
+          const isConflicted = findConflictingSiblings(channel, allEventChannels);
+          
+          if (isConflicted) {
+              return false;
+          }
+
+          return true;
+      }
+      
+      /**
+       * Implementa la lógica de "hermanos conflictivos".
+       * @param {Object} currentChannel - El canal a comprobar.
+       * @param {Array<Object>} allEventChannels - Todos los canales de evento.
+       * @returns {boolean} - true si hay un evento posterior en el mismo canal, false en caso contrario.
+       */
+      function findConflictingSiblings(currentChannel, allEventChannels) {
+          const currentChannelName = normalizeText(currentChannel.name);
+          const currentStartTime = currentChannel.event.startTime;
+          
+          const conflictingSibling = allEventChannels.find(sibling => {
+              if (sibling.id === currentChannel.id || sibling.source !== 'events' || !sibling.event) {
+                  return false;
+              }
+              
+              const siblingChannelName = normalizeText(sibling.name);
+              const siblingStartTime = sibling.event.startTime;
+              
+              // Criterio de "hermano conflictivo": mismo nombre de canal Y hora de inicio posterior
+              const isSameChannelName = siblingChannelName === currentChannelName;
+              const isScheduledLater = siblingStartTime > currentStartTime;
+              
+              if (isSameChannelName && isScheduledLater) {
+                  const now = new Date().getTime();
+                  
+                  // Se considera conflicto si el evento posterior está programado para empezar 
+                  // antes de que el evento actual termine (o tiene un inicio inminente/actual).
+                  // Usaremos el margen de 15 minutos.
+                  const siblingLiveStartTime = siblingStartTime - (15 * 60 * 1000); 
+                  
+                  if (now >= siblingLiveStartTime) {
+                      return true; // El evento posterior ha entrado en su "ventana de directo", el anterior ya no puede estar en el mismo canal.
+                  }
+              }
+              
+              return false;
+          });
+          
+          return !!conflictingSibling;
+      }
+
+      // Fin de la nueva lógica de detección de eventos en directo
+      
       const groupOrder = [
           'DAZN F1', 
           'DAZN',
@@ -2334,6 +2486,14 @@
           
           channelsGrid.innerHTML = '';
           
+          // Obtener todos los canales de evento para la lógica de conflicto
+          const allEventChannels = state.channelsData.filter(c => c.source === 'events' && c.event);
+          
+          // Marcar los canales en directo antes de la renderización
+          filteredChannels.forEach(channel => {
+              channel.isLive = isChannelLive(channel, allEventChannels);
+          });
+          
           // Actualizar el botón flotante de favoritos
           const saveButton = document.getElementById('saveFavoritesButton');
           saveButton.classList.toggle('floating-save-button--active', state.isFavoriteMode);
@@ -2350,12 +2510,18 @@
           }
 
           const sortedChannels = [...filteredChannels].sort((a, b) => {
+              // Prioridad 1: Canales en directo
+              if (a.isLive && !b.isLive) return -1;
+              if (!a.isLive && b.isLive) return 1;
+              
+              // Prioridad 2: Canales (OFF)
               const aIsOff = a.name.includes('(OFF)');
               const bIsOff = b.name.includes('(OFF)');
               
               if (aIsOff && !bIsOff) return 1;
               if (!aIsOff && bIsOff) return -1;
               
+              // Resto de la ordenación
               const nameNumberA = getChannelNumberFromName(a.name);
               const nameNumberB = getChannelNumberFromName(b.name);
               if (nameNumberA !== nameNumberB) {
@@ -2424,8 +2590,13 @@
                     sportEmoji: isEventGroup ? channel.event.sportEmoji : null, 
                     sportName: isEventGroup ? channel.event.sportName : null,
                     competition: isEventGroup ? channel.event.competition : null,
-                    match: isEventGroup ? channel.event.match : null
+                    match: isEventGroup ? channel.event.match : null,
+                    hasLive: channel.isLive 
                   };
+              } else {
+                  if (channel.isLive) {
+                      groups[groupName].hasLive = true;
+                  }
               }
               
               const isDuplicateInGroup = groups[groupName].channels.some(c => c.id === channel.id);
@@ -2458,7 +2629,11 @@
               if (!groupFound) {
                   const groupName = determineBrandGroup(channel);
                   if (!groups[groupName]) {
-                      groups[groupName] = { name: groupName, channels: [], isEvent: false };
+                      groups[groupName] = { name: groupName, channels: [], isEvent: false, hasLive: channel.isLive };
+                  } else {
+                      if (channel.isLive) {
+                          groups[groupName].hasLive = true;
+                      }
                   }
                   groups[groupName].channels.push(channel);
               }
@@ -2468,6 +2643,12 @@
           const sortedGroupKeys = Object.keys(groups).sort((a, b) => {
               const groupA = groups[a];
               const groupB = groups[b];
+              
+              const aHasLive = groupA.channels.some(c => c.isLive);
+              const bHasLive = groupB.channels.some(c => c.isLive);
+              
+              if (aHasLive && !bHasLive) return -1;
+              if (!aHasLive && bHasLive) return 1;
 
               if (groupA.isEvent && groupB.isEvent) {
                   const dateCompare = compareEventDates(groupA, groupB); 
@@ -2502,6 +2683,10 @@
               
               if (group.isEvent) {
                   group.channels.sort((a, b) => {
+                      // Prioridad 1: Canales en directo
+                      if (a.isLive && !b.isLive) return -1;
+                      if (!a.isLive && b.isLive) return 1;
+                      
                       const sourcePriorityMap = { 'events': 4, 'gist': 3, 'shickat': 2, 'elcano': 1, 'history': 0 };
                       const sourceA = sourcePriorityMap[a.source] || 0;
                       const sourceB = sourcePriorityMap[b.source] || 0;
@@ -2519,6 +2704,7 @@
               }
               
               group.channels.sort((a, b) => {
+                  // Re-sort a favor de los favoritos después de la ordenación por directo/calidad
                   const aIsFavorite = state.favorites.includes(a.id);
                   const bIsFavorite = state.favorites.includes(b.id);
 
@@ -2544,13 +2730,16 @@
               const groupElement = document.createElement('div');
               const isEventGroup = group.isEvent ? 'event-group' : '';
               groupElement.className = `channel-group ${isEventGroup}`; 
+              
+              // Determinar la clase para el parpadeo de la hora
+              const liveTimeClass = group.hasLive ? 'live-time-blink' : '';
 
               let groupTitleContent;
               if (group.isEvent && !state.hideEventDetails) {
                   groupTitleContent = `
                       <div style="display: flex; flex-direction: column; width: 100%;">
                         <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-                          <div style="margin-right: 10px; font-weight: bold;">${group.time}</div>
+                          <div class="${liveTimeClass}" style="margin-right: 10px;">${group.time}</div>
                           <div class="marquee-container" style="flex: 1;">
                             <div class="competition-text">${group.competition}</div>
                           </div>
@@ -2591,7 +2780,12 @@
 
       function createChannelCard(channel) {
           const isFavorite = state.favorites.includes(channel.id);
-          const cardClass = `channel-card ${isFavorite ? 'channel-card--favorite' : ''} ${state.isFavoriteMode ? 'channel-card--favorite-mode' : ''}`;
+          const isLive = channel.isLive; // Se mantiene, solo afecta al borde
+          
+          let cardClass = `channel-card ${isFavorite ? 'channel-card--favorite' : ''} ${state.isFavoriteMode ? 'channel-card--favorite-mode' : ''}`;
+          if (isLive) {
+              cardClass += ' channel-card--live'; // Solo el borde
+          }
           
           const rating = state.channelRatings[channel.id] !== undefined ? state.channelRatings[channel.id] : 2.5;
 
@@ -2631,6 +2825,9 @@
               </button>
           `;
 
+          // Eliminamos el indicador de texto LIVE de la tarjeta
+          const liveIndicator = ''; 
+
           return `
               <div class="${cardClass}"
                    data-id="${channel.id}"
@@ -2640,7 +2837,7 @@
                       ${displayQuality} ${channel.multiAudio ? '🎧' : ''}
                   </div>
                   <div class="channel-header">
-                      <div class="channel-name">${channel.displayableName}</div>
+                      <div class="channel-name">${channel.displayableName} ${liveIndicator}</div>
                   </div>
                   ${sourceButton}
                   <div class="rating-stars">${getStarRating(rating)}</div>
@@ -2989,6 +3186,9 @@
           applyFilter('all');
           
           loadInitialChannels();
+          
+          // Establecer un intervalo para re-renderizar y actualizar el estado "en directo"
+          setInterval(renderResults, 60000); // 1 minuto
       });
 
     </script>

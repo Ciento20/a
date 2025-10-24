@@ -1167,11 +1167,12 @@
     <button class="floating-save-button" id="saveFavoritesButton" onclick="disableFavoriteMode()">&#10003;</button>
     
     <script>
+      // MODIFICACIÓN: Leer el estado de los filtros al iniciar
       const state = {
           allChannels: [],
           channelsData: [],
-          currentFilter: 'all',
-          searchTerm: '',
+          currentFilter: localStorage.getItem('currentFilter') || 'all', // <-- Guardado
+          searchTerm: localStorage.getItem('searchTerm') || '', // <-- Guardado
           favorites: JSON.parse(localStorage.getItem('favorites')) || [],
           channelHistory: JSON.parse(localStorage.getItem('channelHistory')) || {},
           currentChannel: null,
@@ -1188,7 +1189,7 @@
           lastChannelPlay: JSON.parse(localStorage.getItem('lastChannelPlay')) || null,
           firstSeen: JSON.parse(localStorage.getItem('firstSeen')) || {},
           
-          sportFilter: 'all',
+          sportFilter: localStorage.getItem('sportFilter') || 'all', // <-- Guardado
           hideEventDetails: localStorage.getItem('hideEventDetails') === 'true'
       };
 
@@ -1451,11 +1452,18 @@
           });
       }
 
+      // MODIFICACIÓN: Guarda el filtro de marca en localStorage
       function applyFilter(filter) {
         state.currentFilter = filter;
+        localStorage.setItem('currentFilter', filter); // <-- Guardar filtro
+        
         document.getElementById('searchInput').value = '';
         state.searchTerm = '';
+        localStorage.setItem('searchTerm', ''); // <-- Limpiar búsqueda
+        
         state.sportFilter = 'all'; 
+        localStorage.setItem('sportFilter', 'all'); // <-- Limpiar filtro de deporte
+        
         disableFavoriteMode(); 
 
         clearAllFilterVisuals();
@@ -1474,11 +1482,18 @@
         renderResults();
       }
       
+      // MODIFICACIÓN: Guarda el filtro de deporte en localStorage
       function applySportFilter(sportKey) {
           state.sportFilter = state.sportFilter === sportKey ? 'all' : sportKey; 
+          localStorage.setItem('sportFilter', state.sportFilter); // <-- Guardar filtro de deporte
+          
           document.getElementById('searchInput').value = '';
           state.searchTerm = '';
+          localStorage.setItem('searchTerm', ''); // <-- Limpiar búsqueda
+          
           state.currentFilter = 'all'; 
+          localStorage.setItem('currentFilter', 'all'); // <-- Limpiar filtro de marca
+          
           disableFavoriteMode(); 
 
           clearAllFilterVisuals();
@@ -2981,8 +2996,11 @@
           }
       }
 
+      // MODIFICACIÓN: Guarda el término de búsqueda en localStorage
       function handleSearchInput() {
         state.searchTerm = document.getElementById('searchInput').value.trim();
+        localStorage.setItem('searchTerm', state.searchTerm); // <-- Guardar búsqueda
+        
         disableFavoriteMode();
         
         clearAllFilterVisuals();
@@ -2990,10 +3008,14 @@
         if (!state.searchTerm) {
             document.getElementById('clearEmojiFilters').classList.add('filter-button--active');
             state.currentFilter = 'all'; 
+            localStorage.setItem('currentFilter', 'all'); // <-- Actualizar filtro
             state.sportFilter = 'all';
+            localStorage.setItem('sportFilter', 'all'); // <-- Actualizar filtro de deporte
         } else {
             state.currentFilter = 'all'; 
+            localStorage.setItem('currentFilter', 'all'); // <-- Actualizar filtro
             state.sportFilter = 'all';
+            localStorage.setItem('sportFilter', 'all'); // <-- Actualizar filtro de deporte
         }
         
         renderResults();
@@ -3066,6 +3088,40 @@
           }
           const emptyStars = '☆'.repeat(5 - fullStars - (hasHalfStar ? 1 : 0));
           return `<span style="color: var(--primary);">${stars}</span><span style="color: gray;">${emptyStars}</span>`;
+      }
+      
+      // NUEVA FUNCIÓN: Restaura el estado visual de los filtros
+      function restoreFilterUI() {
+          document.getElementById('searchInput').value = state.searchTerm;
+          
+          clearAllFilterVisuals();
+          
+          let targetId;
+          
+          if (state.searchTerm) {
+              // Si hay término de búsqueda, no se activa ningún botón de filtro
+              return; 
+          }
+          
+          if (state.sportFilter !== 'all') {
+              // Si hay filtro de deporte, se activa el botón de deporte
+              const sportBtn = document.querySelector(`.sport-filter-button[data-sport-key="${state.sportFilter}"]`);
+              if (sportBtn) {
+                  sportBtn.classList.add('filter-button--active');
+                  return; 
+              }
+          }
+          
+          // Si no hay búsqueda ni filtro de deporte, se busca el filtro de marca
+          if (state.currentFilter === 'dazn') targetId = 'filterDAZN';
+          else if (state.currentFilter === 'm+') targetId = 'filterMovistar';
+          else if (state.currentFilter === 'eurosport') targetId = 'filterEurosport';
+          else if (state.currentFilter === 'favorites') targetId = 'filterFavorites';
+          else if (state.currentFilter === 'all') targetId = 'clearEmojiFilters'; 
+
+          if (targetId) {
+              document.getElementById(targetId).classList.add('filter-button--active');
+          }
       }
 
       document.addEventListener('DOMContentLoaded', () => {
@@ -3212,7 +3268,8 @@
               }
           });
           
-          applyFilter('all');
+          // MODIFICACIÓN: Restaurar la UI y renderizar con los filtros guardados
+          restoreFilterUI();
           
           loadInitialChannels();
           

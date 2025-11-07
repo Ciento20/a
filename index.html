@@ -1698,33 +1698,22 @@
                 fragment.appendChild(groupElement);
 
                 // Lógica de inserción del separador
-                if (!separatorAdded) {
+                if (!separatorAdded && group.isEvent) { // Solo si aún no se ha añadido y el grupo actual es de evento
                     const nextGroupIndex = sortedGroupKeys.indexOf(groupKey) + 1;
                     const nextGroupKey = sortedGroupKeys[nextGroupIndex];
                     const nextGroup = nextGroupKey ? groups[nextGroupKey] : null;
 
-                    // 1. Si el grupo actual es de evento Y no es de directo (solo si había directos antes)
-                    //    O si el grupo actual es de evento Y es el último grupo de evento Y no tiene directos.
-                    //    O si el siguiente grupo NO es de evento (es decir, es un canal permanente).
-                    
+                    // El separador se añade si:
+                    // 1. Es el último grupo (no hay nextGroup)
+                    // 2. O el siguiente grupo existe, pero NO es un grupo de eventos.
                     const isLastEventGroup = !nextGroup || !nextGroup.isEvent;
-                    const isAfterLive = hasLiveEvents && !group.hasLive;
-                    const isLastLiveEventGroup = group.hasLive && (isLastEventGroup || !nextGroup.hasLive); 
                     
-                    
-                    if (isLastLiveEventGroup) {
-                        const separator = document.createElement('hr');
-                        separator.className = 'live-separator';
-                        fragment.appendChild(separator);
-                        separatorAdded = true; 
-                    } else if (isLastEventGroup && !hasLiveEvents && group.isEvent) { 
-                        // Caso: No hay directos en absoluto, pero el grupo actual es el último de eventos.
+                    if (isLastEventGroup) { 
                         const separator = document.createElement('hr');
                         separator.className = 'live-separator';
                         fragment.appendChild(separator);
                         separatorAdded = true; 
                     }
-                    
                 }
                 
             });

@@ -679,32 +679,54 @@
             return numberedChannels;
         }
 
-        async function loadElcanoSource() {
-            let lastError;
-            for (const proxy of PROXIES) {
-                try {
-                    const proxyUrl = proxy + encodeURIComponent(ELCANO_URL);
-                    const controller = new AbortController();
-                    const timeoutId = setTimeout(() => controller.abort(), 15000);
-                    const response = await fetch(proxyUrl, { signal: controller.signal });
-                    clearTimeout(timeoutId);
-                    if (!response.ok) throw new Error(`Proxy ${proxy} responded with ${response.status}`);
-                    const htmlContent = await response.text();
-                    const jsonMatch = htmlContent.match(/const linksData\s*=\s*({[\s\S]*?});/);
-                    if (!jsonMatch) throw new Error("Data format changed");
-                    const linksData = JSON.parse(jsonMatch[1]
-                        .replace(/\s*\/\/.*(?:\n|$)/g, '')
-                        .replace(/,\s*}/g, '}')
-                        .replace(/,\s*]/g, ']'));
-                    return processElcanoData(linksData.links || []);
-                } catch (error) {
-                    lastError = error;
-                    console.warn(`Proxy ${proxy} failed:`, error);
-                    continue;
-                }
+       async function loadElcanoSource() {
+    let lastError;
+    for (const proxy of PROXIES) {
+        try {
+            const proxyUrl = proxy + encodeURIComponent(ELCANO_URL);
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 15000);
+            const response = await fetch(proxyUrl, { signal: controller.signal });
+            clearTimeout(timeoutId);
+            if (!response.ok) throw new Error(`Proxy ${proxy} responded with ${response.status}`);
+            
+            const htmlContent = await response.text();
+            
+            // 1. Extracción del objeto linksData con regex
+            // Busca 'const linksData = ' y captura el objeto JSON entre llaves {}
+            const jsonMatch = htmlContent.match(/const linksData\s*=\s*({[\s\S]*?});/); 
+            
+            if (!jsonMatch) throw new Error("No se encontró linksData o el formato HTML ha cambiado.");
+            
+            // Obtiene la cadena JSON capturada (índice 1 de la coincidencia)
+            let jsonString = jsonMatch[1];
+
+            // 2. Limpieza de datos:
+            // a) Elimina comentarios de una sola línea (//...)
+            jsonString = jsonString.replace(/\s*\/\/.*(?:\n|$)/g, '');
+            // b) Elimina trailing commas (comas seguidas de '}' o ']')
+            jsonString = jsonString.replace(/,\s*}/g, '}')
+                                     .replace(/,\s*]/g, ']');
+
+            // Parsing robusto
+            const linksData = JSON.parse(jsonString);
+            
+            // 3. Acceso anidado: Accede al array 'links' dentro del objeto
+            if (!linksData || !linksData.links || !Array.isArray(linksData.links)) {
+                 throw new Error("Estructura de linksData incorrecta o falta el array 'links'.");
             }
-            throw lastError || new Error("All proxies failed");
+
+            return processElcanoData(linksData.links);
+
+        } catch (error) {
+            lastError = error;
+            console.warn(`Proxy ${proxy} falló para Elcano:`, error);
+            continue;
         }
+    }
+    throw lastError || new Error("Todos los proxies fallaron para la fuente Elcano.");
+}
+
 
         async function loadEventsSource() {
             let lastError;

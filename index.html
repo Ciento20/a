@@ -357,7 +357,7 @@ async function loadEraChannels() {
 function processGistData(infoCanales) { 
     const numberedChannels = []; 
     const lines = infoCanales.split('\n').filter(line => line.trim() !== ''); 
-    const channelMappings = { 'MOVISTAR': 'M+', 'CLASICOS': 'Clásicos', 'VAMOS': 'Vamos', 'ACCION': 'Acción', 'LALIGA': 'La Liga', 'DEPORTES': 'Deportes', 'PLUS': 'Plus', 'LIGA DE CAMPEONES': 'Liga de Campeones', 'GOLF': 'Golf', 'LA LIGA': 'La Liga', 'HYPERMOTION': 'La Liga Hypermotion', 'EUROSPORT': '★EUROSPORT', }; 
+    const channelMappings = { 'MOVISTAR': 'M+', 'CLASICOS': 'Clásicos', 'VAMOS': 'Vamos', 'ACCION': 'Acción', 'LALIGA': 'La Liga', 'DEPORTES': 'Deportes', 'PLUS': 'Plus', 'LIGA DE CAMPEONES': 'M+ Liga de Campeones', 'GOLF': 'Golf', 'LA LIGA': 'La Liga', 'HYPERMOTION': 'La Liga Hypermotion', 'EUROSPORT': '★EUROSPORT', }; 
     for (let i = 0; i < lines.length; i += 2) { 
         const nameLine = lines[i].trim(); 
         const idLine = lines[i + 1] ? lines[i + 1].trim() : ''; 
@@ -473,7 +473,7 @@ function processShickatData(htmlContent) {
     const parser = new DOMParser(); 
     const doc = parser.parseFromString(htmlContent, 'text/html'); 
     const cards = doc.querySelectorAll('article.canal-card'); 
-    const nameMappings = { 'Movistar': 'M+', 'Clasicos': 'Clásicos', 'Accion': 'Acción', 'Deportes': 'Deportes', 'Plus': 'Plus', 'Liga de Campeones': 'Liga de Campeones', 'Golf': 'Golf', }; 
+    const nameMappings = { 'Movistar': 'M+', 'Clasicos': 'Clásicos', 'Accion': 'Acción', 'Deportes': 'Deportes', 'Plus': 'Plus', 'M+ Liga de Campeones': 'M+ Liga de Campeones', 'Golf': 'Golf', }; 
     cards.forEach(card => { 
         const nameElement = card.querySelector('.canal-nombre'); 
         const acestreamLinkElement = card.querySelector('.acestream-link'); 
@@ -515,7 +515,7 @@ function processShickatData(htmlContent) {
 } 
 function processElcanoData(links) { 
     const numberedChannels = []; 
-    const nameMap = { 'M. LaLiga': 'M+ La Liga', 'LaLiga Smartbank': 'La Liga Hypermotion', 'LaLiga': 'La Liga', 'MovistarPlus': 'M+ Plus', 'Vamos': 'M+ Vamos', 'Deporte': 'M+ Deportes', 'Dedporte': 'M+ Deportes', 'Dazn': 'DAZN', 'Campeones': 'Liga de Campeones' }; 
+    const nameMap = { 'M. LaLiga': 'M+ La Liga', 'LaLiga Smartbank': 'La Liga Hypermotion', 'LaLiga': 'La Liga', 'MovistarPlus': 'M+ Plus', 'Vamos': 'M+ Vamos', 'Deporte': 'M+ Deportes', 'Dedporte': 'M+ Deportes', 'Dazn': 'DAZN', 'Liga de Campeones': 'M+ Liga de Campeones' }; 
     links.forEach(link => { 
         if (link.url && link.url.startsWith('acestream://')) { 
             const acestreamId = link.url.split('://')[1]; 
@@ -581,7 +581,7 @@ function processEventsData(htmlContent) {
         return numberedChannels; 
     } 
     const rows = table.querySelectorAll('tbody tr'); 
-    const channelMappings = { 'Movistar': 'M+', 'La Liga': 'La Liga', 'Premier': 'Premier League', 'Eurosport': '★EUROSPORT', 'HYPERMOTION': 'La Liga Hypermotion', 'Liga de Campeones': 'Liga de Campeones', 'Vamos': 'Vamos', 'Deportes': 'Deportes' }; 
+    const channelMappings = { 'Movistar': 'M+', 'La Liga': 'La Liga', 'Premier': 'Premier League', 'Eurosport': '★EUROSPORT', 'HYPERMOTION': 'La Liga Hypermotion', 'M+ Liga de Campeones': 'M+ Liga de Campeones', 'Vamos': 'Vamos', 'Deportes': 'Deportes' }; 
     rows.forEach(row => { 
         const cells = row.querySelectorAll('td'); 
         if (cells.length >= 6) { 
@@ -593,6 +593,7 @@ function processEventsData(htmlContent) {
             const canalesCell = cells[5]; 
             const links = canalesCell.querySelectorAll('a[href^="acestream://"]'); 
             if (links.length > 0) { 
+                let sportEmoji = '❓';
                 const normalizedSport = normalizeText(sportName);if (normalizedSport.includes('futbol')) { sportEmoji = '⚽';} else if (normalizedSport.includes('baloncesto') || normalizedSport.includes('basket') || normalizedSport.includes('nba')) { sportEmoji = '🏀';} else if (normalizedSport.includes('tenis')) { sportEmoji = '🎾';} else if (normalizedSport.includes('motogp') || normalizedSport.includes('motos')) { sportEmoji = '🏍️';} else if (normalizedSport.includes('paddle') || normalizedSport.includes('padel')) { sportEmoji = '🥎';} else if (normalizedSport.includes('triatlon') || normalizedSport.includes('triathlon')) { sportEmoji = '🏊🚴🏃';} else if (normalizedSport.includes('motor') || normalizedSport.includes('rally')) { sportEmoji = '🚗';} else if (normalizedSport.includes('f1') || normalizedSport.includes('formula')) { sportEmoji = '🏎️';} else if (normalizedSport.includes('boxeo') || normalizedSport.includes('lucha')) { sportEmoji = '🥊';} else if (normalizedSport.includes('ciclismo') || normalizedSport.includes('tour')) { sportEmoji = '🚴';} else if (normalizedSport.includes('beisbol') || normalizedSport.includes('baseball')) { sportEmoji = '⚾';} else if (normalizedSport.includes('golf')) { sportEmoji = '⛳';} else if (normalizedSport.includes('voleibol') || normalizedSport.includes('voley')) { sportEmoji = '🏐';} else if (normalizedSport.includes('hockey')) { sportEmoji = '🏑';} else if (normalizedSport.includes('rugby')) { sportEmoji = '🏉';} else if (normalizedSport.includes('natacion') || normalizedSport.includes('agua')) { sportEmoji = '🏊';} else if (normalizedSport.includes('atletismo') || normalizedSport.includes('pista')) { sportEmoji = '🏃';} else if (normalizedSport.includes('gimnasia')) { sportEmoji = '🤸';} else if (normalizedSport.includes('esqui') || normalizedSport.includes('nieve')) { sportEmoji = '⛷️';} else if (normalizedSport.includes('surf')) { sportEmoji = '🏄';} else if (normalizedSport.includes('e-sports') || normalizedSport.includes('esports')) { sportEmoji = '🎮';} else if (normalizedSport.includes('ajedrez')) { sportEmoji = '♟️';} else if (normalizedSport.includes('dardos')) { sportEmoji = '🎯'; } else if (normalizedSport.includes('billares') || normalizedSport.includes('pool')) { sportEmoji = '🎱';} else if (normalizedSport.includes('patinaje') || normalizedSport.includes('roller')) { sportEmoji = '⛸️';} else if (normalizedSport.includes('criquet') || normalizedSport.includes('cricket')) { sportEmoji = '🏏';} 
                 const eventStartTime = getEventTime(date, time); 
                 const durationMinutes = calculateDuration(sportName); 
@@ -818,6 +819,11 @@ const groupRegexes = { 'DAZN F1': /DAZN F1/i, 'DAZN': /DAZN(?!.*F1|.*La Liga)/i,
 function determineBrandGroup(channel) {
     const channelName = channel.name;
     const normalizedName = normalizeText(channelName);
+
+    // NUEVA LÓGICA: Separar canales ★EUROSPORT con indicadores de país entre paréntesis.
+    if (channelName.includes('★EUROSPORT') && channelName.includes('(')) {
+        return 'Otros';
+    }
 
     // Comprobación para excluir canales "eventos" o "eleven" del grupo DAZN
     if (groupRegexes['DAZN'] && groupRegexes['DAZN'].test(channelName)) {

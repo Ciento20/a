@@ -581,7 +581,7 @@ function processEventsData(htmlContent) {
         return numberedChannels; 
     } 
     const rows = table.querySelectorAll('tbody tr'); 
-    const channelMappings = { 'Movistar': 'M+', 'La Liga': 'La Liga', 'Premier': 'Premier League', 'Eurosport': '★EUROSPORT', 'HYPERMOTION': 'La Liga Hypermotion', 'M+ Liga de Campeones': 'M+ Liga de Campeones', 'Vamos': 'Vamos', 'Deportes': 'Deportes' }; 
+    const channelMappings = { 'Movistar': 'M+', 'La Liga': 'La Liga', 'Premier': 'Premier League', 'Eurosport': '★EUROSPORT', 'HYPERMOTION': 'La Liga Hypermotion', 'LIGA DE CAMPEONES': 'M+ Liga de Campeones', 'PLUS': 'Plus','VAMOS':'Vamos', 'Deportes': 'Deportes' }; 
     rows.forEach(row => { 
         const cells = row.querySelectorAll('td'); 
         if (cells.length >= 6) { 

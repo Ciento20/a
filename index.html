@@ -22,6 +22,16 @@ const BACKUP_EXPIRY_HOURS = 480;
 const HISTORY_EXPIRY_HOURS = 168; 
 const SPORT_FILTER_BUTTON_IDS = ['filterFutbol', 'filterBaloncesto', 'filterTenis', 'filterBoxeo', 'filterCiclismo', 'filterMotorsport', 'filterF1']; 
 const BRAND_FILTER_BUTTON_IDS = ['filterDAZN', 'filterMovistar', 'filterEurosport', 'filterFavorites', 'clearEmojiFilters']; 
+const OTHER_SUBGROUPS = [ // LISTA DE SUBGRUPOS PARA EL GRUPO "OTROS"
+    'LIGA ENDESA', 'CANAL DE TENIS', 'SUPERTENNIS', 'BUNDESLIGA',
+    'PRIMERA FEDERACIÓN', '1RFEF', 'ARAGON TV', 'BEIN', 'BT SPORT',
+    'CANAL+SPORT', 'ESPN', 'ESSPN', 'SKY', 'ESPORT 3', 'FOX', 'GOL PLAY', 'REAL MADRID TV',
+    'ORANGE TV', 'RALLY TV', 'MOTOR', 'NBA', 'NFL', 'PREMIER SPORTS',
+    'DISCOVERY CHANNEL', 'DARK', 'AMC', 'LA 1', 'LA 2', 'ANTENA 3',
+    'Cuatro', 'Telecinco', 'LA SEXTA', '24 HORAS', 'TELEDEPORTE',
+    'CAZA Y PESCA', 'CANAL COCINA', 'DECASA', 'ONETORO', 'ZIGGO',
+    'XTRM', 'MIXED TV','DAZN', '(DE)', '(PL)', '(RU)'
+];
 function normalizeText(text) { 
     if (!text) return ''; 
     return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase(); 
@@ -938,14 +948,33 @@ function renderResults() {
         }
     });
 
-    // INICIO DE LA MODIFICACIÓN PARA AGRUPAR CANALES CON/SIN BAR
+    // INICIO DE LA MODIFICACIÓN PARA AGRUPAR CANALES CON/SIN BAR Y APLICAR SUBGRUPOS PERSONALIZADOS
     Object.values(groups).forEach(group => {
         const subGroups = {};
         group.channels.forEach(channel => {
             let subGroupName = channel.name.trim();
             
+            // LÓGICA AÑADIDA PARA SUBGRUPOS DE "OTROS"
+            if (group.name === 'Otros') {
+                const normalizedChannelName = normalizeText(channel.name);
+                let foundSubGroup = null;
+
+                // Iterar sobre la lista de subgrupos solicitados
+                for (const subGroupKey of OTHER_SUBGROUPS) {
+                    const normalizedSubGroupKey = normalizeText(subGroupKey);
+                    
+                    // Usamos una búsqueda más flexible para capturar coincidencias
+                    if (normalizedChannelName.includes(normalizedSubGroupKey)) {
+                        foundSubGroup = subGroupKey;
+                        break;
+                    }
+                }
+
+                // Si se encuentra un subgrupo, usa su clave, si no, usa el nombre del canal.
+                subGroupName = foundSubGroup || subGroupName;
+            }
+            
             // Lógica para agrupar canales DAZN con/sin BAR
-            // Si el nombre contiene 'DAZN' y 'BAR', eliminamos ' BAR' para la agrupación.
             if (subGroupName.includes('DAZN') && subGroupName.includes('BAR')) {
                 subGroupName = subGroupName.replace(' BAR', '').trim();
             }

@@ -1055,27 +1055,48 @@ function renderResults() {
         });
         sortedSubGroupNames.forEach(subGroupName => {
             const subGroupChannels = group.subGroups[subGroupName];
+            
+            // INICIO DEL BLOQUE DE ORDENAMIENTO MODIFICADO
             subGroupChannels.sort((a, b) => {
+                // 1. PRIMER criterio: Puntuación (rating) - de mayor a menor
+                // Rating por defecto es 2.5
+                const ratingA = state.channelRatings[a.id] !== undefined ? state.channelRatings[a.id] : 2.5;
+                const ratingB = state.channelRatings[b.id] !== undefined ? state.channelRatings[b.id] : 2.5;
+                if (ratingA !== ratingB) {
+                    return ratingB - ratingA; // Mayor rating primero
+                }
+
+                // 2. SEGUNDO criterio: Si está en vivo (canales en vivo primero)
                 if (a.isLive && !b.isLive) return -1;
                 if (!a.isLive && b.isLive) return 1;
-                const qualityMap = { '4K': 5, 'FHD': 4, 'HD': 3, 'SD': 2, 'N/A': 1, 'UHD': 6 };
+                
+                // 3. TERCER criterio: Calidad del stream (UHD/4K > FHD > HD > SD)
+                const qualityMap = { 'UHD': 6, '4K': 5, 'FHD': 4, 'HD': 3, 'SD': 2, 'N/A': 1 };
                 const qualityA = qualityMap[standardizeQuality(a.quality)] || 0;
                 const qualityB = qualityMap[standardizeQuality(b.quality)] || 0;
                 if (qualityB !== qualityA) {
                     return qualityB - qualityA;
                 }
+                
+                // 4. CUARTO criterio: Fuente del stream (gist > era > events > shickat > elcano)
                 const sourcePriorityMap = { 'gist': 4, 'era': 3, 'events': 2, 'shickat': 1, 'elcano': 0, 'history': -1 }; // ERA Prioridad: 3
                 const sourceA = sourcePriorityMap[a.source] || 0;
                 const sourceB = sourcePriorityMap[b.source] || 0;
                 if (sourceB !== sourceA) {
                     return sourceB - sourceA;
                 }
+
+                // 5. QUINTO criterio: Si es favorito (favoritos primero)
                 const aIsFavorite = state.favorites.includes(a.id);
                 const bIsFavorite = state.favorites.includes(b.id);
                 if (aIsFavorite && !bIsFavorite) return -1;
                 if (!aIsFavorite && bIsFavorite) return 1;
-                return 0;
+                
+                // Criterio de desempate final: Orden alfabético por nombre
+                return a.name.localeCompare(b.name);
             });
+            // FIN DEL BLOQUE DE ORDENAMIENTO MODIFICADO
+            
             let subGroupTitleHTML = '';
             // INICIO DE MODIFICACIÓN PARA CENTRAR UN ÚNICO ELEMENTO
             const isSingleItem = subGroupChannels.length === 1;

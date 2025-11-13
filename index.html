@@ -394,6 +394,7 @@ function processGistData(infoCanales) {
                     multiAudio = true; 
                     namePart = namePart.replace('MULTI', '').trim(); 
                 } 
+namePart = namePart.replace(/\(ES\)|\(Es\)/g, '').trim();
                 let simplifiedName = namePart; 
                 for (const key in channelMappings) { 
                     if (simplifiedName.includes(key)) { 

@@ -1354,32 +1354,9 @@
             display: none;
         }
 
-        .tv-live-indicator {
-            display: inline-block;
-            background: #ff3535;
-            color: white;
-            font-size: 0.75rem;
-            font-weight: 700;
-            padding: 4px 8px;
-            border-radius: 4px;
-            margin-top: 5px;
-            animation: soft-blink 1.5s infinite ease-in-out;
-            text-transform: uppercase;
-        }
+        /* CLASE ELIMINADA: .tv-live-indicator */
 
-        @keyframes soft-blink {
-            0% {
-                opacity: 1;
-            }
-
-            50% {
-                opacity: 0.8;
-            }
-
-            100% {
-                opacity: 1;
-            }
-        }
+        /* KEYFRAME ELIMINADO: @keyframes soft-blink */
 
         .modal__content {
             max-width: 450px;
@@ -3528,7 +3505,7 @@
         const createTVChannelCard = (channel, allOptionsJson = '[]') => {
             const logoInfo = getPlaceholderInfo(channel.name);
             const isLiveClass = channel.isLive ? 'tv-card--live' : '';
-            const liveIndicator = channel.isLive ? '<span class="tv-live-indicator">🔴 EN VIVO</span>' : '';
+            // VARIABLE ELIMINADA: const liveIndicator = channel.isLive ? '<span class="tv-live-indicator">🔴 EN VIVO</span>' : '';
             let bgColor = 'var(--card-bg)';
             let backgroundImageStyle = '';
             let logoClass = '';
@@ -3543,7 +3520,8 @@
                 backgroundImageStyle = `background-image: url('${proxiedUrl}');`;
                 logoClass = logoInfo.class;
                 // MODIFICACIÓN: Si hay logo, ocultamos el nombre del canal
-                channelNameHTML = `<h3 style="font-size: 1.2rem; font-weight: 700; color: ${nameStyle}; white-space: normal; text-align: center;">${liveIndicator}</h3>`;
+                // Sustituido: channelNameHTML = `<h3 style="font-size: 1.2rem; font-weight: 700; color: ${nameStyle}; white-space: normal; text-align: center;">${liveIndicator}</h3>`;
+                channelNameHTML = `<h3 style="font-size: 1.2rem; font-weight: 700; color: ${nameStyle}; white-space: normal; text-align: center;"></h3>`;
             } else {
                 // Lógica de color de fondo existente si no hay logo
                 if (channel.name.includes('DAZN') && !channel.name.includes('F1')) bgColor = '#353535';
@@ -4046,4 +4024,3 @@
 </body>
 
 </html>
-

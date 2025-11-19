@@ -1415,7 +1415,8 @@
             font-size: 0.85rem;
             color: var(--channel-name-color);
         }
-
+        
+        /* CÓDIGO MODIFICADO PARA EL BOTÓN DE OPCIONES */
         .tv-link-button {
             position: absolute;
             top: 10px;
@@ -1423,7 +1424,8 @@
             width: 40px;
             height: 40px;
             border-radius: 50%;
-            background-color: var(--primary);
+            /* CAMBIO: Usar un fondo semitransparente para mejor integración */
+            background-color: rgba(255, 255, 255, 0.2); 
             color: white;
             border: none;
             cursor: pointer;
@@ -1431,14 +1433,17 @@
             justify-content: center;
             align-items: center;
             font-size: 1.2rem;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+            /* Se mantiene la sombra, pero se ajusta */
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4); 
+            /* Importante: asegura que está por encima del logo/nombre */
+            z-index: 50; 
             transition: transform 0.2s, background-color 0.2s;
-            z-index: 10;
         }
 
         .tv-link-button:hover,
         .tv-link-button-focused {
-            background-color: var(--primary-dark);
+            /* CAMBIO: Al enfocar, usar el color primario (o blanco más opaco) */
+            background-color: var(--primary); 
             transform: scale(1.1);
         }
     </style>
@@ -1598,7 +1603,9 @@
         const IMAGE_PROXY_URL = "https://images.weserv.nl/?url=";
         const ERA_URL = "https://ipfs.io/ipns/k2k4r8oqlcjxsritt5mczkcn4mmvcmymbqw7113fz2flkrerfwfps004/data/listas/listaplana.txt";
         const championsLeagueImages = {
-            'M+ LIGA DE CAMPEONES': '0/05/Liga_de_Campeones_por_Movistar_Plus%2B.svg/revision/latest?cb=20220128151054',
+            'M+ LIGA DE CAMPEONES': '0/05/Liga_de_Campeones_por_Movistar_Plus%2B.svg/revision/latest?cb=20220128151054', // <<-- COMA AÑADIDA
+            'M+ COMEDIA': '2/27/Comedia_por_Movistar_Plus%2B_2023.svg/revision/latest?cb=20230721191930',
+
             'M+ LIGA DE CAMPEONES 2': '3/33/Liga_de_Campeones_2_por_Movistar_Plus%2B.png/revision/latest?cb=20230708171922',
             'M+ LIGA DE CAMPEONES 3': 'f/f8/Liga_de_Campeones_3_por_Movistar_Plus%2B.png/revision/latest?cb=20230708171923',
             'M+ LIGA DE CAMPEONES 4': '0/0a/Liga_de_Campeones_4_por_Movistar_Plus%2B.png/revision/latest?cb=20230708171811',
@@ -1636,8 +1643,18 @@
         function getPlaceholderInfo(channelName) {
             const name = channelName.toUpperCase().trim();
             if (championsLeagueImages[name]) {
+                let url = championsLeagueImages[name]; // <-- Obtenemos la URL
+                
+                // --- INICIO DE CAMBIO PARA NORMALIZAR URL ---
+                const baseUrl = LOGOPEDIA_BASE_URL;
+                if (url.startsWith(baseUrl)) {
+                    // Si la URL es la URL completa, cortamos la parte base para que sea relativa
+                    url = url.substring(baseUrl.length);
+                }
+                // --- FIN DE CAMBIO ---
+                
                 return {
-                    url: championsLeagueImages[name],
+                    url: url,
                     class: 'channel-card--logo-img'
                 };
             }
@@ -4012,10 +4029,3 @@
 </body>
 
 </html>
-           }, 60000);
-        });
-    </script>
-</body>
-
-</html>
-

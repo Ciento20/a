@@ -1305,18 +1305,20 @@
             background: #151515;
         }
 
+        /* ESTILO DEL BOTÓN DE AJUSTES (Modificado para integrarse en la lista) */
         #tvSidebar button#settingsModeBtn {
             /* Ajuste del botón salir/ajustes */
-            width: 100%;
+            width: 90%; /* Ajustado para que tenga margen */
+            margin: 1rem 5% 0.5rem 5%; /* Centrado y con margen arriba */
             padding: 8px 5px;
             font-size: 0.75rem;
             background-color: #383838;
             color: #e0e0e0;
             border: none;
             border-radius: 6px;
-            margin-top: 0.5rem;
             cursor: pointer;
             transition: background-color 0.2s;
+            text-align: center;
         }
         
         #tvSidebar button#settingsModeBtn:hover,
@@ -1327,12 +1329,12 @@
             transform: scale(1.02);
         }
         
-        /* Contenedor para la parte inferior (Ajustes) - Se añade margin-bottom para asegurar espacio */
-        #tvBottomNav {
+        /* Contenedor para la parte inferior (Ajustes) - ELIMINADO */
+        /* #tvBottomNav {
             padding: 0 5px;
-            margin-top: 2rem; /* Espacio para separar de los filtros de deporte */
-            margin-bottom: 3rem; /* MODIFICACIÓN: Aumentado para levantar el botón del borde */
-        }
+            margin-top: 2rem;
+            margin-bottom: 3rem;
+        } */
         
         /* FIN DE LOS CAMBIOS */
 
@@ -1525,7 +1527,7 @@
     </div>
     <div class="modal" id="settingsModal">
         <div class="modal__content">
-            <h3 class="modal__title">⚙️</h3>
+            <h3 class="modal__title">⚙️ AJUSTES</h3>
             <div class="settings-section">
                 <h4 class="settings-section__title">📺 Modo TV</h4>
                 <div class="settings-item">
@@ -1615,7 +1617,7 @@
                             <li><a href="#" class="tv-nav-link brand-filter" data-filter="m+" tabindex="0">
                             <img src="https://images.weserv.nl/?url=https://static.wikia.nocookie.net/logopedia/images/a/af/Movistar_2025.svg/revision/latest?cb=20251005163444" alt="Movistar+ Logo"> </a></li>
                         <li><a href="#" class="tv-nav-link brand-filter" data-filter="eurosport" tabindex="0">
-                            <img src="https://images.weserv.nl/?url=https%3A%2F%2Fstatic.wikia.nocookie.net%2Flogopedia%2Fimages%2F0%2F0a%2FEurosport_%25282015%2529.svg%2Frevision%2Flatest%3Fcb%3D20210911120727" alt="Eurosport Logo"> </a></li>
+                            <img src="https://static.wikia.nocookie.net/logopedia/images/d/d1/Eurosport_%282015%29_%28Monogram%29.svg/revision/latest/scale-to-width-down/250?cb=20171222150235" alt="Eurosport Logo"> </a></li>
 
                         <div id="tvSportFilters">
                             <a href="#" class="tv-nav-link sport-filter" data-sport-key="futbol" tabindex="0" title="Fútbol">⚽</a>
@@ -1624,13 +1626,12 @@
                             <a href="#" class="tv-nav-link sport-filter" data-sport-key="motorsport" tabindex="0" title="Motorsport">🏁</a>
                             <a href="#" class="tv-nav-link sport-filter" data-sport-key="f1" tabindex="0" title="F1">🏎️</a>
                             </div>
+
+                        <button id="settingsModeBtn" tabindex="0"> ⚙️ </button>
                     </ul>
                 </nav>
             </div>
-            <div id="tvBottomNav">
-                <button id="settingsModeBtn" tabindex="0"> ⚙️ Ajustes </button>
-            </div>
-        </aside>
+            </aside>
         <main id="tvMainContent">
             <h1 style="color: white; margin-top: 0;"></h1>
             <div class="tv-channels-grid" id="tvChannelsGrid"></div>
@@ -1931,8 +1932,10 @@
                 link.classList.remove('tv-sidebar-link-focused');
             });
             // Remover foco de los botones de la parte inferior
-            document.querySelectorAll('#tvBottomNav button').forEach(button => {
-                button.classList.remove('tv-sidebar-link-focused');
+            document.querySelectorAll('#tvSidebar button').forEach(button => {
+                if (button.id !== 'tvSearch') { // No queremos quitar el foco a la barra de búsqueda si está activa
+                    button.classList.remove('tv-sidebar-link-focused');
+                }
             });
         }
 
@@ -3640,6 +3643,9 @@
                     brandLink.classList.add('tv-sidebar-link-focused');
                 }
             }
+            
+            // Foco para el botón de ajustes si no hay un filtro activo o si se prefiere
+            // Nota: El foco inicial del manager de foco se encargará de esto si se recarga la página
         }
 
         function toggleTVMode() {
@@ -4180,8 +4186,6 @@
                 }
             });
             document.getElementById('tvModeCheckbox').addEventListener('change', toggleTVMode);
-            
-            // ELIMINACIÓN: document.getElementById('normalModeBtn').addEventListener('click', () => { switchToNormalMode(); });
             
             // NUEVO EVENT LISTENER PARA EL BOTÓN DE AJUSTES EN MODO TV
             document.getElementById('settingsModeBtn').addEventListener('click', () => {

@@ -1304,7 +1304,6 @@
             background: #151515;
         }
 
-        #tvSidebar button#normalModeBtn,
         #tvSidebar button#settingsModeBtn {
             /* Ajuste del botón salir/ajustes */
             width: 100%;
@@ -1319,17 +1318,15 @@
             transition: background-color 0.2s;
         }
         
-        #tvSidebar button#normalModeBtn:hover,
         #tvSidebar button#settingsModeBtn:hover,
-        #tvSidebar button#normalModeBtn.tv-sidebar-link-focused,
         #tvSidebar button#settingsModeBtn.tv-sidebar-link-focused {
             background-color: var(--primary) !important;
             border: 2px solid white;
             outline-offset: 2px;
             transform: scale(1.02);
         }
-
-        /* Contenedor para la parte inferior (Ajustes y Salir) */
+        
+        /* Contenedor para la parte inferior (Ajustes) - Se elimina la referencia a normalModeBtn */
         #tvBottomNav {
             padding: 0 5px;
             margin-top: 2rem; /* Espacio para separar de los filtros de deporte */
@@ -1623,17 +1620,14 @@
                             <a href="#" class="tv-nav-link sport-filter" data-sport-key="futbol" tabindex="0" title="Fútbol">⚽</a>
                             <a href="#" class="tv-nav-link sport-filter" data-sport-key="baloncesto" tabindex="0" title="Baloncesto">🏀</a>
                             <a href="#" class="tv-nav-link sport-filter" data-sport-key="tenis" tabindex="0" title="Tenis">🎾</a>
-                            <a href="#" class="tv-nav-link sport-filter" data-sport-key="boxeo" tabindex="0" title="Boxeo">🥊</a>
-                            <a href="#" class="tv-nav-link sport-filter" data-sport-key="ciclismo" tabindex="0" title="Ciclismo">🚴</a>
-                            <a href="#" class="tv-nav-link sport-filter" data-sport-key="motorsport" tabindex="0" title="Motor">🏁</a>
+                            <a href="#" class="tv-nav-link sport-filter" data-sport-key="motorsport" tabindex="0" title="Motorsport">🏁</a>
                             <a href="#" class="tv-nav-link sport-filter" data-sport-key="f1" tabindex="0" title="F1">🏎️</a>
-                        </div>
+                            </div>
                     </ul>
                 </nav>
             </div>
             <div id="tvBottomNav">
                 <button id="settingsModeBtn" tabindex="0"> ⚙️ Ajustes </button>
-                <button id="normalModeBtn" tabindex="0"> Salir </button>
             </div>
         </aside>
         <main id="tvMainContent">
@@ -1779,7 +1773,8 @@
 
         // Nuevos IDs para los filtros en modo TV
         const TV_BRAND_FILTER_KEYS = ['all', 'live', 'favorites', 'dazn', 'm+', 'eurosport'];
-        const TV_SPORT_FILTER_KEYS = ['futbol', 'baloncesto', 'tenis', 'boxeo', 'ciclismo', 'motorsport', 'f1'];
+        // MODIFICACIÓN: Se añaden 'motorsport' y 'f1' a la lista
+        const TV_SPORT_FILTER_KEYS = ['futbol', 'baloncesto', 'tenis', 'motorsport', 'f1'];
 
         const OTHER_SUBGROUPS = [
             'LIGA ENDESA',
@@ -3030,7 +3025,7 @@
                     'tenis': ['tenis', 'wimbledon', 'roland garros', 'us open', 'atp', 'wta'],
                     'boxeo': ['boxeo', 'boxing', 'lucha', 'ufc', 'mma'],
                     'ciclismo': ['ciclismo', 'tour', 'giro', 'vuelta'],
-                    'motorsport': ['gp', 'motogp', 'dakar', 'rally', 'wrc', 'nascar'],
+                    'motorsport': ['gp', 'motogp', 'dakar', 'rally', 'wrc', 'nascar', 'motor'],
                     'f1': ['f1', 'fórmula 1', 'formula 1', 'formulaone', 'fórmulaone']
                 };
                 let targetTerms = sportSearchTerms[normalizedSportFilter] || [normalizedSportFilter];
@@ -3958,10 +3953,9 @@
                     const searchElement = document.getElementById('tvSearch');
                     const sidebarLinks = Array.from(document.querySelectorAll('.tv-nav-link'));
                     const allCards = Array.from(document.querySelectorAll('.tv-card'));
-                    const normalModeBtn = document.getElementById('normalModeBtn');
-                    // AÑADIR BOTÓN DE AJUSTES A LOS ELEMENTOS ENFOCABLES
+                    // Se elimina la referencia a normalModeBtn
                     const settingsModeBtn = document.getElementById('settingsModeBtn');
-                    this.focusableElements = [searchElement, ...sidebarLinks, settingsModeBtn, normalModeBtn, ...allCards].filter(el => el && el.offsetParent !== null);
+                    this.focusableElements = [searchElement, ...sidebarLinks, settingsModeBtn, ...allCards].filter(el => el && el.offsetParent !== null);
                 },
                 setFocus: function(element) {
                     if (!element) return;
@@ -3969,7 +3963,8 @@
                     this.currentFocus = element;
                     
                     // Comprobar si es un botón de la parte inferior para darle foco
-                    if (element.id === 'tvSearch' || element.id === 'normalModeBtn' || element.id === 'settingsModeBtn') {
+                    // Se elimina la comprobación para normalModeBtn
+                    if (element.id === 'tvSearch' || element.id === 'settingsModeBtn') {
                         element.focus();
                         if (element.id !== 'tvSearch') {
                             element.classList.add('tv-sidebar-link-focused');
@@ -4012,7 +4007,18 @@
                                 renderTVChannels();
                                 return;
                             }
-                            switchToNormalMode();
+                            // Si se está en un canal o en ajustes, y pulsa Escape/Backspace, sale del modo TV.
+                            if (this.currentFocus.classList.contains('tv-card') || this.currentFocus.id === 'settingsModeBtn') {
+                                switchToNormalMode();
+                                return;
+                            }
+                            // Si está en otro elemento de la barra lateral, regresa a 'Todos' o al canal más cercano
+                            const sidebarElements = Array.from(document.querySelectorAll('#tvSearch, .tv-nav-link, #settingsModeBtn'));
+                            if(sidebarElements.includes(this.currentFocus)) {
+                                switchToNormalMode(); // Opción alternativa: forzar salida si está en la barra lateral
+                                return;
+                            }
+                            switchToNormalMode(); // Fallback para salir si no hay foco claro
                             return;
                     }
                     if (nextElement) {
@@ -4022,7 +4028,7 @@
                 moveFocus: function(direction) {
                     this.updateFocusableElements();
                     const allCards = Array.from(document.querySelectorAll('.tv-card'));
-                    const sidebarElements = Array.from(document.querySelectorAll('#tvSearch, .tv-nav-link, #settingsModeBtn, #normalModeBtn'));
+                    const sidebarElements = Array.from(document.querySelectorAll('#tvSearch, .tv-nav-link, #settingsModeBtn'));
                     const focusedIndex = sidebarElements.indexOf(this.currentFocus);
 
                     // Lógica para moverse DENTRO de la barra lateral
@@ -4085,8 +4091,6 @@
                             this.currentFocus.click();
                         } else if (this.currentFocus.id === 'tvSearch') {
                             this.currentFocus.focus();
-                        } else if (this.currentFocus.id === 'normalModeBtn') {
-                            this.currentFocus.click();
                         } else if (this.currentFocus.id === 'settingsModeBtn') {
                              // Lógica para abrir modal de ajustes
                             document.getElementById('settingsModal').classList.add('modal--active');
@@ -4175,9 +4179,8 @@
                 }
             });
             document.getElementById('tvModeCheckbox').addEventListener('change', toggleTVMode);
-            document.getElementById('normalModeBtn').addEventListener('click', () => {
-                switchToNormalMode();
-            });
+            
+            // ELIMINACIÓN: document.getElementById('normalModeBtn').addEventListener('click', () => { switchToNormalMode(); });
             
             // NUEVO EVENT LISTENER PARA EL BOTÓN DE AJUSTES EN MODO TV
             document.getElementById('settingsModeBtn').addEventListener('click', () => {
@@ -4188,6 +4191,7 @@
             document.querySelectorAll('#tvSidebar .tv-nav-link').forEach(link => {
                 link.addEventListener('click', function(e) {
                     e.preventDefault();
+                    // MODIFICACIÓN: Se comprueba también si el filtro es de deporte
                     if (TV_BRAND_FILTER_KEYS.includes(this.dataset.filter)) {
                         applyTVFilter(this.dataset.filter, 'brand');
                     } else if (TV_SPORT_FILTER_KEYS.includes(this.dataset.sportKey)) {

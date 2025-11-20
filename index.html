@@ -153,18 +153,14 @@
             color: #fff;
             border-color: var(--primary)
         }
-        
-        /* INICIO DEL CAMBIO SOLICITADO */
+
         .filter-button--clear,
-        .filter-button--favorites,
-        #settingsModeBtn.filter-button {
+        .filter-button--favorites {
             flex: 0 0 auto;
             width: 36px;
             min-width: 36px;
-            padding: .5rem 0;
+            padding: .5rem 0
         }
-        
-        /* FIN DEL CAMBIO SOLICITADO */
 
         #filterDAZN,
         #filterEurosport,
@@ -1513,7 +1509,6 @@
                         class="filter-button" id="filterMovistar">MOVISTAR+</button><button class="filter-button"
                         id="filterEurosport">★EUROSPORT</button><button
                         class="filter-button filter-button--clear filter-button--active" id="clearEmojiFilters">x</button>
-                    <button class="filter-button" id="settingsModeBtn" title="Ajustes">⚙️</button>
                 </div>
                 <div class="filter-buttons" id="sportFiltersContainer" style="margin-top:.6rem"><button
                         class="filter-button sport-filter-button" data-sport-key="futbol" id="filterFutbol">⚽</button><button
@@ -1532,7 +1527,7 @@
     </div>
     <div class="modal" id="settingsModal">
         <div class="modal__content">
-            <h3 class="modal__title">⚙️ AJUSTES</h3>
+            <h3 class="modal__title">⚙️</h3>
             <div class="settings-section">
                 <h4 class="settings-section__title">📺 Modo TV</h4>
                 <div class="settings-item">
@@ -1622,7 +1617,7 @@
                             <li><a href="#" class="tv-nav-link brand-filter" data-filter="m+" tabindex="0">
                             <img src="https://images.weserv.nl/?url=https://static.wikia.nocookie.net/logopedia/images/a/af/Movistar_2025.svg/revision/latest?cb=20251005163444" alt="Movistar+ Logo"> </a></li>
                         <li><a href="#" class="tv-nav-link brand-filter" data-filter="eurosport" tabindex="0">
-                            <img src="https://images.weserv.nl/?url=https://static.wikia.nocookie.net/logopedia/images/d/d1/Eurosport_%282015%29_%28Monogram%29.svg/revision/latest/scale-to-width-down/250?cb=20171222150235" alt="Eurosport Logo"> </a></li>
+                            <img src="https://images.weserv.nl/?url=https%3A%2F%2Fstatic.wikia.nocookie.net%2Flogopedia%2Fimages%2F0%2F0a%2FEurosport_%25282015%2529.svg%2Frevision%2Flatest%3Fcb%3D20210911120727" alt="Eurosport Logo"> </a></li>
 
                         <div id="tvSportFilters">
                             <a href="#" class="tv-nav-link sport-filter" data-sport-key="futbol" tabindex="0" title="Fútbol">⚽</a>
@@ -1632,7 +1627,7 @@
                             <a href="#" class="tv-nav-link sport-filter" data-sport-key="f1" tabindex="0" title="F1">🏎️</a>
                             </div>
 
-                        <button id="settingsModeBtn" tabindex="0"> ⚙️ </button>
+                        <button id="settingsModeBtn" tabindex="0"> ⚙️ Ajustes </button>
                     </ul>
                 </nav>
             </div>
@@ -1930,9 +1925,6 @@
                 const btn = document.getElementById(id);
                 if (btn) btn.classList.remove('filter-button--active');
             });
-            // También aseguramos de quitar la clase activa del botón de ajustes en el modo normal
-            const settingsBtn = document.getElementById('settingsModeBtn');
-            if (settingsBtn) settingsBtn.classList.remove('filter-button--active');
         }
 
         function clearAllTVFilterVisuals() {
@@ -4129,7 +4121,6 @@
             document.getElementById('hideEventDetailsCheckbox').checked = state.hideEventDetails;
             document.body.classList.toggle('hide-event-details', state.hideEventDetails);
             const favoriteButton = document.getElementById('filterFavorites');
-            const settingsButton = document.getElementById('settingsModeBtn'); // Nuevo: Obtener el botón de ajustes en la interfaz normal
             const LONG_PRESS_THRESHOLD = 500;
             const clearButton = document.getElementById('clearEmojiFilters');
             const copyModal = document.getElementById('copyModal');
@@ -4182,12 +4173,6 @@
                 },
                 () => applyFilter('all')
             );
-             // Configurar el comportamiento al hacer clic en el botón de ajustes en la interfaz normal
-            settingsButton.addEventListener('click', () => {
-                document.getElementById('settingsModal').classList.add('modal--active');
-                clearAllFilterVisuals(); // Opcional: Quitar la clase activa al abrir el modal
-                settingsButton.classList.add('filter-button--active'); // Opcional: Marcar como activo al abrir
-            });
             if (cancelCopyBtn) {
                 cancelCopyBtn.addEventListener('click', hideCopyModal);
             }
@@ -4242,12 +4227,7 @@
             document.getElementById('searchInput').addEventListener('input', handleSearchInput);
             document.getElementById('darkModeCheckbox').addEventListener('change', toggleDarkMode);
             document.getElementById('hideEventDetailsCheckbox').addEventListener('change', toggleHideEventDetails);
-            document.getElementById('closeSettingsBtn').addEventListener('click', () => {
-                document.getElementById('settingsModal').classList.remove('modal--active');
-                if (!state.isTVMode) {
-                    restoreFilterUI(); // Restaurar el estado de los filtros al cerrar si no estamos en modo TV
-                }
-            });
+            document.getElementById('closeSettingsBtn').addEventListener('click', () => document.getElementById('settingsModal').classList.remove('modal--active'));
             document.querySelectorAll('.color-option').forEach(btn => {
                 btn.addEventListener('click', () => changePrimaryColor(btn.dataset.color));
             });

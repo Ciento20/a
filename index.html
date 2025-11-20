@@ -153,14 +153,18 @@
             color: #fff;
             border-color: var(--primary)
         }
-
+        
+        /* INICIO DEL CAMBIO SOLICITADO */
         .filter-button--clear,
-        .filter-button--favorites {
+        .filter-button--favorites,
+        #settingsModeBtn.filter-button {
             flex: 0 0 auto;
             width: 36px;
             min-width: 36px;
-            padding: .5rem 0
+            padding: .5rem 0;
         }
+        
+        /* FIN DEL CAMBIO SOLICITADO */
 
         #filterDAZN,
         #filterEurosport,
@@ -1182,7 +1186,7 @@
             background: #111111;
             color: #e0e0e0;
             /* CAMBIO: Aumento del padding inferior en la sidebar */
-            padding: 1.5rem 0.5rem 3rem 0.5rem;
+            padding: 1.5rem 0.5rem 3rem 0.5rem; 
             position: fixed;
             left: 0;
             top: 0;
@@ -1194,8 +1198,7 @@
             z-index: 100;
             display: flex;
             flex-direction: column;
-            /* MODIFICACIÓN: Alinear verticalmente al centro */
-            justify-content: center;
+            justify-content: space-between;
         }
 
         #tvSidebar .sidebar-logo {
@@ -1306,29 +1309,22 @@
             background: #151515;
         }
 
-        /* ESTILO DEL BOTÓN DE AJUSTES (MODIFICADO A CIRCULAR) */
+        /* ESTILO DEL BOTÓN DE AJUSTES (Modificado para integrarse en la lista) */
         #tvSidebar button#settingsModeBtn {
-            /* **CAMBIO PRINCIPAL: Hacerlo circular** */
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            /* **FIN CAMBIO PRINCIPAL** */
-            
-            margin: 1rem auto 0.5rem auto; /* Centrado y con margen arriba */
-            padding: 0;
-            font-size: 1.2rem; /* Aumentar tamaño de fuente para el icono */
+            /* Ajuste del botón salir/ajustes */
+            width: 90%; /* Ajustado para que tenga margen */
+            margin: 1rem 5% 0.5rem 5%; /* Centrado y con margen arriba */
+            padding: 8px 5px;
+            font-size: 0.75rem;
             background-color: #383838;
             color: #e0e0e0;
             border: none;
+            border-radius: 6px;
             cursor: pointer;
             transition: background-color 0.2s;
-            
-            /* **Añadir flexbox para centrar el icono** */
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            text-align: center;
         }
-
+        
         #tvSidebar button#settingsModeBtn:hover,
         #tvSidebar button#settingsModeBtn.tv-sidebar-link-focused {
             background-color: var(--primary) !important;
@@ -1336,14 +1332,14 @@
             outline-offset: 2px;
             transform: scale(1.02);
         }
-
+        
         /* Contenedor para la parte inferior (Ajustes) - ELIMINADO */
         /* #tvBottomNav {
             padding: 0 5px;
             margin-top: 2rem;
             margin-bottom: 3rem;
         } */
-
+        
         /* FIN DE LOS CAMBIOS */
 
         /* INICIO DE MODIFICACIONES PARA TARJETAS TV */
@@ -1517,6 +1513,7 @@
                         class="filter-button" id="filterMovistar">MOVISTAR+</button><button class="filter-button"
                         id="filterEurosport">★EUROSPORT</button><button
                         class="filter-button filter-button--clear filter-button--active" id="clearEmojiFilters">x</button>
+                    <button class="filter-button" id="settingsModeBtn" title="Ajustes">⚙️</button>
                 </div>
                 <div class="filter-buttons" id="sportFiltersContainer" style="margin-top:.6rem"><button
                         class="filter-button sport-filter-button" data-sport-key="futbol" id="filterFutbol">⚽</button><button
@@ -1933,6 +1930,9 @@
                 const btn = document.getElementById(id);
                 if (btn) btn.classList.remove('filter-button--active');
             });
+            // También aseguramos de quitar la clase activa del botón de ajustes en el modo normal
+            const settingsBtn = document.getElementById('settingsModeBtn');
+            if (settingsBtn) settingsBtn.classList.remove('filter-button--active');
         }
 
         function clearAllTVFilterVisuals() {
@@ -3111,7 +3111,7 @@
             const today = new Date();
             const dateStringA = eventA.date.toLowerCase();
             const dateStringB = eventB.date.toLowerCase();
-
+            
             const isTodayA = dateStringA === 'hoy';
             const isTodayB = dateStringB === 'hoy';
             const isTomorrowA = dateStringA === 'mañana';
@@ -3119,9 +3119,9 @@
             // CAMBIO: Añadir lógica para 'ayer'
             const isYesterdayA = dateStringA === 'ayer';
             const isYesterdayB = dateStringB === 'ayer';
-
+            
             // Prioridad: Hoy, Mañana, Ayer, Fecha
-
+            
             if (isTodayA && !isTodayB) return -1;
             if (!isTodayA && isTodayB) return 1;
             if (isTodayA && isTodayB) return eventA.time.localeCompare(eventB.time);
@@ -3129,14 +3129,14 @@
             if (isTomorrowA && !isTomorrowB) return -1;
             if (!isTomorrowA && isTomorrowB) return 1;
             if (isTomorrowA && isTomorrowB) return eventA.time.localeCompare(eventB.time);
-
+            
             if (isYesterdayA && !isYesterdayB) return -1;
             if (!isYesterdayA && isYesterdayB) return 1;
             if (isYesterdayA && isYesterdayB) return eventA.time.localeCompare(eventB.time);
 
             const dateA = parseDateString(eventA.date, today);
             const dateB = parseDateString(eventB.date, today);
-
+            
             if (dateA.getTime() !== dateB.getTime()) {
                 return dateA.getTime() - dateB.getTime();
             }
@@ -3651,7 +3651,7 @@
                     brandLink.classList.add('tv-sidebar-link-focused');
                 }
             }
-
+            
             // Foco para el botón de ajustes si no hay un filtro activo o si se prefiere
             // Nota: El foco inicial del manager de foco se encargará de esto si se recarga la página
         }
@@ -3720,7 +3720,7 @@
                 // Si hay logo, solo mostramos el nombre de forma oculta para mantener el layout,
                 // ya que el logo ocupa el centro. El LIVE se elimina de la tarjeta.
                 channelNameHTML = `<h3 style="font-size: 1.2rem; font-weight: 700; color: ${nameStyle}; white-space: normal; text-align: center; opacity: 0;">${channel.displayableName}</h3>`;
-
+                
                 // Si está en vivo, agregamos un indicador pequeño en la esquina o algo similar
                 // Pero por ahora, simplemente eliminamos el texto de LIVE.
             } else {
@@ -3976,7 +3976,7 @@
                     if (!element) return;
                     this.removeFocusClasses();
                     this.currentFocus = element;
-
+                    
                     // Comprobar si es un botón de la parte inferior para darle foco
                     // Se elimina la comprobación para normalModeBtn
                     if (element.id === 'tvSearch' || element.id === 'settingsModeBtn') {
@@ -4129,6 +4129,7 @@
             document.getElementById('hideEventDetailsCheckbox').checked = state.hideEventDetails;
             document.body.classList.toggle('hide-event-details', state.hideEventDetails);
             const favoriteButton = document.getElementById('filterFavorites');
+            const settingsButton = document.getElementById('settingsModeBtn'); // Nuevo: Obtener el botón de ajustes en la interfaz normal
             const LONG_PRESS_THRESHOLD = 500;
             const clearButton = document.getElementById('clearEmojiFilters');
             const copyModal = document.getElementById('copyModal');
@@ -4181,6 +4182,12 @@
                 },
                 () => applyFilter('all')
             );
+             // Configurar el comportamiento al hacer clic en el botón de ajustes en la interfaz normal
+            settingsButton.addEventListener('click', () => {
+                document.getElementById('settingsModal').classList.add('modal--active');
+                clearAllFilterVisuals(); // Opcional: Quitar la clase activa al abrir el modal
+                settingsButton.classList.add('filter-button--active'); // Opcional: Marcar como activo al abrir
+            });
             if (cancelCopyBtn) {
                 cancelCopyBtn.addEventListener('click', hideCopyModal);
             }
@@ -4194,7 +4201,7 @@
                 }
             });
             document.getElementById('tvModeCheckbox').addEventListener('change', toggleTVMode);
-
+            
             // NUEVO EVENT LISTENER PARA EL BOTÓN DE AJUSTES EN MODO TV
             document.getElementById('settingsModeBtn').addEventListener('click', () => {
                 document.getElementById('settingsModal').classList.add('modal--active');
@@ -4235,7 +4242,12 @@
             document.getElementById('searchInput').addEventListener('input', handleSearchInput);
             document.getElementById('darkModeCheckbox').addEventListener('change', toggleDarkMode);
             document.getElementById('hideEventDetailsCheckbox').addEventListener('change', toggleHideEventDetails);
-            document.getElementById('closeSettingsBtn').addEventListener('click', () => document.getElementById('settingsModal').classList.remove('modal--active'));
+            document.getElementById('closeSettingsBtn').addEventListener('click', () => {
+                document.getElementById('settingsModal').classList.remove('modal--active');
+                if (!state.isTVMode) {
+                    restoreFilterUI(); // Restaurar el estado de los filtros al cerrar si no estamos en modo TV
+                }
+            });
             document.querySelectorAll('.color-option').forEach(btn => {
                 btn.addEventListener('click', () => changePrimaryColor(btn.dataset.color));
             });

@@ -1410,7 +1410,25 @@
             border-left: 4px solid var(--primary);
             padding-left: 15px;
             width: 100%;
+            /* **MODIFICACIÓN:** Reducir el margen superior para acercarlo a la fecha/hora */
+            margin-top: 0; 
         }
+
+        /* **NUEVA REGLA PARA EL ENCABEZADO DE FECHA DE EVENTO EN MODO TV** */
+        .tv-date-header {
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: #e0e0e0;
+            margin-top: 2rem; /* Se mantiene para separación de grupos de días */
+            margin-bottom: 0.5rem; /* Se reduce para acercar al grupo de canales */
+            padding-left: 0;
+            width: 100%;
+        }
+        
+        .tv-date-header:first-of-type {
+            margin-top: 0; /* Eliminar el margen superior del primer encabezado */
+        }
+
 
         .tv-subgroup-content {
             display: flex;
@@ -3750,7 +3768,8 @@
                 if (group.isEvent) {
                     const formattedDate = formatEventDate(group.date);
                     if (formattedDate !== lastDateRendered) {
-                        html += `<h2 class="tv-group-title" style="margin-top: 2rem; border-left: none; padding-left: 0;">${formattedDate}</h2>`;
+                        // CAMBIO: Se usa la nueva clase CSS para el encabezado de fecha
+                        html += `<h2 class="tv-date-header">${formattedDate}</h2>`;
                         lastDateRendered = formattedDate;
                     }
                 } else {
@@ -3758,14 +3777,24 @@
                 }
 
                 let groupTitle = group.name;
+                let groupTitleStyle = ''; // Variable para estilos inline del título del grupo
+                
                 if (group.isEvent) {
                     // CAMBIO: Usamos la clase CSS para el indicador de directo aquí también
                     const liveTimeClass = group.hasLive ? 'live-time-blink' : '';
                     groupTitle = `<span class="${liveTimeClass}" style="margin-right: 15px;">${group.time}</span> ${group.sportEmoji} ${group.competition} - ${group.match}`;
+                    
+                    // CAMBIO: Si es el primer grupo de un día (después de un encabezado de fecha), ajustamos el margen
+                    const isFirstGroupOfDay = !lastDateRendered || (group.date && formatEventDate(group.date) === formatEventDate(lastDateRendered));
+                    if(isFirstGroupOfDay) {
+                        groupTitleStyle = 'margin-top: 0;';
+                    }
+
                 }
 
                 // 1. Iniciar el contenedor del grupo
-                html += ` <div class="tv-group"><header class="tv-group-header"><h2 class="tv-group-title">${groupTitle}</h2></header> `;
+                // CAMBIO: Se aplica el estilo inline al título del grupo
+                html += ` <div class="tv-group"><header class="tv-group-header"><h2 class="tv-group-title" style="${groupTitleStyle}">${groupTitle}</h2></header> `;
 
                 // 2. Recopilar el HTML de todas las tarjetas
                 let cardsHTML = '';

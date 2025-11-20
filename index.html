@@ -6,6 +6,7 @@
     <meta name="viewport"
         content="width=device-width,initial-scale=0.584maximum-scale=0.8,user-scalable=no">
     <title>📺</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📺</text></svg>">
     <style>
         :root {
             --primary: #2563eb;
@@ -550,7 +551,7 @@
             position: absolute;
             content: "";
             height: 16px;
-            width: 16px;
+            width: 1:04:47 AM, 12/26/202516px;
             left: 4px;
             bottom: 4px;
             background-color: #fff;
@@ -1304,18 +1305,23 @@
             background: #151515;
         }
 
+        /* INICIO DE MODIFICACIÓN: Botón de ajustes circular en Modo TV */
         #tvSidebar button#settingsModeBtn {
-            /* Ajuste del botón salir/ajustes */
-            width: 100%;
-            padding: 8px 5px;
-            font-size: 0.75rem;
+            /* **CAMBIO PRINCIPAL: Hacerlo circular** */
+            width: 40px; /* Tamaño del círculo */
+            height: 40px; /* Tamaño del círculo */
+            padding: 0; /* Se elimina el padding */
+            font-size: 1.2rem; /* Icono más grande */
             background-color: #383838;
             color: #e0e0e0;
             border: none;
-            border-radius: 6px;
-            margin-top: 0.5rem;
+            border-radius: 50%; /* **CIRCULAR** */
+            margin: 0.5rem auto; /* Centrar y margen superior */
+            display: flex;
+            justify-content: center;
+            align-items: center;
             cursor: pointer;
-            transition: background-color 0.2s;
+            transition: all 0.2s;
         }
         
         #tvSidebar button#settingsModeBtn:hover,
@@ -1323,13 +1329,15 @@
             background-color: var(--primary) !important;
             border: 2px solid white;
             outline-offset: 2px;
-            transform: scale(1.02);
+            transform: scale(1.1); /* Ligero aumento al enfocar */
         }
+        /* FIN DE MODIFICACIÓN */
         
-        /* Contenedor para la parte inferior (Ajustes) - Se elimina la referencia a normalModeBtn */
+        /* Contenedor para la parte inferior (Ajustes) */
         #tvBottomNav {
             padding: 0 5px;
-            margin-top: 2rem; /* Espacio para separar de los filtros de deporte */
+            /* CAMBIO: Se ajusta el margen superior para que no esté pegado a los filtros de deporte */
+            margin-top: 1rem;
         }
         
         /* FIN DE LOS CAMBIOS */
@@ -1622,12 +1630,13 @@
                             <a href="#" class="tv-nav-link sport-filter" data-sport-key="tenis" tabindex="0" title="Tenis">🎾</a>
                             <a href="#" class="tv-nav-link sport-filter" data-sport-key="motorsport" tabindex="0" title="Motorsport">🏁</a>
                             <a href="#" class="tv-nav-link sport-filter" data-sport-key="f1" tabindex="0" title="F1">🏎️</a>
-                            </div>
-                    </ul>
+                        </div>
+                        
+                        <div id="tvBottomNav">
+                            <button id="settingsModeBtn" tabindex="0"> ⚙️ </button>
+                        </div>
+                        </ul>
                 </nav>
-            </div>
-            <div id="tvBottomNav">
-                <button id="settingsModeBtn" tabindex="0"> ⚙️ Ajustes </button>
             </div>
         </aside>
         <main id="tvMainContent">
@@ -2004,7 +2013,7 @@
 
         function applySportFilter(sportKey) {
             state.sportFilter = state.sportFilter === sportKey ? 'all' : sportKey;
-            localStorage.setItem('sportFilter', state.sportFilter);
+            localStorage.setItem('sportFilter', sportKey);
             if (state.sportFilter !== 'all') {
                 state.currentFilter = 'all';
                 localStorage.setItem('currentFilter', 'all');

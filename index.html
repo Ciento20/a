@@ -6,6 +6,7 @@
     <meta name="viewport"
         content="width=device-width,initial-scale=0.584maximum-scale=0.8,user-scalable=no">
     <title>📺</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📺</text></svg>">
     <style>
         :root {
             --primary: #2563eb;
@@ -1306,20 +1307,27 @@
             background: #151515;
         }
 
-        /* ESTILO DEL BOTÓN DE AJUSTES (Modificado para integrarse en la lista) */
+        /* ESTILO DEL BOTÓN DE AJUSTES (MODIFICADO A CIRCULAR) */
         #tvSidebar button#settingsModeBtn {
-            /* Ajuste del botón salir/ajustes */
-            width: 90%; /* Ajustado para que tenga margen */
-            margin: 1rem 5% 0.5rem 5%; /* Centrado y con margen arriba */
-            padding: 8px 5px;
-            font-size: 0.75rem;
+            /* **CAMBIO PRINCIPAL: Hacerlo circular** */
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            /* **FIN CAMBIO PRINCIPAL** */
+            
+            margin: 1rem auto 0.5rem auto; /* Centrado y con margen arriba */
+            padding: 0;
+            font-size: 1.2rem; /* Aumentar tamaño de fuente para el icono */
             background-color: #383838;
             color: #e0e0e0;
             border: none;
-            border-radius: 6px;
             cursor: pointer;
             transition: background-color 0.2s;
-            text-align: center;
+            
+            /* **Añadir flexbox para centrar el icono** */
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
 
         #tvSidebar button#settingsModeBtn:hover,

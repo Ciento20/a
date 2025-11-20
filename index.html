@@ -1182,7 +1182,7 @@
             background: #111111;
             color: #e0e0e0;
             /* CAMBIO: Aumento del padding inferior en la sidebar */
-            padding: 1.5rem 0.5rem 3rem 0.5rem; 
+            padding: 1.5rem 0.5rem 3rem 0.5rem;
             position: fixed;
             left: 0;
             top: 0;
@@ -1305,22 +1305,20 @@
             background: #151515;
         }
 
-        /* ESTILO DEL BOTÓN DE AJUSTES (Modificado para integrarse en la lista) */
         #tvSidebar button#settingsModeBtn {
             /* Ajuste del botón salir/ajustes */
-            width: 90%; /* Ajustado para que tenga margen */
-            margin: 1rem 5% 0.5rem 5%; /* Centrado y con margen arriba */
+            width: 100%;
             padding: 8px 5px;
             font-size: 0.75rem;
             background-color: #383838;
             color: #e0e0e0;
             border: none;
             border-radius: 6px;
+            margin-top: 0.5rem;
             cursor: pointer;
             transition: background-color 0.2s;
-            text-align: center;
         }
-        
+
         #tvSidebar button#settingsModeBtn:hover,
         #tvSidebar button#settingsModeBtn.tv-sidebar-link-focused {
             background-color: var(--primary) !important;
@@ -1328,14 +1326,18 @@
             outline-offset: 2px;
             transform: scale(1.02);
         }
-        
-        /* Contenedor para la parte inferior (Ajustes) - ELIMINADO */
-        /* #tvBottomNav {
+
+        /* Contenedor para la parte inferior (Ajustes) - Se añade margin-bottom para asegurar espacio */
+        #tvBottomNav {
             padding: 0 5px;
             margin-top: 2rem;
-            margin-bottom: 3rem;
-        } */
-        
+            /* Espacio para separar de los filtros de deporte */
+            /* INICIO DE LA CORRECCIÓN: Aumento de margin-bottom */
+            margin-bottom: 5rem;
+            /* MODIFICACIÓN: Aumentado para levantar el botón del borde */
+            /* FIN DE LA CORRECCIÓN */
+        }
+
         /* FIN DE LOS CAMBIOS */
 
         /* INICIO DE MODIFICACIONES PARA TARJETAS TV */
@@ -1626,12 +1628,13 @@
                             <a href="#" class="tv-nav-link sport-filter" data-sport-key="motorsport" tabindex="0" title="Motorsport">🏁</a>
                             <a href="#" class="tv-nav-link sport-filter" data-sport-key="f1" tabindex="0" title="F1">🏎️</a>
                             </div>
-
-                        <button id="settingsModeBtn" tabindex="0"> ⚙️ Ajustes </button>
                     </ul>
                 </nav>
             </div>
-            </aside>
+            <div id="tvBottomNav">
+                <button id="settingsModeBtn" tabindex="0"> ⚙️ Ajustes </button>
+            </div>
+        </aside>
         <main id="tvMainContent">
             <h1 style="color: white; margin-top: 0;"></h1>
             <div class="tv-channels-grid" id="tvChannelsGrid"></div>
@@ -1932,10 +1935,8 @@
                 link.classList.remove('tv-sidebar-link-focused');
             });
             // Remover foco de los botones de la parte inferior
-            document.querySelectorAll('#tvSidebar button').forEach(button => {
-                if (button.id !== 'tvSearch') { // No queremos quitar el foco a la barra de búsqueda si está activa
-                    button.classList.remove('tv-sidebar-link-focused');
-                }
+            document.querySelectorAll('#tvBottomNav button').forEach(button => {
+                button.classList.remove('tv-sidebar-link-focused');
             });
         }
 
@@ -2008,7 +2009,7 @@
 
         function applySportFilter(sportKey) {
             state.sportFilter = state.sportFilter === sportKey ? 'all' : sportKey;
-            localStorage.setItem('sportFilter', state.sportFilter);
+            localStorage.setItem('sportFilter', sportKey);
             if (state.sportFilter !== 'all') {
                 state.currentFilter = 'all';
                 localStorage.setItem('currentFilter', 'all');
@@ -3103,7 +3104,7 @@
             const today = new Date();
             const dateStringA = eventA.date.toLowerCase();
             const dateStringB = eventB.date.toLowerCase();
-            
+
             const isTodayA = dateStringA === 'hoy';
             const isTodayB = dateStringB === 'hoy';
             const isTomorrowA = dateStringA === 'mañana';
@@ -3111,9 +3112,9 @@
             // CAMBIO: Añadir lógica para 'ayer'
             const isYesterdayA = dateStringA === 'ayer';
             const isYesterdayB = dateStringB === 'ayer';
-            
+
             // Prioridad: Hoy, Mañana, Ayer, Fecha
-            
+
             if (isTodayA && !isTodayB) return -1;
             if (!isTodayA && isTodayB) return 1;
             if (isTodayA && isTodayB) return eventA.time.localeCompare(eventB.time);
@@ -3121,14 +3122,14 @@
             if (isTomorrowA && !isTomorrowB) return -1;
             if (!isTomorrowA && isTomorrowB) return 1;
             if (isTomorrowA && isTomorrowB) return eventA.time.localeCompare(eventB.time);
-            
+
             if (isYesterdayA && !isYesterdayB) return -1;
             if (!isYesterdayA && isYesterdayB) return 1;
             if (isYesterdayA && isYesterdayB) return eventA.time.localeCompare(eventB.time);
 
             const dateA = parseDateString(eventA.date, today);
             const dateB = parseDateString(eventB.date, today);
-            
+
             if (dateA.getTime() !== dateB.getTime()) {
                 return dateA.getTime() - dateB.getTime();
             }
@@ -3643,9 +3644,6 @@
                     brandLink.classList.add('tv-sidebar-link-focused');
                 }
             }
-            
-            // Foco para el botón de ajustes si no hay un filtro activo o si se prefiere
-            // Nota: El foco inicial del manager de foco se encargará de esto si se recarga la página
         }
 
         function toggleTVMode() {
@@ -3712,7 +3710,7 @@
                 // Si hay logo, solo mostramos el nombre de forma oculta para mantener el layout,
                 // ya que el logo ocupa el centro. El LIVE se elimina de la tarjeta.
                 channelNameHTML = `<h3 style="font-size: 1.2rem; font-weight: 700; color: ${nameStyle}; white-space: normal; text-align: center; opacity: 0;">${channel.displayableName}</h3>`;
-                
+
                 // Si está en vivo, agregamos un indicador pequeño en la esquina o algo similar
                 // Pero por ahora, simplemente eliminamos el texto de LIVE.
             } else {
@@ -3968,7 +3966,7 @@
                     if (!element) return;
                     this.removeFocusClasses();
                     this.currentFocus = element;
-                    
+
                     // Comprobar si es un botón de la parte inferior para darle foco
                     // Se elimina la comprobación para normalModeBtn
                     if (element.id === 'tvSearch' || element.id === 'settingsModeBtn') {
@@ -4186,7 +4184,9 @@
                 }
             });
             document.getElementById('tvModeCheckbox').addEventListener('change', toggleTVMode);
-            
+
+            // ELIMINACIÓN: document.getElementById('normalModeBtn').addEventListener('click', () => { switchToNormalMode(); });
+
             // NUEVO EVENT LISTENER PARA EL BOTÓN DE AJUSTES EN MODO TV
             document.getElementById('settingsModeBtn').addEventListener('click', () => {
                 document.getElementById('settingsModal').classList.add('modal--active');

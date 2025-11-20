@@ -797,7 +797,7 @@
         }
 
         .status-message {
-            grid-column: 1/-1;
+            /* Cambio: eliminamos grid-column: 1/-1; para que funcione en Modo TV */
             text-align: center;
             padding: .5rem;
             font-size: .85rem;
@@ -805,8 +805,22 @@
             border-radius: var(--radius-sm);
             margin-bottom: .5rem;
             opacity: 1;
-            transition: all .5s ease-in-out, margin .5s ease-in-out
+            transition: all .5s ease-in-out, margin .5s ease-in-out;
+            /* Estilos adicionales para que se vea bien en Modo TV */
+            margin-left: auto;
+            margin-right: auto;
+            max-width: 800px;
+            width: 90%;
+            box-shadow: var(--shadow-sm);
+            z-index: 50; /* Asegura que esté por encima del contenido principal */
         }
+
+        /* Ajustes para el modo normal (desktop/móvil) */
+        #channelsGrid + .status-message {
+             /* Solo aplica el estilo si está directamente antes del grid normal */
+            grid-column: 1/-1;
+        }
+
 
         .status-message.hide {
             opacity: 0;
@@ -826,8 +840,9 @@
         }
 
         .status-message.error {
-            color: var(--secondary);
-            background-color: rgba(247, 37, 133, .1)
+            /* CAMBIO: Color para error en Modo TV, mantiene el color en modo normal */
+            color: var(--text);
+            background-color: rgba(247, 37, 133, .2);
         }
 
         .status-message.warning {
@@ -1663,6 +1678,7 @@
             </div>
         </aside>
         <main id="tvMainContent">
+            <div id="tvStatusMessageContainer" style="margin-bottom: 1.5rem;"></div>
             <h1 style="color: white; margin-top: 0;"></h1>
             <div class="tv-channels-grid" id="tvChannelsGrid"></div>
         </main>
@@ -2052,16 +2068,43 @@
         }
 
         function showStatusMessage(message, type = "info") {
-            let statusElement = document.querySelector(".status-message");
-            if (!statusElement) {
-                statusElement = document.createElement("div");
-                statusElement.className = "status-message";
-                const channelsGrid = document.getElementById("channelsGrid");
-                channelsGrid.prepend(statusElement);
+            let statusElement;
+            let container;
+            
+            if (state.isTVMode) {
+                container = document.getElementById('tvStatusMessageContainer');
+                statusElement = container.querySelector(".status-message");
+                if (!statusElement) {
+                    statusElement = document.createElement("div");
+                    statusElement.className = "status-message";
+                    container.prepend(statusElement);
+                }
+            } else {
+                container = document.getElementById("channelsGrid");
+                statusElement = document.querySelector("#channelsGrid + .status-message");
+                if (!statusElement) {
+                    statusElement = document.createElement("div");
+                    statusElement.className = "status-message";
+                    container.parentElement.insertBefore(statusElement, container);
+                }
             }
+
             statusElement.textContent = message;
             statusElement.className = `status-message ${type}`;
             statusElement.classList.remove('hide');
+            
+            // Asegurarse de que el color de texto en modo oscuro sea visible para errores
+            if (state.darkMode && type === 'error') {
+                 statusElement.style.color = 'var(--text)';
+            } else if (state.darkMode && type === 'warning') {
+                statusElement.style.color = 'var(--warning)';
+            } else if (state.darkMode && (type === 'success' || type === 'info')) {
+                statusElement.style.color = 'var(--primary)';
+            } else {
+                statusElement.style.color = ''; // Resetea para usar el default de CSS
+            }
+
+
             if (type === "success" || type === "info") {
                 setTimeout(() => {
                     statusElement.classList.add('hide');
@@ -2210,7 +2253,12 @@
                     }
                 }
             });
-            const statusElement = document.querySelector(".status-message");
+            
+            // Determinar dónde buscar el elemento de estado
+            const statusElement = state.isTVMode 
+                ? document.querySelector("#tvStatusMessageContainer .status-message") 
+                : document.querySelector("#channelsGrid + .status-message");
+
             if (allChannels.length > 0) {
                 const newChannels = mergeChannels(allChannels);
                 state.channelsData = newChannels;
@@ -3845,6 +3893,13 @@
         function renderTVChannels() {
             const tvGrid = document.getElementById('tvChannelsGrid');
             if (!tvGrid || !state.isTVMode) return;
+
+            // Antes de renderizar los canales, limpiamos el contenedor de mensajes de estado
+            const statusContainer = document.getElementById('tvStatusMessageContainer');
+            if (statusContainer) {
+                 // Eliminamos mensajes viejos al re-renderizar
+                statusContainer.innerHTML = ''; 
+            }
 
             // Actualizar la interfaz de filtros TV antes de renderizar
             restoreTVFilterUI();

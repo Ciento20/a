@@ -1231,23 +1231,37 @@
             line-height: 1.1;
         }
 
+        /* ESTILOS MODIFICADOS PARA FILTROS DE MARCA CON IMAGEN */
         #tvSidebar .tv-nav-link.brand-filter {
-            /* Estilo específico para filtros de marca */
-            font-size: 0.9rem; /* Un poco más grande para el texto */
-            font-weight: 700;
-            padding: 10px 0;
+            /* Tamaño fijo para contener el logo */
+            width: 80px;
+            height: 40px;
+            padding: 5px 0;
+            margin: 5px auto;
+            justify-content: center;
         }
+
+        #tvSidebar .tv-nav-link.brand-filter img {
+            max-width: 90%;
+            max-height: 90%;
+            width: auto;
+            height: auto;
+            object-fit: contain;
+        }
+        /* FIN ESTILOS MODIFICADOS */
 
         #tvSidebar .tv-nav-link.sport-filter {
             /* Estilo específico para filtros de deporte */
-            font-size: 1.2rem; /* Emoji más grande */
+            font-size: 1.2rem;
+            /* Emoji más grande */
             padding: 10px 0;
             height: 20px;
             width: 40px;
             border-radius: 50%;
-            margin: 0 5px; /* Pequeño margen para separarlos */
+            margin: 0 5px;
+            /* Pequeño margen para separarlos */
         }
-        
+
         /* Contenedor para los filtros de deporte */
         #tvSportFilters {
             display: flex;
@@ -1557,7 +1571,7 @@
     </div>
     <div id="tvInterface" style="display: none;">
         <aside id="tvSidebar">
-            <div class="sidebar-logo"></div> 
+            <div class="sidebar-logo"></div>
             <div style="margin-bottom: 1rem; padding: 0 5px;">
                 <input type="text" id="tvSearch" placeholder="Buscar canal..." tabindex="0">
             </div>
@@ -1569,13 +1583,13 @@
                             <span>🔴</span> DIRECTO </a></li>
                     <li style="margin-bottom: 0.5rem;"><a href="#" class="tv-nav-link" data-filter="favorites"
                             tabindex="0"> <span>⭐</span>Favoritos </a></li>
-                    
+
                     <li style="margin-top: 1rem;"><a href="#" class="tv-nav-link brand-filter" data-filter="dazn" tabindex="0">
-                        DAZN </a></li>
+                        <img src="https://static.wikia.nocookie.net/logopedia/images/8/83/DAZN_2019_logo.svg/revision/latest?cb=20210824002335" alt="DAZN Logo"> </a></li>
                     <li><a href="#" class="tv-nav-link brand-filter" data-filter="m+" tabindex="0">
-                        MOVISTAR+ </a></li>
+                        <img src="https://static.wikia.nocookie.net/logopedia/images/0/07/Movistar_Plus%2B.svg/revision/latest?cb=20240116071854" alt="Movistar+ Logo"> </a></li>
                     <li><a href="#" class="tv-nav-link brand-filter" data-filter="eurosport" tabindex="0">
-                        ★EUROSPORT </a></li>
+                        <img src="https://static.wikia.nocookie.net/logopedia/images/0/0a/Eurosport_%282015%29.svg/revision/latest?cb=20210911120727" alt="Eurosport Logo"> </a></li>
 
                     <div id="tvSportFilters">
                         <a href="#" class="tv-nav-link sport-filter" data-sport-key="futbol" tabindex="0" title="Fútbol">⚽</a>
@@ -1586,7 +1600,7 @@
                         <a href="#" class="tv-nav-link sport-filter" data-sport-key="motorsport" tabindex="0" title="Motor">🏁</a>
                         <a href="#" class="tv-nav-link sport-filter" data-sport-key="f1" tabindex="0" title="F1">🏎️</a>
                     </div>
-                    
+
                     <li style="margin-top: 1rem;"><button id="normalModeBtn" tabindex="0"> Salir </button></li>
                 </ul>
             </nav>
@@ -1687,7 +1701,7 @@
             const name = channelName.toUpperCase().trim();
             if (championsLeagueImages[name]) {
                 let url = championsLeagueImages[name]; // <-- Obtenemos la URL
-                
+
                 // --- INICIO DE CAMBIO PARA NORMALIZAR URL ---
                 const baseUrl = LOGOPEDIA_BASE_URL;
                 if (url.startsWith(baseUrl)) {
@@ -1695,7 +1709,7 @@
                     url = url.substring(baseUrl.length);
                 }
                 // --- FIN DE CAMBIO ---
-                
+
                 return {
                     url: url,
                     class: 'channel-card--logo-img'
@@ -1731,7 +1745,7 @@
         const HISTORY_EXPIRY_HOURS = 168;
         const SPORT_FILTER_BUTTON_IDS = ['filterFutbol', 'filterBaloncesto', 'filterTenis', 'filterBoxeo', 'filterCiclismo', 'filterMotorsport', 'filterF1'];
         const BRAND_FILTER_BUTTON_IDS = ['filterDAZN', 'filterMovistar', 'filterEurosport', 'filterFavorites', 'clearEmojiFilters'];
-        
+
         // Nuevos IDs para los filtros en modo TV
         const TV_BRAND_FILTER_KEYS = ['all', 'live', 'favorites', 'dazn', 'm+', 'eurosport'];
         const TV_SPORT_FILTER_KEYS = ['futbol', 'baloncesto', 'tenis', 'boxeo', 'ciclismo', 'motorsport', 'f1'];
@@ -1884,7 +1898,7 @@
                 if (btn) btn.classList.remove('filter-button--active');
             });
         }
-        
+
         function clearAllTVFilterVisuals() {
             document.querySelectorAll('#tvSidebar .tv-nav-link').forEach(link => {
                 link.classList.remove('tv-sidebar-link-focused');
@@ -1914,11 +1928,11 @@
             }
             renderResults();
         }
-        
+
         // Nueva función para aplicar filtros en el modo TV
         function applyTVFilter(filter, type) {
             let updateNeeded = false;
-            
+
             // 1. Manejo del filtro principal (all, live, favorites, brands)
             if (type === 'brand') {
                 if (state.tvCurrentFilter !== filter) {
@@ -1931,7 +1945,7 @@
                     localStorage.setItem('tvCurrentFilter', 'all');
                     updateNeeded = true;
                 }
-                
+
                 // Si cambiamos el filtro de marca/principal, desactivamos el de deporte
                 if (state.tvSportFilter !== 'all') {
                     state.tvSportFilter = 'all';
@@ -1939,20 +1953,20 @@
                     updateNeeded = true;
                 }
             }
-            
+
             // 2. Manejo del filtro de deporte (emojis)
             if (type === 'sport') {
                 state.tvSportFilter = state.tvSportFilter === filter ? 'all' : filter;
                 localStorage.setItem('tvSportFilter', state.tvSportFilter);
                 updateNeeded = true;
-                
+
                 // Si activamos un filtro de deporte, forzamos el filtro principal a 'all'
                 if (state.tvSportFilter !== 'all' && state.tvCurrentFilter !== 'all') {
                     state.tvCurrentFilter = 'all';
                     localStorage.setItem('tvCurrentFilter', 'all');
                 }
             }
-            
+
             if (updateNeeded) {
                 renderTVChannels();
             }
@@ -2935,7 +2949,7 @@
             let filteredChannels = state.channelsData;
             const searchTerm = state.isTVMode ? state.tvSearchTerm.trim().toLowerCase() : document.getElementById('searchInput').value.trim().toLowerCase();
             state.searchTerm = state.isTVMode ? state.tvSearchTerm.trim() : document.getElementById('searchInput').value.trim();
-            
+
             if (searchTerm) {
                 filteredChannels = filteredChannels.filter(channel => {
                     const normalizedSearchTerm = normalizeText(searchTerm);
@@ -2955,7 +2969,7 @@
                     return nameMatches || idMatches || eventDetailsMatch;
                 });
             }
-            
+
             // Lógica de filtro principal (Marca, All, Live, Favorites)
             let currentFilter = state.isTVMode ? state.tvCurrentFilter : state.currentFilter;
             let currentSportFilter = state.isTVMode ? state.tvSportFilter : state.sportFilter;
@@ -2971,7 +2985,7 @@
                 // Filtros de marca (dazn, m+, eurosport)
                 filteredChannels = filteredChannels.filter(channel => normalizeText(channel.name).includes(normalizeText(currentFilter.replace('+', ''))));
             }
-            
+
             // Lógica de filtro de deporte (emojis)
             if (currentSportFilter !== 'all') {
                 const normalizedSportFilter = normalizeText(currentSportFilter);
@@ -2999,7 +3013,7 @@
                     return eventDetailsMatch || nameMatch;
                 });
             }
-            
+
             return filteredChannels;
         }
 
@@ -3024,11 +3038,15 @@
         }
 
         function formatEventDate(dateString) {
-            if (dateString.toLowerCase() === 'hoy') {
-                return 'Hoy';
+            const normalizedDate = dateString.toLowerCase();
+            if (normalizedDate === 'ayer') {
+                return 'Eventos de Ayer';
             }
-            if (dateString.toLowerCase() === 'mañana') {
-                return 'Mañana';
+            if (normalizedDate === 'hoy') {
+                return 'Eventos de Hoy';
+            }
+            if (normalizedDate === 'mañana') {
+                return 'Eventos de Mañana';
             }
             const today = new Date();
             const date = parseDateString(dateString, today);
@@ -3042,7 +3060,7 @@
             const monthName = months[date.getMonth()];
             const isToday = date.getDate() === today.getDate() && date.getMonth() === today.getMonth() && date.getFullYear() === today.getFullYear();
             if (isToday) {
-                return 'Hoy';
+                return 'Eventos de Hoy';
             }
             return `${dayOfWeek} ${dayOfMonth} de ${monthName}`;
         }
@@ -3051,26 +3069,32 @@
             const today = new Date();
             const dateStringA = eventA.date.toLowerCase();
             const dateStringB = eventB.date.toLowerCase();
+            
             const isTodayA = dateStringA === 'hoy';
             const isTodayB = dateStringB === 'hoy';
             const isTomorrowA = dateStringA === 'mañana';
             const isTomorrowB = dateStringB === 'mañana';
+            // CAMBIO: Añadir lógica para 'ayer'
+            const isYesterdayA = dateStringA === 'ayer';
+            const isYesterdayB = dateStringB === 'ayer';
+            
+            // Prioridad: Hoy, Mañana, Ayer, Fecha
+            
             if (isTodayA && !isTodayB) return -1;
             if (!isTodayA && isTodayB) return 1;
             if (isTodayA && isTodayB) return eventA.time.localeCompare(eventB.time);
+
             if (isTomorrowA && !isTomorrowB) return -1;
             if (!isTomorrowA && isTomorrowB) return 1;
             if (isTomorrowA && isTomorrowB) return eventA.time.localeCompare(eventB.time);
-            if (isTodayA || isTodayB || isTomorrowA || isTomorrowB) {
-                const dateA = isTodayA ? today : (isTomorrowA ? new Date(today.getTime() + 86400000) : parseDateString(dateStringA, today));
-                const dateB = isTodayB ? today : (isTomorrowB ? new Date(today.getTime() + 86400000) : parseDateString(dateStringB, today));
-                if (dateA.getTime() !== dateB.getTime()) {
-                    return dateA.getTime() - dateB.getTime();
-                }
-                return eventA.time.localeCompare(eventB.time);
-            }
+            
+            if (isYesterdayA && !isYesterdayB) return -1;
+            if (!isYesterdayA && isYesterdayB) return 1;
+            if (isYesterdayA && isYesterdayB) return eventA.time.localeCompare(eventB.time);
+
             const dateA = parseDateString(eventA.date, today);
             const dateB = parseDateString(eventB.date, today);
+            
             if (dateA.getTime() !== dateB.getTime()) {
                 return dateA.getTime() - dateB.getTime();
             }
@@ -3078,10 +3102,17 @@
         }
 
         function parseDateString(dateString, today) {
-            if (dateString.toLowerCase() === 'mañana') {
+            const normalizedDate = dateString.toLowerCase();
+            if (normalizedDate === 'mañana') {
                 const tomorrow = new Date(today);
                 tomorrow.setDate(today.getDate() + 1);
                 return tomorrow;
+            }
+            // CAMBIO: Añadir lógica para 'ayer'
+            if (normalizedDate === 'ayer') {
+                const yesterday = new Date(today);
+                yesterday.setDate(today.getDate() - 1);
+                return yesterday;
             }
             const parts = dateString.split('/');
             if (parts.length === 3) {
@@ -3561,10 +3592,10 @@
                 document.getElementById(targetId).classList.add('filter-button--active');
             }
         }
-        
+
         function restoreTVFilterUI() {
             clearAllTVFilterVisuals();
-            
+
             // Filtros de deporte
             if (state.tvSportFilter !== 'all') {
                 const sportBtn = document.querySelector(`.tv-nav-link[data-sport-key="${state.tvSportFilter}"]`);
@@ -3626,16 +3657,12 @@
             let nameStyle = 'white';
 
             let channelNameHTML = `<h3 style="font-size: 1.2rem; font-weight: 700; color: ${nameStyle}; white-space: normal; text-align: center;">${channel.displayableName}</h3>`;
-            
+
             // INICIO DE CAMBIO PARA EL INDICADOR DE DIRECTO EN TV CARD
             let liveIndicator = '';
             if (channel.isLive) {
-                // Usamos el color primario para el texto EN VIVO
+                // Se mantiene el indicador de directo solo como variable, no se usa en el HTML final de la tarjeta.
                 liveIndicator = `<span style="color: var(--primary); font-weight: 700; animation: soft-blink 1.5s infinite ease-in-out;">🔴 EN VIVO</span>`;
-                // Si está en vivo, centramos el texto
-                channelNameHTML = `<div style="display: flex; justify-content: center; align-items: center; width: 100%; height: 100%;"><div style="text-align: center;">${liveIndicator}<h3 style="font-size: 1.2rem; font-weight: 700; color: ${nameStyle}; white-space: normal; margin-top: 5px;">${channel.displayableName}</h3></div></div>`;
-            } else {
-                channelNameHTML = `<h3 style="font-size: 1.2rem; font-weight: 700; color: ${nameStyle}; white-space: normal; text-align: center;">${channel.displayableName}</h3>`;
             }
 
             if (logoInfo) {
@@ -3644,15 +3671,13 @@
                 // Aplica el logo como background-image de la tarjeta
                 backgroundImageStyle = `background-image: url('${proxiedUrl}');`;
                 logoClass = logoInfo.class;
+
+                // Si hay logo, solo mostramos el nombre de forma oculta para mantener el layout,
+                // ya que el logo ocupa el centro. El LIVE se elimina de la tarjeta.
+                channelNameHTML = `<h3 style="font-size: 1.2rem; font-weight: 700; color: ${nameStyle}; white-space: normal; text-align: center; opacity: 0;">${channel.displayableName}</h3>`;
                 
-                // MODIFICACIÓN: Si hay logo, solo mostramos el indicador LIVE debajo del logo, o el nombre si no hay live.
-                if (channel.isLive) {
-                    channelNameHTML = `<div style="position: absolute; bottom: 10px; left: 0; right: 0; text-align: center;">${liveIndicator}</div>`;
-                } else {
-                    // Si no hay logo ni live, el nombre se muestra centrado en la tarjeta
-                    // Dejamos que el CSS del logo maneje la visibilidad del texto si es necesario.
-                    channelNameHTML = `<h3 style="font-size: 1.2rem; font-weight: 700; color: ${nameStyle}; white-space: normal; text-align: center; opacity: 0;">${channel.displayableName}</h3>`;
-                }
+                // Si está en vivo, agregamos un indicador pequeño en la esquina o algo similar
+                // Pero por ahora, simplemente eliminamos el texto de LIVE.
             } else {
                 // Lógica de color de fondo existente si no hay logo
                 if (channel.name.includes('DAZN') && !channel.name.includes('F1')) bgColor = '#353535';
@@ -3660,13 +3685,9 @@
                 else if (channel.name.includes('M+')) bgColor = '#0085C1';
                 else if (channel.name.includes('EUROSPORT')) bgColor = '#5e17eb';
                 backgroundImageStyle = `background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 100%), ${bgColor};`;
-                
-                if (channel.isLive) {
-                    // Si no hay logo, mostramos el LIVE encima del nombre.
-                    channelNameHTML = `<div style="position: absolute; bottom: 10px; left: 10px; right: 10px; text-align: center;">${liveIndicator}<h3 style="font-size: 1.2rem; font-weight: 700; color: ${nameStyle}; white-space: normal; margin: 0; padding-top: 5px;">${channel.displayableName}</h3></div>`;
-                } else {
-                    channelNameHTML = `<div style="position: absolute; bottom: 10px; left: 10px; right: 10px; text-align: center;"><h3 style="font-size: 1.2rem; font-weight: 700; color: ${nameStyle}; white-space: normal; margin: 0;">${channel.displayableName}</h3></div>`;
-                }
+
+                // Si no hay logo, mostramos solo el nombre en la parte inferior.
+                channelNameHTML = `<div style="position: absolute; bottom: 10px; left: 10px; right: 10px; text-align: center;"><h3 style="font-size: 1.2rem; font-weight: 700; color: ${nameStyle}; white-space: normal; margin: 0;">${channel.displayableName}</h3></div>`;
             }
             // FIN DE CAMBIO PARA EL INDICADOR DE DIRECTO EN TV CARD
 
@@ -3751,20 +3772,20 @@
         function renderTVChannels() {
             const tvGrid = document.getElementById('tvChannelsGrid');
             if (!tvGrid || !state.isTVMode) return;
-            
+
             // Actualizar la interfaz de filtros TV antes de renderizar
             restoreTVFilterUI();
-            
+
             const {
                 groups,
                 sortedGroupKeys
             } = getGroupedChannels();
             tvGrid.innerHTML = createTVChannelsHTML(groups, sortedGroupKeys);
             attachTVCardEvents();
-            
+
             if (state.tvFocusManager) {
                 state.tvFocusManager.updateFocusableElements();
-                
+
                 // Determinar el elemento a enfocar:
                 let elementToFocus = null;
                 const activeSportFilterLink = document.querySelector(`.tv-nav-link.sport-filter.tv-sidebar-link-focused`);
@@ -3972,7 +3993,7 @@
                             // Mover de la barra lateral al primer canal
                             return allCards[0];
                         }
-                    } 
+                    }
                     // Lógica para moverse DENTRO del contenido principal (canales)
                     else if (allCards.includes(this.currentFocus)) {
                         const currentRow = this.currentFocus.closest('.tv-subgroup-content');
@@ -3981,7 +4002,7 @@
                         const indexInRow = cardsInCurrentRow.indexOf(this.currentFocus);
                         const allRows = Array.from(document.querySelectorAll('.tv-subgroup-content'));
                         const currentRowIndex = allRows.indexOf(currentRow);
-                        
+
                         if (direction === 'ArrowRight') {
                             if (indexInRow < cardsInCurrentRow.length - 1) {
                                 return cardsInCurrentRow[indexInRow + 1];
@@ -4112,7 +4133,7 @@
             document.getElementById('normalModeBtn').addEventListener('click', () => {
                 switchToNormalMode();
             });
-            
+
             // Event listeners para filtros de TV (modificado para incluir nuevos)
             document.querySelectorAll('#tvSidebar .tv-nav-link').forEach(link => {
                 link.addEventListener('click', function(e) {

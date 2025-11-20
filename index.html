@@ -1184,7 +1184,7 @@
             position: fixed;
             left: 0;
             top: 0;
-            /* ANCHO REDUCIDO A 125px -> CAMBIO SOLICITADO A 100px */
+            /* ANCHO REDUCIDO A 100px */
             width: 100px;
             height: 100vh;
             overflow-y: auto;
@@ -1248,7 +1248,7 @@
         }
 
         #tvMainContent {
-            /* MARGEN AJUSTADO A 125px -> CAMBIO SOLICITADO A 100px */
+            /* MARGEN AJUSTADO A 100px */
             margin-left: 100px;
             padding: 1.5rem 2.5rem;
             min-height: 100vh;
@@ -1287,24 +1287,6 @@
             background-position: center;
             background-repeat: no-repeat;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
-        }
-        
-        /* 2. Eliminar la clase de live para mantener el mismo tamaño */
-        /* Eliminada la clase .tv-card--live: */
-        /* .tv-card--live { min-width: 350px; max-width: 350px; height: 200px; } */
-
-        .tv-card:hover {
-            transform: scale(1.08);
-            border-color: var(--primary);
-        }
-
-        .tv-card-focused {
-            outline: 4px solid white !important;
-            outline-offset: 4px;
-            border-color: var(--primary) !important;
-            box-shadow: 0 0 20px rgba(37, 99, 235, 0.7);
-            transform: scale(1.08);
-            z-index: 20;
         }
         
         /* Nuevo estilo para tarjetas con logo */
@@ -1355,10 +1337,6 @@
             display: none;
         }
 
-        /* CLASE ELIMINADA: .tv-live-indicator */
-
-        /* KEYFRAME ELIMINADO: @keyframes soft-blink */
-
         .modal__content {
             max-width: 450px;
         }
@@ -1398,10 +1376,10 @@
         .tv-link-button {
             position: absolute;
             /* CAMBIO: Mover a la parte inferior (bottom) */
-            bottom: 10px; 
-            right: 10px;
-            width: 40px;
-            height: 40px;
+            bottom: 5px; /* **AJUSTADO DE 10px A 5px** */
+            right: 5px; /* **AJUSTADO DE 10px A 5px** */
+            width: 30px; /* **AJUSTADO DE 40px A 30px** */
+            height: 30px; /* **AJUSTADO DE 40px A 30px** */
             border-radius: 50%;
             /* CAMBIO: Usar un fondo semitransparente para mejor integración */
             background-color: rgba(255, 255, 255, 0.2); 
@@ -1411,7 +1389,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            font-size: 1.2rem;
+            font-size: 0.9rem; /* **AJUSTADO DE 1.2rem A 0.9rem** */
             /* Se mantiene la sombra, pero se ajusta */
             box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4); 
             /* Importante: asegura que está por encima del logo/nombre */
@@ -1423,7 +1401,7 @@
         .tv-link-button-focused {
             /* CAMBIO: Al enfocar, usar el color primario (o blanco más opaco) */
             background-color: var(--primary); 
-            transform: scale(1.1);
+            transform: scale(1.05); /* **AJUSTADO DE 1.1 A 1.05** */
         }
     </style>
 </head>
@@ -3536,7 +3514,7 @@
 
             const rating = state.channelRatings[channel.id] !== undefined ? state.channelRatings[channel.id] : 2.5;
             const ratingStars = getStarRating(rating);
-            const optionsButton = `<button class="tv-link-button" data-channel-id="${channel.id}" title="Ver opciones alternativas">...</button>`;
+            const optionsButton = `<button class="tv-link-button" data-channel-id="${channel.id}" title="Ver opciones alternativas">•••</button>`;
 
             return ` <div class="tv-card ${isLiveClass} ${logoClass}" data-channel-id="${channel.id}" data-all-options='${allOptionsJson}' style="${backgroundImageStyle}" tabindex="0" role="button" aria-label="Ver canal ${channel.name}"> ${optionsButton} <div style="display: flex; justify-content: center; align-items: center; width: 100%; height: 100%; padding: 0;">${channelNameHTML}</div></div> `;
         };

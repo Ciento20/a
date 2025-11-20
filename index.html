@@ -1620,9 +1620,11 @@
                             <a href="#" class="tv-nav-link sport-filter" data-sport-key="futbol" tabindex="0" title="Fútbol">⚽</a>
                             <a href="#" class="tv-nav-link sport-filter" data-sport-key="baloncesto" tabindex="0" title="Baloncesto">🏀</a>
                             <a href="#" class="tv-nav-link sport-filter" data-sport-key="tenis" tabindex="0" title="Tenis">🎾</a>
-                            <a href="#" class="tv-nav-link sport-filter" data-sport-key="motorsport" tabindex="0" title="Motorsport">🏁</a>
+                            <a href="#" class="tv-nav-link sport-filter" data-sport-key="boxeo" tabindex="0" title="Boxeo">🥊</a>
+                            <a href="#" class="tv-nav-link sport-filter" data-sport-key="ciclismo" tabindex="0" title="Ciclismo">🚴</a>
+                            <a href="#" class="tv-nav-link sport-filter" data-sport-key="motorsport" tabindex="0" title="Motor">🏁</a>
                             <a href="#" class="tv-nav-link sport-filter" data-sport-key="f1" tabindex="0" title="F1">🏎️</a>
-                            </div>
+                        </div>
                     </ul>
                 </nav>
             </div>
@@ -1773,8 +1775,7 @@
 
         // Nuevos IDs para los filtros en modo TV
         const TV_BRAND_FILTER_KEYS = ['all', 'live', 'favorites', 'dazn', 'm+', 'eurosport'];
-        // MODIFICACIÓN: Se añaden 'motorsport' y 'f1' a la lista
-        const TV_SPORT_FILTER_KEYS = ['futbol', 'baloncesto', 'tenis', 'motorsport', 'f1'];
+        const TV_SPORT_FILTER_KEYS = ['futbol', 'baloncesto', 'tenis', 'boxeo', 'ciclismo', 'motorsport', 'f1'];
 
         const OTHER_SUBGROUPS = [
             'LIGA ENDESA',
@@ -3025,7 +3026,7 @@
                     'tenis': ['tenis', 'wimbledon', 'roland garros', 'us open', 'atp', 'wta'],
                     'boxeo': ['boxeo', 'boxing', 'lucha', 'ufc', 'mma'],
                     'ciclismo': ['ciclismo', 'tour', 'giro', 'vuelta'],
-                    'motorsport': ['gp', 'motogp', 'dakar', 'rally', 'wrc', 'nascar', 'motor'],
+                    'motorsport': ['gp', 'motogp', 'dakar', 'rally', 'wrc', 'nascar'],
                     'f1': ['f1', 'fórmula 1', 'formula 1', 'formulaone', 'fórmulaone']
                 };
                 let targetTerms = sportSearchTerms[normalizedSportFilter] || [normalizedSportFilter];
@@ -4191,7 +4192,6 @@
             document.querySelectorAll('#tvSidebar .tv-nav-link').forEach(link => {
                 link.addEventListener('click', function(e) {
                     e.preventDefault();
-                    // MODIFICACIÓN: Se comprueba también si el filtro es de deporte
                     if (TV_BRAND_FILTER_KEYS.includes(this.dataset.filter)) {
                         applyTVFilter(this.dataset.filter, 'brand');
                     } else if (TV_SPORT_FILTER_KEYS.includes(this.dataset.sportKey)) {

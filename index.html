@@ -816,7 +816,7 @@
         }
 
         /* Ajustes para el modo normal (desktop/móvil) */
-        #channelsGrid + .status-message {
+        #statusMessageWrapper .status-message {
              /* Solo aplica el estilo si está directamente antes del grid normal */
             grid-column: 1/-1;
         }
@@ -1555,6 +1555,14 @@
             transform: scale(1.05);
             /* **AJUSTADO DE 1.1 A 1.05** */
         }
+        
+        /* NUEVA REGLA PARA EL WRAPPER DEL MENSAJE DE ESTADO EN MODO NORMAL */
+        #statusMessageWrapper {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 1rem;
+            min-height: 1.5rem; /* Para evitar un salto de layout grande */
+        }
     </style>
 </head>
 
@@ -1581,6 +1589,9 @@
                         data-sport-key="motorsport" id="filterMotorsport">🏁</button><button
                         class="filter-button sport-filter-button" data-sport-key="f1" id="filterF1">🏎️</button></div>
             </div>
+        </div>
+        <div id="statusMessageWrapper"></div>
+        <div class="main-container">
             <div id="updateNotification" class="update-notification"></div>
             <div class="channels-grid" id="channelsGrid"></div>
         </div>
@@ -2100,12 +2111,13 @@
                     container.prepend(statusElement);
                 }
             } else {
-                container = document.getElementById("channelsGrid");
-                statusElement = document.querySelector("#channelsGrid + .status-message");
+                // MODIFICACIÓN: Usar el nuevo contenedor en modo normal
+                container = document.getElementById('statusMessageWrapper');
+                statusElement = container.querySelector(".status-message");
                 if (!statusElement) {
                     statusElement = document.createElement("div");
                     statusElement.className = "status-message";
-                    container.parentElement.insertBefore(statusElement, container);
+                    container.prepend(statusElement);
                 }
             }
 
@@ -2130,6 +2142,7 @@
                     statusElement.classList.add('hide');
                     statusElement.addEventListener('transitionend', () => {
                         if (statusElement.classList.contains('hide')) {
+                            // Eliminamos el elemento para limpiar el DOM
                             statusElement.remove();
                         }
                     }, {
@@ -2249,9 +2262,16 @@
 
         async function loadInitialChannels() {
             const channelsGrid = document.getElementById("channelsGrid");
+            
+            // MODIFICACIÓN: Limpiamos el wrapper de mensajes de estado al inicio en modo normal
+            if (!state.isTVMode) {
+                document.getElementById('statusMessageWrapper').innerHTML = '';
+            }
+
             const isShowingBackup = loadAndRenderBackupChannels();
             const temporaryLoadMessage = isShowingBackup ? "Mostrando historial. Obteniendo datos en tiempo real..." : "Cargando datos en tiempo real...";
             showStatusMessage(temporaryLoadMessage, "warning");
+            
             const results = await Promise.allSettled([
                 fetchAndProcessSource('events', EVENTS_URL, loadEventsSource, BACKUP_KEYS.events),
                 fetchAndProcessSource('era', ERA_URL, loadEraChannels, BACKUP_KEYS.era),
@@ -2259,6 +2279,7 @@
                 fetchAndProcessSource('shickat', SHICKAT_URL, loadShickatChannels, BACKUP_KEYS.shickat),
                 fetchAndProcessSource('elcano', ELCANO_URL, loadElcanoSource, BACKUP_KEYS.elcano)
             ]);
+            
             let allChannels = [];
             let hasFallback = false;
             let hasOnlineSuccess = false;
@@ -2277,7 +2298,7 @@
             // Determinar dónde buscar el elemento de estado
             const statusElement = state.isTVMode 
                 ? document.querySelector("#tvStatusMessageContainer .status-message") 
-                : document.querySelector("#channelsGrid + .status-message");
+                : document.querySelector("#statusMessageWrapper .status-message");
 
             if (allChannels.length > 0) {
                 const newChannels = mergeChannels(allChannels);
@@ -2289,33 +2310,28 @@
                     renderResults();
                 }
                 cleanObsoleteRatings();
+                
+                // MODIFICACIÓN: Siempre removemos el mensaje temporal antes de mostrar el final, si existe
+                if (statusElement) statusElement.remove();
+
                 if (hasOnlineSuccess) {
-                    if (statusElement) statusElement.remove();
                     if (hasFallback) {
                         showStatusMessage("Canales actualizados (algunos con historial).", "warning");
                     } else {
                         showStatusMessage("Canales actualizados correctamente.", "success");
                     }
                 } else if (isShowingBackup) {
-                    if (statusElement) {
-                        statusElement.textContent = "Fallo al actualizar canales. Se sigue mostrando el historial.";
-                        statusElement.className = "status-message error";
-                    } else {
-                        showStatusMessage("Fallo al actualizar canales. Se sigue mostrando el historial.", "error");
-                    }
+                    showStatusMessage("Fallo al actualizar canales. Se sigue mostrando el historial.", "error");
                 } else {
-                    if (statusElement) statusElement.remove();
                     channelsGrid.innerHTML = ` <div class="no-results"><div class="no-results-icon">📡</div><div class="no-results-text">Error al cargar los canales.</div><div class="no-results-hint">No se han conseguido cargar los canales (modo offline/sin historial).</div><button class="retry-button" onclick="loadInitialChannels()">Reintentar</button></div> `;
                     showStatusMessage("Error al cargar canales. Sin historial disponible.", "error");
                 }
             } else if (isShowingBackup) {
-                if (statusElement) {
-                    statusElement.textContent = "Fallo al actualizar canales. Se sigue mostrando el historial.";
-                    statusElement.className = "status-message error";
-                } else {
-                    showStatusMessage("Fallo al actualizar canales. Se sigue mostrando el historial.", "error");
-                }
+                 // MODIFICACIÓN: Siempre removemos el mensaje temporal antes de mostrar el final, si existe
+                if (statusElement) statusElement.remove();
+                showStatusMessage("Fallo al actualizar canales. Se sigue mostrando el historial.", "error");
             } else {
+                 // MODIFICACIÓN: Siempre removemos el mensaje temporal antes de mostrar el final, si existe
                 if (statusElement) statusElement.remove();
                 channelsGrid.innerHTML = ` <div class="no-results"><div class="no-results-icon">📡</div><div class="no-results-text">Error al cargar los canales.</div><div class="no-results-hint">No se han conseguido cargar los canales (modo offline/sin historial).</div><button class="retry-button" onclick="loadInitialChannels()">Reintentar</button></div> `;
                 showStatusMessage("Error al cargar canales. Sin historial disponible.", "error");
@@ -2878,6 +2894,32 @@
                 result = result.replace(comediaRegex, '<span class="degradado-comedia">Comedia</span>');
                 channel.displayableName = result;
             });
+        }
+
+        // NUEVA FUNCIÓN AÑADIDA PARA COMPARAR CANALES EN MODO TV
+        function compareChannelsForSort(a, b) {
+            // Aseguramos que a y b sean objetos de canal con datos completos
+            const channelA = state.channelsData.find(c => c.id === a.id) || a;
+            const channelB = state.channelsData.find(c => c.id === b.id) || b;
+            
+            const ratingA = state.channelRatings[channelA.id] !== undefined ? state.channelRatings[channelA.id] : 2.5;
+            const ratingB = state.channelRatings[channelB.id] !== undefined ? state.channelRatings[channelB.id] : 2.5;
+
+            // 1. Prioridad: Puntuación (Más alto es mejor)
+            if (ratingA !== ratingB) {
+                return ratingB - ratingA;
+            }
+            
+            // 2. Prioridad: Calidad (Mejor calidad es mejor)
+            const qualityMap = { 'UHD': 6, '4K': 5, 'FHD': 4, 'HD': 3, 'SD': 2, 'N/A': 1 };
+            const qualityA = qualityMap[standardizeQuality(channelA.quality)] || 0;
+            const qualityB = qualityMap[standardizeQuality(channelB.quality)] || 0;
+            if (qualityB !== qualityA) {
+                return qualityB - qualityA;
+            }
+            
+            // 3. Prioridad: Nombre (Alfabético)
+            return channelA.name.localeCompare(channelB.name);
         }
 
         function getBestChannelInSubgroup(channels) {
@@ -3651,7 +3693,6 @@
             const b = parseInt(hex.slice(5, 7), 16);
             return {
                 r,
-                g,
                 b
             };
         }
@@ -3967,6 +4008,8 @@
                 }
             });
         };
+        
+        // FUNCIÓN MODIFICADA
         const handleTVCardPlay = (e) => {
             if (e.target.closest('.tv-link-button')) {
                 return;
@@ -3974,10 +4017,73 @@
             const card = e.currentTarget;
             const channelId = card.getAttribute('data-channel-id');
             const channel = state.channelsData.find(c => c.id === channelId);
-            if (channel) {
-                handleChannelPlay(channel);
+            
+            if (!channel) return;
+            
+            // 1. Obtener todas las opciones de enlaces (canales del subgrupo)
+            const optionsJson = card.getAttribute('data-all-options');
+            let allOptions = [];
+            try {
+                allOptions = JSON.parse(optionsJson);
+            } catch (error) {
+                console.error("Error al parsear opciones para TV Card:", error);
+                handleChannelPlay(channel); // Fallback: Reproducir el principal
+                return;
             }
+            
+            const now = new Date().getTime();
+            // Umbral de tiempo: si el mismo canal se reproduce en menos de 5 minutos, se considera un fallo
+            const RECENT_FAILURE_THRESHOLD_MS = 5 * 60 * 1000; 
+            let channelToPlay = channel; // Por defecto, es el canal principal
+            let statusMessage = '';
+            
+            // 2. Comprobar si hay un fallo reciente del mismo canal
+            if (state.lastChannelPlay && 
+                state.lastChannelPlay.channelId === channel.id && 
+                (now - state.lastChannelPlay.timestamp) < RECENT_FAILURE_THRESHOLD_MS) {
+                
+                // El canal principal ha fallado recientemente. Buscamos la alternativa.
+                
+                // Ordenamos todas las opciones del subgrupo por puntuación (descendente)
+                const sortedOptions = allOptions
+                    .map(opt => state.channelsData.find(c => c.id === opt.id))
+                    .filter(c => c)
+                    .sort(compareChannelsForSort);
+                
+                // El mejor canal es el principal (índice 0), el segundo mejor es el de índice 1
+                const alternativeChannel = sortedOptions[1]; 
+                
+                if (alternativeChannel) {
+                    // Aplicamos una penalización inmediata al canal fallido.
+                    let currentRating = state.channelRatings[channel.id] !== undefined ? state.channelRatings[channel.id] : 2.5;
+                    // Penalización: baja 1 punto la estabilidad.
+                    state.channelRatings[channel.id] = Math.max(1, currentRating - 1.0); 
+                    saveRatings();
+                    
+                    channelToPlay = alternativeChannel;
+                    
+                    // Re-renderizamos para actualizar la interfaz (estrellas)
+                    renderTVChannels(); 
+                    
+                    statusMessage = `❌ Fallo detectado en ${channel.name}. Abriendo alternativa: ${alternativeChannel.name} (${standardizeQuality(alternativeChannel.quality)}).`;
+                    showStatusMessage(statusMessage, 'error');
+                    
+                } else {
+                    // No hay alternativa, pero forzamos la penalización para que no entre en bucle.
+                    let currentRating = state.channelRatings[channel.id] !== undefined ? state.channelRatings[channel.id] : 2.5;
+                    state.channelRatings[channel.id] = Math.max(1, currentRating - 0.5); 
+                    saveRatings();
+                    renderTVChannels();
+                    
+                    statusMessage = `⚠️ ${channel.name} ha fallado de nuevo. Sin alternativas. Reintentando...`;
+                    showStatusMessage(statusMessage, 'warning');
+                }
+            } 
+
+            // 3. Reproducir el canal seleccionado (principal o alternativo)
+            handleChannelPlay(channelToPlay);
         }
+        
         const handleTVCardOptionsClick = (e) => {
             e.stopPropagation();
             const card = e.currentTarget.closest('.tv-card');

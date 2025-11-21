@@ -779,7 +779,8 @@
         }
 
         .channel-number-badge-button.shickat-badge {
-            background-color: var(--shickat-badge)
+            background-color: var(--shickat-badge);
+            color: #fff
         }
 
         .channel-number-badge-button:hover {
@@ -1529,6 +1530,15 @@
             font-size: 0.85rem;
             color: var(--channel-name-color);
         }
+        
+        /* NUEVO: Estilo para el indicador de última vista (👁️) */
+        .last-viewed-indicator {
+            margin-right: 5px;
+            font-size: 1.1rem;
+            color: var(--primary); /* Usar el color principal para que destaque */
+            font-weight: 700;
+        }
+
 
         /* CÓDIGO MODIFICADO PARA EL BOTÓN DE OPCIONES */
         .tv-link-button {
@@ -1778,7 +1788,9 @@
             tvSportFilter: localStorage.getItem('tvSportFilter') || 'all', // Nuevo filtro de deporte para TV
             tvSearchTerm: '',
             tvFocusManager: null,
-            playerActive: false
+            playerActive: false,
+            // NUEVO ESTADO: Almacena el último ID de acestream reproducido por cada nombre de canal
+            lastPlayedByChannel: JSON.parse(localStorage.getItem('lastPlayedByChannel')) || {},
         };
         const LOGOPEDIA_BASE_URL = "https://static.wikia.nocookie.net/logopedia/images/";
         const IMAGE_PROXY_URL = "https://images.weserv.nl/?url=";
@@ -2963,6 +2975,25 @@
 
         function getBestChannelInSubgroup(channels) {
             if (!channels || channels.length === 0) return null;
+            
+            const mainChannelName = channels[0].name.trim().toLowerCase();
+            const lastPlayedId = state.lastPlayedByChannel[mainChannelName];
+
+            // 1. Buscar si hay una opción que coincida con la última reproducida
+            if (lastPlayedId) {
+                const lastPlayedChannel = channels.find(c => c.id === lastPlayedId);
+                if (lastPlayedChannel) {
+                    // Si el canal más reciente es bueno (rating >= 3) lo ponemos primero
+                    const rating = state.channelRatings[lastPlayedId] !== undefined ? state.channelRatings[lastPlayedId] : 2.5;
+                    if (rating >= 3) {
+                         // Clonar el array, poner el último reproducido primero, y luego ordenar el resto
+                         const others = channels.filter(c => c.id !== lastPlayedId);
+                         return [lastPlayedChannel, ...others].sort(compareChannelsForSort)[0];
+                    }
+                }
+            }
+            
+            // 2. Si no hay historial, o el último reproducido no tiene buen rating, ordenamos por rating/calidad.
             const sortedChannels = [...channels].sort((a, b) => {
                 const ratingA = state.channelRatings[a.id] !== undefined ? state.channelRatings[a.id] : 2.5;
                 const ratingB = state.channelRatings[b.id] !== undefined ? state.channelRatings[b.id] : 2.5;
@@ -3603,23 +3634,27 @@
             }, 500);
         }
 
-        // FUNCIÓN MODIFICADA: Ahora solo registra la reproducción y actualiza el canal anterior
-        function handleChannelPlay(channel) {
+        // FUNCIÓN MODIFICADA: Ahora registra la reproducción del canal seleccionado y actualiza el registro de última reproducción.
+        function handleChannelPlay(channelToPlay) {
             if (state.lastChannelPlay) {
                 // Llama a la nueva función centralizada para actualizar el rating del canal anterior
-                updateChannelRating(state.lastChannelPlay.channelId, channel.id);
+                updateChannelRating(state.lastChannelPlay.channelId, channelToPlay.id);
             }
             
             // 1. Actualiza el registro del último canal reproducido (AHORA)
             const now = new Date().getTime();
             state.lastChannelPlay = {
-                channelId: channel.id,
+                channelId: channelToPlay.id,
                 timestamp: now
             };
             localStorage.setItem('lastChannelPlay', JSON.stringify(state.lastChannelPlay));
+            
+            // 2. Registra el último ID de AceStream reproducido para este nombre de canal
+            state.lastPlayedByChannel[channelToPlay.name.trim().toLowerCase()] = channelToPlay.id;
+            localStorage.setItem('lastPlayedByChannel', JSON.stringify(state.lastPlayedByChannel));
 
-            // 2. Reproduce el canal
-            playChannel(channel.id);
+            // 3. Reproduce el canal
+            playChannel(channelToPlay.id);
         }
 
         // NUEVA FUNCIÓN: Lógica centralizada de actualización de rating
@@ -4148,7 +4183,7 @@
             if (channel && optionsJson) {
                 try {
                     const allOptions = JSON.parse(optionsJson);
-                    showTvOptionsModal(channel.displayableName, allOptions);
+                    showTvOptionsModal(channel.name, allOptions); // Usamos channel.name (sin HTML) como canal principal
                 } catch (error) {
                     console.error("Error al parsear las opciones del canal:", error);
                     handleChannelPlay(channel);
@@ -4156,17 +4191,24 @@
             }
         };
 
-        function showTvOptionsModal(channelName, optionsList) {
+        function showTvOptionsModal(mainChannelName, optionsList) {
             const modal = document.getElementById('tvChannelOptionsModal');
             const nameSpan = document.getElementById('tvModalChannelName');
             const listDiv = document.getElementById('tvModalChannelList');
-            nameSpan.innerHTML = channelName;
+            nameSpan.innerHTML = state.channelsData.find(c => c.name === mainChannelName)?.displayableName || mainChannelName;
             listDiv.innerHTML = '';
+            
+            // NUEVA LÓGICA: Obtener el ID de AceStream del último reproducido para este canal
+            const lastPlayedId = state.lastPlayedByChannel[mainChannelName.trim().toLowerCase()];
 
             const renderOptionItem = (option) => {
                 const isFavorite = state.favorites.includes(option.id);
                 const favoriteIcon = isFavorite ? '★' : '☆';
                 const favoriteClass = isFavorite ? 'is-favorite' : 'is-not-favorite';
+                
+                // NUEVA LÓGICA: Comprobar si es el último reproducido
+                const isLastViewed = option.id === lastPlayedId;
+                const lastViewedIndicator = isLastViewed ? '<span class="last-viewed-indicator">👁️</span>' : '';
                 
                 const ratingStars = getStarRating(option.rating);
                 let sourceBadgeText = '';
@@ -4198,10 +4240,12 @@
                 const item = document.createElement('div');
                 item.className = 'channel-option-item';
                 item.setAttribute('data-id', option.id);
-                const channelDisplayName = state.channelsData.find(c => c.id === option.id)?.displayableName || option.name;
+                // Usamos option.name (que viene con el HTML de colores) para mostrar el nombre
+                const channelDisplayName = option.name;
                 
                 item.innerHTML = `
                     <div class="channel-option-name-container">
+                        ${lastViewedIndicator}
                         <button class="favorite-toggle-btn ${favoriteClass}" data-id="${option.id}" title="Marcar como favorito">${favoriteIcon}</button>
                         <span class="channel-option-name">${channelDisplayName}</span>
                     </div>
@@ -4209,6 +4253,7 @@
                         ${ratingStars}
                         ${option.quality}
                         ${option.multiAudio ? '🎧' : ''}
+                        <span class="channel-number-display" style="font-weight: 700; color: var(--channel-number-color);">${option.id.substring(0, 3)}</span>
                         ${sourceBadge}
                     </div>
                 `;
@@ -4252,7 +4297,32 @@
                 listDiv.appendChild(item);
             };
 
-            optionsList.forEach(renderOptionItem);
+            optionsList
+                .map(option => {
+                    // Ordenar por el último reproducido primero, luego por rating/calidad
+                    const channel = state.channelsData.find(c => c.id === option.id);
+                    const rating = channel ? (state.channelRatings[channel.id] || 2.5) : 2.5;
+                    const qualityMap = { 'UHD': 6, '4K': 5, 'FHD': 4, 'HD': 3, 'SD': 2, 'N/A': 1 };
+                    const qualityScore = channel ? (qualityMap[standardizeQuality(channel.quality)] || 0) : 0;
+                    
+                    return { ...option, rating, qualityScore, isLastViewed: option.id === lastPlayedId };
+                })
+                .sort((a, b) => {
+                    // 1. Última vista primero
+                    if (a.isLastViewed && !b.isLastViewed) return -1;
+                    if (!a.isLastViewed && b.isLastViewed) return 1;
+                    
+                    // 2. Rating (mayor a menor)
+                    if (b.rating !== a.rating) return b.rating - a.rating;
+                    
+                    // 3. Calidad (mayor a menor)
+                    if (b.qualityScore !== a.qualityScore) return b.qualityScore - a.qualityScore;
+                    
+                    // 4. Nombre
+                    return a.name.localeCompare(b.name);
+                })
+                .forEach(renderOptionItem);
+
 
             modal.classList.add('modal--active');
         }

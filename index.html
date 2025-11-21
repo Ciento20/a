@@ -1712,6 +1712,7 @@
             <div class="tv-channels-grid" id="tvChannelsGrid"></div>
         </main>
     </div>
+
     <script>
         const state = {
             allChannels: [],
@@ -3564,54 +3565,78 @@
             }, 500);
         }
 
+        // FUNCIÓN MODIFICADA: Ahora solo registra la reproducción y actualiza el canal anterior
         function handleChannelPlay(channel) {
-            if (state.isTVMode) {
-                playChannel(channel.id);
-                return;
-            }
-            const now = new Date().getTime();
             if (state.lastChannelPlay) {
-                const previousChannelId = state.lastChannelPlay.channelId;
-                const previousChannelData = state.channelsData.find(c => c.id === previousChannelId);
-                const duration = (now - state.lastChannelPlay.timestamp) / 1000;
-                let rating = state.channelRatings[previousChannelId] !== undefined ? state.channelRatings[previousChannelId] : 2.5;
-                let newRating = rating;
-                if (previousChannelId !== channel.id && previousChannelData) {
-                    const previousName = previousChannelData.name.toLowerCase().trim();
-                    const currentName = channel.name.toLowerCase().trim();
-                    if (previousName === currentName) {
-                        if (duration >= (30 * 60)) {
-                            newRating += 1.5;
-                        } else if (duration >= (15 * 60)) {
-                            newRating += 0.5;
-                        } else if (duration >= (5 * 60)) {
-                            newRating -= 1;
-                        } else if (duration >= 10) {
-                            newRating -= 1.5;
-                        } else {
-                            newRating -= 2;
-                        }
-                    } else {
-                        if (duration >= (30 * 60)) {
-                            newRating += 1.5;
-                        } else {
-                            newRating = rating;
-                        }
-                    }
-                } else if (previousChannelId === channel.id) {
-                    newRating = rating;
-                }
-                state.channelRatings[previousChannelId] = Math.max(1, Math.min(5, newRating));
-                saveRatings();
-                renderResults();
+                // Llama a la nueva función centralizada para actualizar el rating del canal anterior
+                updateChannelRating(state.lastChannelPlay.channelId, channel.id);
             }
+            
+            // 1. Actualiza el registro del último canal reproducido (AHORA)
+            const now = new Date().getTime();
             state.lastChannelPlay = {
                 channelId: channel.id,
                 timestamp: now
             };
             localStorage.setItem('lastChannelPlay', JSON.stringify(state.lastChannelPlay));
+
+            // 2. Reproduce el canal
             playChannel(channel.id);
         }
+
+        // NUEVA FUNCIÓN: Lógica centralizada de actualización de rating
+        function updateChannelRating(previousChannelId, currentChannelId) {
+            const now = new Date().getTime();
+            const previousChannelData = state.channelsData.find(c => c.id === previousChannelId);
+            
+            // Solo actualizamos si hay datos del canal anterior
+            if (!previousChannelData) return;
+
+            const duration = (now - state.lastChannelPlay.timestamp) / 1000;
+            let rating = state.channelRatings[previousChannelId] !== undefined ? state.channelRatings[previousChannelId] : 2.5;
+            let newRating = rating;
+            
+            const previousName = previousChannelData.name.toLowerCase().trim();
+            const currentChannelData = state.channelsData.find(c => c.id === currentChannelId);
+            const currentName = currentChannelData ? currentChannelData.name.toLowerCase().trim() : '';
+
+            // Lógica de bonificación/penalización
+            if (previousChannelId !== currentChannelId && previousName === currentName) {
+                // Se cambió de canal con el MISMO nombre
+                if (duration >= (30 * 60)) { // 30 minutos o más -> Éxito
+                    newRating += 1.5;
+                } else if (duration >= (15 * 60)) { // 15-30 minutos -> Éxito parcial
+                    newRating += 0.5;
+                } else if (duration >= (5 * 60)) { // 5-15 minutos -> Fallo leve
+                    newRating -= 1;
+                } else if (duration >= 10) { // 10 segundos a 5 minutos -> Fallo
+                    newRating -= 1.5;
+                } else { // Menos de 10 segundos -> Fallo grave
+                    newRating -= 2;
+                }
+            } else if (previousChannelId !== currentChannelId && previousName !== currentName) {
+                // Se cambió a un canal con nombre diferente (posible éxito, pero no penaliza el anterior)
+                if (duration >= (30 * 60)) {
+                    newRating += 1.5; // Bonificación si se mantuvo 30+ minutos
+                } else {
+                    newRating = rating; // No se penaliza
+                }
+            } else if (previousChannelId === currentChannelId) {
+                // Misma reproducción, no se hace nada, el rating se actualizó al reproducir anteriormente
+                return;
+            }
+            
+            state.channelRatings[previousChannelId] = Math.max(1, Math.min(5, newRating));
+            saveRatings();
+            
+            // Volvemos a renderizar en el modo activo para actualizar las estrellas.
+            if (state.isTVMode) {
+                renderTVChannels();
+            } else {
+                renderResults();
+            }
+        }
+        // FIN NUEVA FUNCIÓN
 
         function showCopyModal(acestreamId) {
             const acestreamUrl = `acestream://${acestreamId}`;
@@ -4009,7 +4034,7 @@
             });
         };
         
-        // FUNCIÓN MODIFICADA
+        // FUNCIÓN MODIFICADA: Se elimina la penalización directa y se llama a handleChannelPlay que ya gestiona la puntuación del canal anterior
         const handleTVCardPlay = (e) => {
             if (e.target.closest('.tv-link-button')) {
                 return;
@@ -4032,8 +4057,8 @@
             }
             
             const now = new Date().getTime();
-            // Umbral de tiempo: si el mismo canal se reproduce en menos de 5 minutos, se considera un fallo
-            const RECENT_FAILURE_THRESHOLD_MS = 5 * 60 * 1000; 
+            // Umbral de tiempo: si el mismo canal se reproduce en menos de 40 minutos, se considera un fallo
+            const RECENT_FAILURE_THRESHOLD_MS = 40 * 60 * 1000; 
             let channelToPlay = channel; // Por defecto, es el canal principal
             let statusMessage = '';
             
@@ -4054,33 +4079,25 @@
                 const alternativeChannel = sortedOptions[1]; 
                 
                 if (alternativeChannel) {
-                    // Aplicamos una penalización inmediata al canal fallido.
-                    let currentRating = state.channelRatings[channel.id] !== undefined ? state.channelRatings[channel.id] : 2.5;
-                    // Penalización: baja 1 punto la estabilidad.
-                    state.channelRatings[channel.id] = Math.max(1, currentRating - 1.0); 
-                    saveRatings();
+                    // **MODIFICACIÓN:** La penalización al canal principal la hará handleChannelPlay / updateChannelRating cuando se reproduzca la alternativa.
+                    // Para forzar la penalización ahora mismo y que la estrella se actualice (comportamiento anterior):
+                    // No hacemos nada para no sobreescribir la lógica unificada, simplemente elegimos la alternativa.
                     
                     channelToPlay = alternativeChannel;
-                    
-                    // Re-renderizamos para actualizar la interfaz (estrellas)
-                    renderTVChannels(); 
                     
                     statusMessage = `❌ Fallo detectado en ${channel.name}. Abriendo alternativa: ${alternativeChannel.name} (${standardizeQuality(alternativeChannel.quality)}).`;
                     showStatusMessage(statusMessage, 'error');
                     
                 } else {
-                    // No hay alternativa, pero forzamos la penalización para que no entre en bucle.
-                    let currentRating = state.channelRatings[channel.id] !== undefined ? state.channelRatings[channel.id] : 2.5;
-                    state.channelRatings[channel.id] = Math.max(1, currentRating - 0.5); 
-                    saveRatings();
-                    renderTVChannels();
-                    
                     statusMessage = `⚠️ ${channel.name} ha fallado de nuevo. Sin alternativas. Reintentando...`;
                     showStatusMessage(statusMessage, 'warning');
                 }
             } 
 
             // 3. Reproducir el canal seleccionado (principal o alternativo)
+            // handleChannelPlay se encarga de:
+            // a) Registrar el canalToPlay como el último reproducido.
+            // b) Llamar a updateChannelRating para penalizar/bonificar al canal anterior (el que falló, si aplica).
             handleChannelPlay(channelToPlay);
         }
         
@@ -4486,3 +4503,4 @@
 </body>
 
 </html>
+

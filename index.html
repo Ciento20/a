@@ -1509,7 +1509,19 @@
             font-weight: 600;
             color: var(--text);
             flex-grow: 1;
+            /* MODIFICACIÓN: Añadir margen para separar del botón de favorito */
+            margin-left: 10px; 
         }
+        
+        /* NUEVO: Contenedor para la estrella de favorito y el nombre */
+        .channel-option-name-container {
+            display: flex;
+            align-items: center;
+            flex-grow: 1;
+            font-weight: 600;
+            color: var(--text);
+        }
+
 
         .channel-option-details {
             display: flex;
@@ -1563,6 +1575,32 @@
             padding: 0 1rem;
             min-height: 1.5rem; /* Para evitar un salto de layout grande */
         }
+        
+        /* INICIO NUEVO CSS PARA BOTÓN DE FAVORITO EN MODAL */
+        .favorite-toggle-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0;
+            margin-right: 5px; /* Espacio antes del nombre del canal */
+            font-size: 1.2rem;
+            color: #FFD700; /* Color de la estrella */
+            transition: transform 0.1s ease;
+            display: flex;
+            align-items: center;
+        }
+        
+        .favorite-toggle-btn:hover {
+            transform: scale(1.1);
+        }
+        
+        /* Estilo para la estrella vacía */
+        .favorite-toggle-btn.is-not-favorite {
+            color: var(--channel-name-color); /* Color de texto suave */
+            opacity: 0.7;
+            font-weight: 400;
+        }
+        /* FIN NUEVO CSS */
     </style>
 </head>
 
@@ -4124,7 +4162,12 @@
             const listDiv = document.getElementById('tvModalChannelList');
             nameSpan.innerHTML = channelName;
             listDiv.innerHTML = '';
-            optionsList.forEach(option => {
+
+            const renderOptionItem = (option) => {
+                const isFavorite = state.favorites.includes(option.id);
+                const favoriteIcon = isFavorite ? '★' : '☆';
+                const favoriteClass = isFavorite ? 'is-favorite' : 'is-not-favorite';
+                
                 const ratingStars = getStarRating(option.rating);
                 let sourceBadgeText = '';
                 let sourceBadgeClass = '';
@@ -4151,20 +4194,66 @@
                         break;
                 }
                 const sourceBadge = `<span class="${sourceBadgeClass}" style="font-size: 0.7rem; font-weight: 700; padding: 2px 5px; border-radius: 3px; color: white;">${sourceBadgeText}</span>`;
+                
                 const item = document.createElement('div');
                 item.className = 'channel-option-item';
                 item.setAttribute('data-id', option.id);
                 const channelDisplayName = state.channelsData.find(c => c.id === option.id)?.displayableName || option.name;
-                item.innerHTML = ` <div class="channel-option-name">${channelDisplayName}</div><div class="channel-option-details"> ${ratingStars} ${option.quality} ${option.multiAudio ? '🎧' : ''} ${sourceBadge} </div> `;
-                item.onclick = () => {
+                
+                item.innerHTML = `
+                    <div class="channel-option-name-container">
+                        <button class="favorite-toggle-btn ${favoriteClass}" data-id="${option.id}" title="Marcar como favorito">${favoriteIcon}</button>
+                        <span class="channel-option-name">${channelDisplayName}</span>
+                    </div>
+                    <div class="channel-option-details">
+                        ${ratingStars}
+                        ${option.quality}
+                        ${option.multiAudio ? '🎧' : ''}
+                        ${sourceBadge}
+                    </div>
+                `;
+
+                // Evento para reproducir el canal (al hacer clic en el contenedor principal)
+                item.onclick = (e) => {
+                    // Si el clic fue en el botón de favorito, no reproducir
+                    if (e.target.closest('.favorite-toggle-btn')) {
+                        return;
+                    }
                     const fullChannel = state.channelsData.find(c => c.id === option.id);
                     if (fullChannel) {
                         handleChannelPlay(fullChannel);
                     }
                     hideTvOptionsModal();
                 };
+
+                // Evento para el botón de favorito (delegado)
+                item.querySelector('.favorite-toggle-btn').addEventListener('click', function(e) {
+                    e.stopPropagation(); // Evitar que el clic en el botón cierre el modal
+                    const channelIdToToggle = this.getAttribute('data-id');
+                    
+                    // 1. Togglear el favorito en el estado global
+                    toggleFavorite(channelIdToToggle); 
+                    
+                    // 2. Actualizar el icono de estrella en el modal
+                    const isNowFavorite = state.favorites.includes(channelIdToToggle);
+                    this.textContent = isNowFavorite ? '★' : '☆';
+                    this.classList.toggle('is-favorite', isNowFavorite);
+                    this.classList.toggle('is-not-favorite', !isNowFavorite);
+                    
+                    // 3. Opcional: Mostrar un mensaje de estado
+                    showStatusMessage(`Canal ${isNowFavorite ? 'añadido' : 'eliminado'} de favoritos.`, 'info');
+                    
+                    // 4. Forzar una re-renderización de la grid principal para actualizar las estrellas de las tarjetas
+                    // (Esto es costoso, se puede optimizar, pero por ahora se mantiene como fallback)
+                    // renderTVChannels(); 
+                    
+                });
+                
                 listDiv.appendChild(item);
-            });
+            };
+
+            optionsList.forEach(renderOptionItem);
+
             modal.classList.add('modal--active');
         }
 
@@ -4503,4 +4592,3 @@
 </body>
 
 </html>
-

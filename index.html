@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport"
-        content="width=device-width,initial-scale=0.584maximum-scale=0.8,user-scalable=no">
+        content="width=device-width,initial-scale=0.5maximum-scale=0.8,user-scalable=no">
     <title>📺</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.8em%22 font-size=%2285%22>📺</text></svg>">
     <style>
@@ -1258,12 +1258,29 @@
 
         /* ESTILOS MODIFICADOS PARA FILTROS DE MARCA CON IMAGEN */
         #tvSidebar .tv-nav-link.brand-filter {
-            /* Tamaño fijo para contener el logo */
-            width: 80px;
-            height: 40px;
+            /* Se eliminan los tamaños fijos para controlarlos por clase específica */
             padding: 5px 0;
             margin: 5px auto;
             justify-content: center;
+            /* Se mantiene el tamaño del contenedor al 100% para poder anidar las clases específicas */
+            width: 100%; 
+            height: auto; 
+        }
+
+        /* Clases específicas para cada botón de marca con imagen */
+        #tvSidebar .tv-nav-link.dazn-filter {
+            width: 80px; /* Ancho específico para DAZN */
+            height: 50px; /* Alto específico para DAZN */
+        }
+
+        #tvSidebar .tv-nav-link.movistar-filter {
+            width: 70px; /* Ancho específico para Movistar */
+            height: 28px; /* Alto específico para Movistar */
+        }
+
+        #tvSidebar .tv-nav-link.eurosport-filter {
+            width: 80px; /* Ancho específico para Eurosport */
+            height: 40px; /* Alto específico para Eurosport */
         }
 
         #tvSidebar .tv-nav-link.brand-filter img {
@@ -1655,11 +1672,12 @@
                         <li style="margin-bottom: 0.5rem;"><a href="#" class="tv-nav-link" data-filter="favorites"
                                 tabindex="0"> <span>⭐</span>Favoritos </a></li>
 
-                        <li style="margin-top: 1rem;"><a href="#" class="tv-nav-link brand-filter" data-filter="dazn" tabindex="0">
+                        <li style="margin: 1rem 0; border-top: 1px solid #383838;"></li>
+                        <li style="margin-top: 1rem;"><a href="#" class="tv-nav-link brand-filter dazn-filter" data-filter="dazn" tabindex="0">
                             <img src="https://images.weserv.nl/?url=https%3A%2F%2Fstatic.wikia.nocookie.net%2Flogopedia%2Fimages%2F7%2F7c%2FDAZN.svg%2Frevision%2Flatest%3Fcb%3D20210824163814" alt="DAZN Logo"> </a></li>
-                            <li><a href="#" class="tv-nav-link brand-filter" data-filter="m+" tabindex="0">
+                            <li><a href="#" class="tv-nav-link brand-filter movistar-filter" data-filter="m+" tabindex="0">
                             <img src="https://images.weserv.nl/?url=https://static.wikia.nocookie.net/logopedia/images/a/af/Movistar_2025.svg/revision/latest?cb=20251005163444" alt="Movistar+ Logo"> </a></li>
-                        <li><a href="#" class="tv-nav-link brand-filter" data-filter="eurosport" tabindex="0">
+                        <li><a href="#" class="tv-nav-link brand-filter eurosport-filter" data-filter="eurosport" tabindex="0">
                             <img src="https://images.weserv.nl/?url=https://static.wikia.nocookie.net/logopedia/images/d/d1/Eurosport_%282015%29_%28Monogram%29.svg/revision/latest/scale-to-width-down/250?cb=20171222150235" alt="Eurosport Logo"> </a></li>
 
                         <div id="tvSportFilters">
@@ -2638,6 +2656,7 @@
             const rows = table.querySelectorAll('tbody tr');
             const channelMappings = {
                 'Movistar': 'M+',
+                'DAZN LA LIGA 1': 'DAZN La Liga',
                 'La Liga': 'La Liga',
                 'Premier': 'Premier League',
                 'Eurosport': '★EUROSPORT',

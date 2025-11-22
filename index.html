@@ -2077,18 +2077,14 @@
                 document.getElementById('searchInput').value = '';
                 state.sportFilter = 'all';
                 localStorage.setItem('sportFilter', 'all');
+            } else {
+                // Si se activa un filtro de marca/principal, se desactiva el filtro de deporte
+                state.sportFilter = 'all';
+                localStorage.setItem('sportFilter', 'all');
             }
             disableFavoriteMode();
-            clearAllFilterVisuals();
-            let targetId;
-            if (filter === 'dazn') targetId = 'filterDAZN';
-            else if (filter === 'm+') targetId = 'filterMovistar';
-            else if (filter === 'eurosport') targetId = 'filterEurosport';
-            else if (filter === 'favorites') targetId = 'filterFavorites';
-            else if (filter === 'all') targetId = 'clearEmojiFilters';
-            if (targetId) {
-                document.getElementById(targetId).classList.add('filter-button--active');
-            }
+            // Llama a restoreFilterUI para aplicar las clases visuales correctas
+            restoreFilterUI();
             renderResults();
         }
 
@@ -2098,6 +2094,17 @@
 
             // 1. Manejo del filtro principal (all, live, favorites, brands)
             if (type === 'brand') {
+                // MODIFICACIÓN: Lógica para limpiar la búsqueda al activar 'all'
+                if (filter === 'all' && state.tvSearchTerm) {
+                    state.tvSearchTerm = '';
+                    const tvSearchInput = document.getElementById('tvSearch');
+                    if (tvSearchInput) {
+                        tvSearchInput.value = '';
+                    }
+                    updateNeeded = true;
+                }
+                // FIN DE MODIFICACIÓN
+
                 if (state.tvCurrentFilter !== filter) {
                     state.tvCurrentFilter = filter;
                     localStorage.setItem('tvCurrentFilter', filter);
@@ -2136,19 +2143,19 @@
         }
 
         function applySportFilter(sportKey) {
+            // Si el filtro ya está activo, lo desactivamos, sino, lo activamos
             state.sportFilter = state.sportFilter === sportKey ? 'all' : sportKey;
             localStorage.setItem('sportFilter', sportKey);
+            
             if (state.sportFilter !== 'all') {
+                // Si se activa un filtro de deporte, forzamos el filtro principal a 'all'
                 state.currentFilter = 'all';
                 localStorage.setItem('currentFilter', 'all');
             }
+            
             disableFavoriteMode();
-            clearAllFilterVisuals();
-            if (state.sportFilter !== 'all') {
-                document.querySelector(`.sport-filter-button[data-sport-key="${sportKey}"]`).classList.add('filter-button--active');
-            } else {
-                restoreFilterUI();
-            }
+            // Llama a restoreFilterUI para aplicar las clases visuales correctas
+            restoreFilterUI();
             renderResults();
         }
 
@@ -3219,6 +3226,11 @@
             // Lógica de filtro principal (Marca, All, Live, Favorites)
             let currentFilter = state.isTVMode ? state.tvCurrentFilter : state.currentFilter;
             let currentSportFilter = state.isTVMode ? state.tvSportFilter : state.sportFilter;
+            
+            // Si hay un filtro de deporte activo, anula los filtros de marca
+            if (currentSportFilter !== 'all') {
+                currentFilter = 'all'; 
+            }
 
             if (currentFilter === 'favorites') {
                 filteredChannels = filteredChannels.filter(c => state.favorites.includes(c.id));
@@ -3227,7 +3239,7 @@
                     const allEventChannels = state.channelsData.filter(ch => ch.source === 'events');
                     return isChannelLive(c, allEventChannels);
                 });
-            } else if (currentFilter !== 'all') {
+            } else if (currentFilter !== 'all' && currentFilter !== 'live' && currentFilter !== 'favorites') {
                 // Filtros de marca (dazn, m+, eurosport)
                 filteredChannels = filteredChannels.filter(channel => normalizeText(channel.name).includes(normalizeText(currentFilter.replace('+', ''))));
             }
@@ -3763,13 +3775,8 @@
             state.searchTerm = document.getElementById('searchInput').value.trim();
             localStorage.setItem('searchTerm', state.searchTerm);
             disableFavoriteMode();
-            if (state.searchTerm) {
-                if (state.currentFilter === 'all' && state.sportFilter === 'all') {
-                    document.getElementById('clearEmojiFilters').classList.remove('filter-button--active');
-                }
-            } else {
-                restoreFilterUI();
-            }
+            // Llama a restoreFilterUI para actualizar la interfaz de filtros
+            restoreFilterUI();
             renderResults();
         }
 
@@ -3794,6 +3801,7 @@
             const b = parseInt(hex.slice(5, 7), 16);
             return {
                 r,
+                g, // CORRECCIÓN: Estaba faltando 'g' en la función original. Lo añadimos para que funcione bien en updatePrimaryLightColor.
                 b
             };
         }
@@ -3845,24 +3853,36 @@
         function restoreFilterUI() {
             document.getElementById('searchInput').value = state.searchTerm;
             clearAllFilterVisuals();
-            let targetId;
-            if (state.searchTerm && state.currentFilter === 'all' && state.sportFilter === 'all') {
+
+            // 1. Prioridad: Búsqueda activa
+            if (state.searchTerm) {
+                // Si hay búsqueda, no se marcan los botones (a menos que el filtro actual no sea 'all' o el deporte no sea 'all',
+                // pero por simplicidad de la UX de búsqueda, solo se desmarca todo).
                 return;
             }
+
+            // 2. Prioridad: Filtro de deporte activo
             if (state.sportFilter !== 'all') {
                 const sportBtn = document.querySelector(`.sport-filter-button[data-sport-key="${state.sportFilter}"]`);
                 if (sportBtn) {
                     sportBtn.classList.add('filter-button--active');
-                    return;
                 }
+                return; // Si el filtro de deporte está activo, no revisamos los filtros de marca
             }
+            
+            // 3. Prioridad: Filtro principal (Marca, Favoritos, Todos)
+            let targetId;
             if (state.currentFilter === 'dazn') targetId = 'filterDAZN';
             else if (state.currentFilter === 'm+') targetId = 'filterMovistar';
             else if (state.currentFilter === 'eurosport') targetId = 'filterEurosport';
             else if (state.currentFilter === 'favorites') targetId = 'filterFavorites';
             else if (state.currentFilter === 'all') targetId = 'clearEmojiFilters';
+
             if (targetId) {
-                document.getElementById(targetId).classList.add('filter-button--active');
+                const targetButton = document.getElementById(targetId);
+                if (targetButton) {
+                    targetButton.classList.add('filter-button--active');
+                }
             }
         }
 
@@ -4696,4 +4716,3 @@
 </body>
 
 </html>
->

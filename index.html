@@ -1271,17 +1271,17 @@
         /* Clases específicas para cada botón de marca con imagen */
         #tvSidebar .tv-nav-link.dazn-filter {
             width: 80px; /* Ancho específico para DAZN */
-            height: 50px; /* Alto específico para DAZN */
+            height: 48px; /* Alto específico para DAZN */
         }
 
         #tvSidebar .tv-nav-link.movistar-filter {
             width: 70px; /* Ancho específico para Movistar */
-            height: 28px; /* Alto específico para Movistar */
+            height: 33px; /* Alto específico para Movistar */
         }
 
         #tvSidebar .tv-nav-link.eurosport-filter {
             width: 80px; /* Ancho específico para Eurosport */
-            height: 40px; /* Alto específico para Eurosport */
+            height: 38px; /* Alto específico para Eurosport */
         }
 
         #tvSidebar .tv-nav-link.brand-filter img {
@@ -1312,7 +1312,7 @@
             justify-content: center;
             gap: 5px;
             padding: 5px 0;
-            margin-bottom: 1rem;
+            margin-bottom: 0.5rem; /* Ajuste el margen inferior de los filtros de deporte */
             border-bottom: 1px solid #383838;
             border-top: 1px solid #383838;
         }
@@ -1524,16 +1524,11 @@
         }
 
 
-        .channel-option-details {
-            display: flex;
-            gap: 10px;
-            font-size: 0.85rem;
-            color: var(--channel-name-color);
-        }
-        
-        /* NUEVO: Estilo para el indicador de última vista (👁️) */
+        /* CORRECCIÓN: Estilo para el indicador de última vista (👁️) */
         .last-viewed-indicator {
-            margin-right: 5px;
+            /* CAMBIO: Se usa margen a la izquierda para separarlo del botón de favorito */
+            margin-left: 5px; 
+            margin-right: 10px; /* Margen a la derecha para separarlo del texto del canal */
             font-size: 1.1rem;
             color: var(--primary); /* Usar el color principal para que destaque */
             font-weight: 700;
@@ -1578,7 +1573,7 @@
             /* **AJUSTADO DE 1.1 A 1.05** */
         }
         
-        /* NUEVA REGLA PARA EL WRAPPER DEL MENSAJE DE ESTADO EN MODO NORMAL */
+        /* NUEVA REGLA PARA EL WRAPPER DEL MENSAJE DE ESTADO EN MODOS NORMAL */
         #statusMessageWrapper {
             max-width: 1400px;
             margin: 0 auto;
@@ -1731,13 +1726,10 @@
                         <li style="margin-bottom: 0.5rem;"><a href="#" class="tv-nav-link" data-filter="favorites"
                                 tabindex="0"> <span>⭐</span>Favoritos </a></li>
 
-                        <li style="margin: 1rem 0; border-top: 1px solid #383838;"></li>
-                        <li style="margin-top: 1rem;"><a href="#" class="tv-nav-link brand-filter dazn-filter" data-filter="dazn" tabindex="0">
-                            <img src="https://images.weserv.nl/?url=https%3A%2F%2Fstatic.wikia.nocookie.net%2Flogopedia%2Fimages%2F7%2F7c%2FDAZN.svg%2Frevision%2Flatest%3Fcb%3D20210824163814" alt="DAZN Logo"> </a></li>
+                        <li style="margin: 0.5rem 0; border-top: 1px solid #383838;"></li> <li style="margin-top: 0.5rem;"><a href="#" class="tv-nav-link brand-filter dazn-filter" data-filter="dazn" tabindex="0"> <img src="https://images.weserv.nl/?url=https%3A%2F%2Fstatic.wikia.nocookie.net%2Flogopedia%2Fimages%2F7%2F7c%2FDAZN.svg%2Frevision%2Flatest%3Fcb%3D20210824163814" alt="DAZN Logo"> </a></li>
                             <li><a href="#" class="tv-nav-link brand-filter movistar-filter" data-filter="m+" tabindex="0">
                             <img src="https://images.weserv.nl/?url=https://static.wikia.nocookie.net/logopedia/images/a/af/Movistar_2025.svg/revision/latest?cb=20251005163444" alt="Movistar+ Logo"> </a></li>
-                        <li><a href="#" class="tv-nav-link brand-filter eurosport-filter" data-filter="eurosport" tabindex="0">
-                            <img src="https://images.weserv.nl/?url=https://static.wikia.nocookie.net/logopedia/images/d/d1/Eurosport_%282015%29_%28Monogram%29.svg/revision/latest/scale-to-width-down/250?cb=20171222150235" alt="Eurosport Logo"> </a></li>
+                        <li style="margin-bottom: 0.5rem;"><a href="#" class="tv-nav-link brand-filter eurosport-filter" data-filter="eurosport" tabindex="0"> <img src="https://images.weserv.nl/?url=https://static.wikia.nocookie.net/logopedia/images/d/d1/Eurosport_%282015%29_%28Monogram%29.svg/revision/latest/scale-to-width-down/250?cb=20171222150235" alt="Eurosport Logo"> </a></li>
 
                         <div id="tvSportFilters">
                             <a href="#" class="tv-nav-link sport-filter" data-sport-key="futbol" tabindex="0" title="Fútbol">⚽</a>
@@ -2724,7 +2716,7 @@
             const channelMappings = {
                 'Movistar': 'M+',
                 'DAZN LA LIGA 1': 'DAZN La Liga',
-                'La Liga': 'La Liga',
+                'LALIGA': 'La Liga',
                 'Premier': 'Premier League',
                 'Eurosport': '★EUROSPORT',
                 'HYPERMOTION': 'La Liga Hypermotion',
@@ -3970,9 +3962,18 @@
         };
 
         function createTVChannelsHTML(groups, sortedGroupKeys) {
+            // INICIO DE MODIFICACIÓN: Mostrar mensaje de "No se encontraron canales" si la lista está vacía
             if (sortedGroupKeys.length === 0) {
-                return '<p style="color: #a0a0a0; padding: 20px; margin-left: 20px;">No se encontraron canales que coincidan con los criterios.</p>';
+                return `
+                    <div class="no-results" style="margin-left: 0; margin-right: 0; background: #222222; border: 1px solid #383838; box-shadow: none;">
+                        <div class="no-results-icon" style="color: #666; opacity: 1;">📡</div>
+                        <div class="no-results-text" style="color: #e0e0e0;">No se encontraron canales</div>
+                        <div class="no-results-hint" style="color: #aaa;">Prueba con otros filtros o términos de búsqueda</div>
+                    </div>
+                `;
             }
+            // FIN DE MODIFICACIÓN
+            
             let html = '';
             let lastDateRendered = null;
             for (const groupKey of sortedGroupKeys) {
@@ -4206,9 +4207,10 @@
                 const favoriteIcon = isFavorite ? '★' : '☆';
                 const favoriteClass = isFavorite ? 'is-favorite' : 'is-not-favorite';
                 
-                // NUEVA LÓGICA: Comprobar si es el último reproducido
+                // INICIO DE CORRECCIÓN: Lógica y HTML para el indicador 👁️ (se mueve después del botón)
                 const isLastViewed = option.id === lastPlayedId;
-                const lastViewedIndicator = isLastViewed ? '<span class="last-viewed-indicator">👁️</span>' : '';
+                const lastViewedIndicator = isLastViewed ? '<span class="last-viewed-indicator" title="Último AceStream reproducido para este canal">👁️</span>' : '';
+                // FIN DE CORRECCIÓN
                 
                 const ratingStars = getStarRating(option.rating);
                 let sourceBadgeText = '';
@@ -4245,8 +4247,8 @@
                 
                 item.innerHTML = `
                     <div class="channel-option-name-container">
-                        ${lastViewedIndicator}
                         <button class="favorite-toggle-btn ${favoriteClass}" data-id="${option.id}" title="Marcar como favorito">${favoriteIcon}</button>
+                        ${lastViewedIndicator}
                         <span class="channel-option-name">${channelDisplayName}</span>
                     </div>
                     <div class="channel-option-details">
@@ -4289,7 +4291,7 @@
                     showStatusMessage(`Canal ${isNowFavorite ? 'añadido' : 'eliminado'} de favoritos.`, 'info');
                     
                     // 4. Forzar una re-renderización de la grid principal para actualizar las estrellas de las tarjetas
-                    // (Esto es costoso, se puede optimizar, pero por ahora se mantiene como fallback)
+                    // (Esto es costoso, se puede optimizar, but por ahora se mantiene como fallback)
                     // renderTVChannels(); 
                     
                 });

@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport"
         content="width=device-width,initial-scale=0.5maximum-scale=0.8,user-scalable=no">
-    <title>📺</title>
+    <title>TV</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.8em%22 font-size=%2285%22>📺</text></svg>">
     <style>
         :root {
@@ -1239,6 +1239,17 @@
             border-radius: 6px;
             font-size: 0.8rem;
             box-sizing: border-box;
+            /* === INICIO CAMBIOS DE COLOR === */
+            background-color: #383838; /* Fondo más oscuro que el fondo principal */
+            color: #ffffff; /* Texto de color blanco brillante */
+            border: 1px solid #555555; /* Borde sutil */
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4); /* Sombra para darle profundidad */
+            /* === FIN CAMBIOS DE COLOR === */
+        }
+        
+        #tvSidebar input#tvSearch:focus {
+            outline: none; /* Eliminar el borde de foco predeterminado */
+            border-color: var(--primary); /* Usar el color principal como borde */
         }
 
         #tvSidebar .tv-nav-link {
@@ -1719,10 +1730,10 @@
                 </div>
                 <nav>
                     <ul style="list-style: none; padding: 0; margin: 0;">
-                        <li style="margin-bottom: 0.5rem;"><a href="#" class="tv-nav-link focused-link" data-filter="all" tabindex="0">
-                                <span>📺</span> Todos </a></li>
+                        <li style="margin-bottom: 0.5rem;"><a href="#" class="tv-nav-link" data-filter="all" tabindex="0">
+                                <span>🌐</span> Todos </a></li>
                         <li style="margin-bottom: 0.5rem;"><a href="#" class="tv-nav-link" data-filter="live" tabindex="0">
-                                <span>🔴</span> DIRECTO </a></li>
+                                <span>🔴</span> Directo </a></li>
                         <li style="margin-bottom: 0.5rem;"><a href="#" class="tv-nav-link" data-filter="favorites"
                                 tabindex="0"> <span>⭐</span>Favoritos </a></li>
 
@@ -4062,6 +4073,9 @@
                 statusContainer.innerHTML = ''; 
             }
 
+            // Guardar el elemento que tenía el foco
+            const previouslyFocusedElement = state.tvFocusManager ? state.tvFocusManager.currentFocus : null;
+
             // Actualizar la interfaz de filtros TV antes de renderizar
             restoreTVFilterUI();
 
@@ -4075,19 +4089,29 @@
             if (state.tvFocusManager) {
                 state.tvFocusManager.updateFocusableElements();
 
-                // Determinar el elemento a enfocar:
+                // 1. Prioridad: Elemento de búsqueda
+                const tvSearch = document.getElementById('tvSearch');
+                if (previouslyFocusedElement === tvSearch || (tvSearch && document.activeElement === tvSearch)) {
+                    state.tvFocusManager.setFocus(tvSearch);
+                    return; // Detener aquí si el foco debe ir a la búsqueda
+                }
+
+                // 2. Prioridad: Elemento previamente enfocado (si sigue existiendo)
+                if (previouslyFocusedElement && document.body.contains(previouslyFocusedElement)) {
+                    state.tvFocusManager.setFocus(previouslyFocusedElement);
+                    return;
+                }
+
+                // 3. Prioridad: Filtro activo
                 let elementToFocus = null;
                 const activeSportFilterLink = document.querySelector(`.tv-nav-link.sport-filter.tv-sidebar-link-focused`);
                 const activeBrandLink = document.querySelector(`.tv-nav-link.brand-filter[data-filter="${state.tvCurrentFilter}"].tv-sidebar-link-focused`);
                 const activeMainLink = document.querySelector(`.tv-nav-link[data-filter="${state.tvCurrentFilter}"].tv-sidebar-link-focused`);
 
-                // Prioridad: 1. Filtro de deporte activo, 2. Filtro de marca activo, 3. Filtro principal activo (all, live, favorites)
+                // Prioridad: a) Filtro de deporte activo, b) Filtro de marca activo, c) Filtro principal activo (all, live, favorites)
                 elementToFocus = activeSportFilterLink || activeBrandLink || activeMainLink;
 
-                if (state.tvFocusManager.currentFocus && document.body.contains(state.tvFocusManager.currentFocus) && state.tvFocusManager.currentFocus.id !== 'tvSearch') {
-                    // Mantener el foco si es un elemento válido y no es la barra de búsqueda
-                    state.tvFocusManager.setFocus(state.tvFocusManager.currentFocus);
-                } else if (elementToFocus) {
+                if (elementToFocus) {
                     state.tvFocusManager.setFocus(elementToFocus);
                 } else {
                     // Foco por defecto a 'Todos' si no hay un elemento lógico
@@ -4342,7 +4366,10 @@
                 focusableElements: [],
                 init: function() {
                     this.updateFocusableElements();
-                    if (this.focusableElements.length > 0) {
+                    // MODIFICACIÓN: Si el foco anterior era la búsqueda, restaurarlo. Si no, ir a 'Todos'.
+                    if (document.activeElement.id === 'tvSearch') {
+                        this.setFocus(document.getElementById('tvSearch'));
+                    } else if (this.focusableElements.length > 0) {
                         this.setFocus(document.querySelector('.tv-nav-link[data-filter="all"]'));
                     }
                     this.handleKeyDown = this.handleKeyDown.bind(this);
@@ -4365,14 +4392,17 @@
                     this.removeFocusClasses();
                     this.currentFocus = element;
                     
+                    if (element.id === 'tvSearch') {
+                        // MODIFICACIÓN: No añade clases visuales de foco para el input de búsqueda
+                        element.focus();
+                    } 
                     // Comprobar si es un botón de la parte inferior para darle foco
                     // Se elimina la comprobación para normalModeBtn
-                    if (element.id === 'tvSearch' || element.id === 'settingsModeBtn') {
+                    else if (element.id === 'settingsModeBtn') {
                         element.focus();
-                        if (element.id !== 'tvSearch') {
-                            element.classList.add('tv-sidebar-link-focused');
-                        }
-                    } else {
+                        element.classList.add('tv-sidebar-link-focused');
+                    }
+                    else {
                         element.focus();
                         element.classList.add(element.classList.contains('tv-card') ? 'tv-card-focused' : 'tv-sidebar-link-focused');
                     }
@@ -4384,9 +4414,12 @@
                 },
                 handleKeyDown: function(e) {
                     if (!state.isTVMode) return;
+                    // Modificación: Permitir la escritura y el backspace en la caja de búsqueda
                     if (this.currentFocus && this.currentFocus.id === 'tvSearch' && (e.key.length === 1 || e.key === 'Backspace')) {
+                        // Permitir el comportamiento predeterminado del navegador para escribir y borrar
                         return;
                     }
+
                     let nextElement = null;
                     switch (e.key) {
                         case 'ArrowUp':
@@ -4404,10 +4437,9 @@
                         case 'Escape':
                         case 'Backspace':
                             e.preventDefault();
-                            if (this.currentFocus.id === 'tvSearch' && this.currentFocus.value) {
-                                this.currentFocus.value = '';
-                                state.tvSearchTerm = '';
-                                renderTVChannels();
+                            // El caso de Backspace en el campo de búsqueda se gestiona arriba, si el input está vacío, sale.
+                            if (this.currentFocus.id === 'tvSearch' && !this.currentFocus.value) {
+                                switchToNormalMode();
                                 return;
                             }
                             // Si se está en un canal o en ajustes, y pulsa Escape/Backspace, sale del modo TV.
@@ -4664,3 +4696,4 @@
 </body>
 
 </html>
+>

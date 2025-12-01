@@ -1939,14 +1939,32 @@
 
         function calculateDuration(sportName) {
             const normalizedName = normalizeText(sportName);
-            if (normalizedName.includes('futbol')) return 120;
-            if (normalizedName.includes('baloncesto') || normalizedName.includes('nba')) return 150;
-            if (normalizedName.includes('tenis')) return 300;
-            if (normalizedName.includes('formula 1') || normalizedName.includes('f1')) return 180;
-            if (normalizedName.includes('motor')) return 120;
-            if (normalizedName.includes('ciclismo')) return 180;
-            if (normalizedName.includes('boxeo')) return 120;
-            return 105;
+
+            // --- Lógica Específica para F1/Motorsport ---
+            if (normalizedName.includes('formula 1') || normalizedName.includes('f1')) {
+                if (normalizedName.includes('practice') || normalizedName.includes('entrenamiento')) {
+                    // Ejemplo: Free Practice / Práctica Libre -> 1 hora y 5 minutos
+                    return 65; 
+                } else if (normalizedName.includes('qualifying') || normalizedName.includes('clasificacion')) {
+                    // Ejemplo: Qualifying / Clasificación -> 1 hora y 30 minutos
+                    return 90; 
+                } else if (normalizedName.includes('race') || normalizedName.includes('carrera') || normalizedName.includes('gp')) {
+                    // Ejemplo: Race / Carrera (incluye el previo/post de 1 hora)
+                    return 180; 
+                }
+                return 180; // Default para F1 si no se especifica el tipo de evento
+            }
+            
+            // --- Lógica General de Deportes ---
+            if (normalizedName.includes('futbol')) return 120; // 90 min + 30 min (previo/descanso/post)
+            if (normalizedName.includes('baloncesto') || normalizedName.includes('nba')) return 150; // 48 min de juego + pausas y extras
+            if (normalizedName.includes('tenis')) return 300; // La duración es muy variable (5 horas)
+            if (normalizedName.includes('motor')) return 120; // 2 horas para otros deportes de motor
+            if (normalizedName.includes('ciclismo')) return 180; 
+            if (normalizedName.includes('boxeo')) return 120; 
+            
+            // Valor por defecto para otros eventos no clasificados (1 hora y 45 minutos)
+            return 105; 
         }
 
         function getEventTime(dateString, timeString) {
@@ -2485,8 +2503,6 @@
                     'futbol': ['futbol', 'soccer', 'Hypermotion', 'copa del rey', 'premier league', 'bundesliga', 'serie a'],
                     'baloncesto': ['baloncesto', 'basket', 'nba', 'euroliga'],
                     'tenis': ['tenis', 'wimbledon', 'roland garros', 'us open', 'atp', 'wta'],
-                    'boxeo': ['boxeo', 'boxing', 'lucha', 'ufc', 'mma'],
-                    'ciclismo': ['ciclismo', 'tour', 'giro', 'vuelta'],
                     'motorsport': ['gp', 'motogp', 'dakar', 'rally', 'wrc', 'nascar', 'motor'],
                     'f1': ['f1', 'fórmula 1', 'formula 1', 'formulaone', 'fórmulaone']
                 };
@@ -3007,7 +3023,11 @@
                 
                 if (group.isEvent) {
                     const liveTimeClass = group.hasLive ? 'live-time-blink' : '';
-                    groupTitle = `<span class="${liveTimeClass}" style="margin-right: 7.5px;">${group.time}</span> ${group.sportEmoji} ${group.competition} - ${group.match}`;
+                    
+                    // MODIFICACIÓN CLAVE: Aplicar estilo al nombre de la competición (group.competition)
+                    const competitionHtml = `<span style="color: var(--primary);">${group.competition}</span>`;
+                    
+                    groupTitle = `<span class="${liveTimeClass}" style="margin-right: 7.5px;">${group.time}</span> ${group.sportEmoji} ${competitionHtml} - ${group.match}`;
                     
                     const isFirstGroupAfterDateHeader = !lastDateRendered || (group.date && formatEventDate(group.date) === lastDateRendered);
                     if(isFirstGroupAfterDateHeader) {
@@ -3610,4 +3630,4 @@
     </script>
 </body>
 
-</html>html>
+</html>

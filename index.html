@@ -2701,7 +2701,7 @@
             'M+ Deportes',
             'M+ Plus',
             'M+ Golf',
-            'M+',
+            'M+ Cine y Series',
             '★EUROSPORT'
         ];
         const groupRegexes = {
@@ -2715,13 +2715,20 @@
             'M+ Deportes': /M\+ Deportes/i,
             'M+ Plus': /M\+ Plus/i,
             'M+ Golf': /M\+ Golf/i,
-            'M+': /M\+(?!.*La Liga|.*Vamos|.*Deportes|.*Plus|.*Golf|.*Liga de Campeones)/i,
+            'M+ Cine y Series': /M\+(?!.*La Liga|.*Vamos|.*Deportes|.*Plus|.*Golf|.*Liga de Campeones)/i,
             '★EUROSPORT': /★EUROSPORT/i,
         };
 
         function determineBrandGroup(channel) {
             const channelName = channel.name;
             const normalizedName = normalizeText(channelName);
+            
+            // MODIFICACIÓN PARA AGRUPAR "M+ ELLAS" EN "M+ VAMOS"
+            if (channelName.includes('Ellas')) {
+                return 'M+ Vamos';
+            }
+            // FIN DE MODIFICACIÓN
+            
             if (channelName.includes('★EUROSPORT') && channelName.includes('(')) {
                 return 'Otros';
             }

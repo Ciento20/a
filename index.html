@@ -2967,12 +2967,9 @@ if (state.tvSportFilter !== 'all') {
             
             for (const groupKey of sortedGroupKeys) {
                 const group = groups[groupKey];
-                const subGroups = group.subGroups;
-
-                if (group.isEvent && isEventMode) {
+                const subGroups = group.subGroups;                if (group.isEvent) {
     const formattedDate = formatEventDate(group.date);
-    
-    if (formattedDate !== lastDateRendered) {
+if (formattedDate !== lastDateRendered) {
         
         let prefix = 'Eventos del ';
         let coloredDateHtml = formattedDate;
@@ -3003,11 +3000,11 @@ if (state.tvSportFilter !== 'all') {
     }
 } else {
     lastDateRendered = null;
-}
-let groupTitle = group.name;
+}                let groupTitle = group.name;
                 let groupTitleStyle = '';
                 
-                if (group.isEvent && isEventMode) {
+                if (group.isEvent) {
+                    // Esta sección se ejecuta para CUALQUIER grupo de evento (isEvent: true)
                     const liveTimeClass = group.hasLive ? 'live-time-blink' : '';
                     
                     // MODIFICACIÓN CLAVE: Aplicar estilo al nombre de la competición (group.competition)

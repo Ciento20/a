@@ -953,6 +953,8 @@
             </div>
             <nav>
                 <ul style="list-style: none; padding: 0; margin: 0;">
+                    <li style="margin-bottom: 0.25rem;"><a href="#" class="tv-nav-link" data-filter="events_only" tabindex="0">
+                            <span>📅</span> Eventos </a></li>
                     <li style="margin-bottom: 0.25rem;"><a href="#" class="tv-nav-link" data-filter="all" tabindex="0">
                             <span>🌐</span> Todos </a></li>
                     <li style="margin-bottom: 0.25rem;"><a href="#" class="tv-nav-link" data-filter="live" tabindex="0">
@@ -1203,7 +1205,7 @@
         const BACKUP_EXPIRY_HOURS = 480;
         const HISTORY_EXPIRY_HOURS = 168;
 
-        const TV_BRAND_FILTER_KEYS = ['all', 'live', 'favorites', 'dazn', 'm+', 'eurosport'];
+        const TV_BRAND_FILTER_KEYS = ['all', 'events_only', 'live', 'favorites', 'dazn', 'm+', 'eurosport'];
         const TV_SPORT_FILTER_KEYS = ['futbol', 'baloncesto', 'tenis', 'motorsport', 'f1'];
 
         const OTHER_SUBGROUPS = [
@@ -2350,7 +2352,19 @@
             sortedChannels.forEach(channel => {
                 let groupName;
                 let isEventGroup = false;
-                if (channel.source === 'events' && channel.event) {
+                
+                // Nueva Lógica de Agrupación: Si el filtro es 'all', agrupamos por marca y forzamos ocultar detalles de evento
+                if (state.tvCurrentFilter === 'all') {
+                    groupName = determineBrandGroup(channel);
+                    isEventGroup = false;
+                } 
+                // Si el filtro es 'events_only', agrupamos por evento y mostramos detalles
+                else if (state.tvCurrentFilter === 'events_only' && channel.source === 'events' && channel.event) {
+                     groupName = `${channel.event.date}###${channel.event.competition}###${channel.event.match}`;
+                     isEventGroup = true;
+                }
+                // Lógica original para otros filtros (incluyendo Live, Favorites, Marcas, y Eventos fuera del filtro 'events_only' o 'all')
+                else if (channel.source === 'events' && channel.event) {
                     if (state.hideEventDetails) {
                         groupName = determineBrandGroup(channel);
                     } else {
@@ -2376,6 +2390,7 @@
                         }
                     }
                 }
+                
                 if (!groups[groupName]) {
                     groups[groupName] = {
                         name: groupName,
@@ -2486,14 +2501,16 @@
                 currentFilter = 'all'; 
             }
 
-            if (currentFilter === 'favorites') {
+            if (currentFilter === 'events_only') {
+                filteredChannels = filteredChannels.filter(c => c.source === 'events');
+            } else if (currentFilter === 'favorites') {
                 filteredChannels = filteredChannels.filter(c => state.favorites.includes(c.id));
             } else if (currentFilter === 'live') {
                 filteredChannels = filteredChannels.filter(c => {
                     const allEventChannels = state.channelsData.filter(ch => ch.source === 'events');
                     return isChannelLive(c, allEventChannels);
                 });
-            } else if (currentFilter !== 'all' && currentFilter !== 'live' && currentFilter !== 'favorites') {
+            } else if (currentFilter !== 'all' && currentFilter !== 'events_only' && currentFilter !== 'live' && currentFilter !== 'favorites') {
                 filteredChannels = filteredChannels.filter(channel => normalizeText(channel.name).includes(normalizeText(currentFilter.replace('+', ''))));
             }
 
@@ -3000,11 +3017,14 @@
             
             let html = '';
             let lastDateRendered = null;
+            const isEventMode = state.tvCurrentFilter === 'events_only';
+            const isAllMode = state.tvCurrentFilter === 'all';
+            
             for (const groupKey of sortedGroupKeys) {
                 const group = groups[groupKey];
                 const subGroups = group.subGroups;
 
-                if (group.isEvent) {
+                if (group.isEvent && isEventMode) {
                     const formattedDate = formatEventDate(group.date);
                     
                     if (formattedDate !== lastDateRendered) {
@@ -3028,7 +3048,7 @@
                 let groupTitle = group.name;
                 let groupTitleStyle = '';
                 
-                if (group.isEvent) {
+                if (group.isEvent && isEventMode) {
                     const liveTimeClass = group.hasLive ? 'live-time-blink' : '';
                     
                     // MODIFICACIÓN CLAVE: Aplicar estilo al nombre de la competición (group.competition)
@@ -3041,6 +3061,9 @@
                         groupTitleStyle = 'margin-top: 0;';
                     }
 
+                } else if (isAllMode && group.name.includes('###')) {
+                    // Omitir grupos de eventos en modo "Todos"
+                    continue;
                 }
 
                 html += ` <div class="tv-group"><header class="tv-group-header"><h2 class="tv-group-title" style="${groupTitleStyle}">${groupTitle}</h2></header> `;

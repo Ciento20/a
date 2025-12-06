@@ -1330,19 +1330,20 @@
                         tvSearchInput.value = '';
                     }
                     updateNeeded = true;
-                }
-
-                if (state.tvCurrentFilter !== filter) {
-                    state.tvCurrentFilter = filter;
-                    localStorage.setItem('tvCurrentFilter', filter);
-                    updateNeeded = true;
-                } else if (filter !== 'all' && filter !== 'live' && filter !== 'favorites') {
-                    state.tvCurrentFilter = 'all';
-                    localStorage.setItem('tvCurrentFilter', 'all');
-                    updateNeeded = true;
-                }
-
-                if (state.tvSportFilter !== 'all') {
+                }            if (state.tvCurrentFilter !== filter) {
+                state.tvCurrentFilter = filter;
+                localStorage.setItem('tvCurrentFilter', filter);
+                updateNeeded = true;
+            } else if (filter === 'all' || filter === 'live' || filter === 'favorites' || filter === 'events_only') {
+                // Si el filtro es ALL, LIVE, FAVORITES o EVENTS_ONLY y ya está activo, NO hacemos nada.
+                updateNeeded = false;
+            } else {
+                // Para los filtros de marca (dazn, m+, eurosport), si se pulsa de nuevo, se vuelve a 'all'.
+                state.tvCurrentFilter = 'all';
+                localStorage.setItem('tvCurrentFilter', 'all');
+                updateNeeded = true;
+            }
+if (state.tvSportFilter !== 'all') {
                     state.tvSportFilter = 'all';
                     localStorage.setItem('tvSportFilter', 'all');
                     updateNeeded = true;
@@ -3046,9 +3047,7 @@
                 html += `</div>`;
             }
             return html;
-        }
-
-        function renderTVChannels() {
+        }        function renderTVChannels() {
             const tvGrid = document.getElementById('tvChannelsGrid');
             if (!tvGrid) return;
 
@@ -3080,31 +3079,36 @@
                 state.tvFocusManager.updateFocusableElements();
 
                 const tvSearch = document.getElementById('tvSearch');
+                
+                // Prioridad 1: Mantener el foco si el usuario estaba escribiendo en la búsqueda.
                 if (previouslyFocusedElement === tvSearch || (tvSearch && document.activeElement === tvSearch)) {
                     state.tvFocusManager.setFocus(tvSearch);
                     return;
                 }
 
+                // Prioridad 2: Mantener el foco si estaba en un elemento aún presente (e.g., botón de ajustes).
                 if (previouslyFocusedElement && document.body.contains(previouslyFocusedElement)) {
                     state.tvFocusManager.setFocus(previouslyFocusedElement);
                     return;
                 }
 
+                // Prioridad 3 (NUEVO): Enfocar el filtro activo en la barra lateral.
                 let elementToFocus = null;
                 const activeSportFilterLink = document.querySelector(`.tv-nav-link.sport-filter.tv-sidebar-link-focused`);
-                const activeBrandLink = document.querySelector(`.tv-nav-link.brand-filter[data-filter="${state.tvCurrentFilter}"].tv-sidebar-link-focused`);
-                const activeMainLink = document.querySelector(`.tv-nav-link[data-filter="${state.tvCurrentFilter}"].tv-sidebar-link-focused`);
+                const activeBrandLink = document.querySelector(`.tv-nav-link[data-filter="${state.tvCurrentFilter}"].tv-sidebar-link-focused`);
 
-                elementToFocus = activeSportFilterLink || activeBrandLink || activeMainLink;
-
+                elementToFocus = activeSportFilterLink || activeBrandLink;
+                
                 if (elementToFocus) {
                     state.tvFocusManager.setFocus(elementToFocus);
-                } else {
-                    state.tvFocusManager.setFocus(document.querySelector('.tv-nav-link[data-filter="all"]'));
+                    return;
                 }
+                
+                // Fallback: Enfocar 'Todos'
+                state.tvFocusManager.setFocus(document.querySelector('.tv-nav-link[data-filter="all"]'));
             }
         }
-        const attachTVCardEvents = () => {
+const attachTVCardEvents = () => {
             const cards = document.querySelectorAll('.tv-card');
             cards.forEach(card => {
                 card.removeEventListener('click', handleTVCardPlay);
@@ -3339,18 +3343,21 @@
             }
             const tvNavigation = {
                 currentFocus: null,
-                focusableElements: [],
-                init: function() {
+                focusableElements: [],                init: function() {
                     this.updateFocusableElements();
                     if (document.activeElement.id === 'tvSearch') {
                         this.setFocus(document.getElementById('tvSearch'));
                     } else if (this.focusableElements.length > 0) {
-                        this.setFocus(document.querySelector('.tv-nav-link[data-filter="all"]'));
+                        // Al inicio, restaurar el filtro activo si existe, o ir a 'todos'
+                        const activeFilterLink = document.querySelector(`.tv-nav-link[data-filter="${state.tvCurrentFilter}"]`);
+                        const activeSportFilterLink = document.querySelector(`.tv-nav-link[data-sport-key="${state.tvSportFilter}"]`);
+                        
+                        this.setFocus(activeSportFilterLink || activeFilterLink || document.querySelector('.tv-nav-link[data-filter="all"]'));
                     }
                     this.handleKeyDown = this.handleKeyDown.bind(this);
                     document.addEventListener('keydown', this.handleKeyDown);
                 },
-                removeFocusClasses: function() {
+removeFocusClasses: function() {
                     document.querySelectorAll('.tv-card-focused').forEach(el => el.classList.remove('tv-card-focused'));
                     document.querySelectorAll('.tv-sidebar-link-focused').forEach(el => el.classList.remove('tv-sidebar-link-focused'));
                 },

@@ -328,7 +328,7 @@
             background-image: linear-gradient(to right, #ff3c3c, orange);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            font-weight: 700
+            font-weight:
         }
 
         .copy-modal {
@@ -949,20 +949,11 @@
                         <div><span class="settings-label">Ocultar Botón de Opciones</span><span class="settings-description">Mantiene la funcionalidad del botón '+' pero lo hace invisible.</span></div>
                     </div><label class="settings-switch"><input type="checkbox" id="hideOptionsButtonCheckbox"><span class="settings-slider"></span></label>
                 </div>
-                <p class="settings-description" style="color: var(--text); opacity: 0.7; margin-bottom: 0.5rem;">
-                    Esta interfaz está optimizada para TV/Mandos. Para escritorio, usa la versión normal.</p>
             </div>
             <div class="settings-section">
                 <h4 class="settings-section__title">🎨 Apariencia</h4>
                 <div class="settings-item">
-                    <div class="settings-item__info"><span class="settings-icon">🌓</span>
-                        <div><span class="settings-label">Modo oscuro</span><span class="settings-description">Cambia
-                                entre tema claro y oscuro (Solo afecta a los modales).</span></div>
-                    </div><label class="settings-switch"><input type="checkbox" id="darkModeCheckbox"><span
-                            class="settings-slider"></span></label>
-                </div>
-                <div class="settings-item">
-                    <div class="settings-item__info"><span class="settings-icon">🎨</span>
+<div class="settings-item__info"><span class="settings-icon">🎨</span>
                         <div><span class="settings-label">Color principal</span><span class="settings-description">Elige
                                 un color para la interfaz</span></div>
                     </div>
@@ -975,13 +966,7 @@
             </div>
             <div class="settings-section">
                 <h4 class="settings-section__title">🔧 Datos</h4>
-                <div class="settings-item">
-                    <div class="settings-item__info"><span class="settings-icon">📅</span>
-                        <div><span class="settings-label">Ocultar detalles de evento</span><span
-                                class="settings-description">Oculta fecha, hora y deporte de los grupos.</span></div>
-                    </div><label class="settings-switch"><input type="checkbox" id="hideEventDetailsCheckbox"><span
-                            class="settings-slider"></span></label>
-                </div>
+                
                 <div class="settings-item">
                     <div class="settings-item__info"><span class="settings-icon">⭐</span>
                         <div><span class="settings-label">Restablecer puntuaciones</span><span
@@ -1013,8 +998,7 @@
         </div>
     </div>
 
-    <script>
-        const state = {
+    <script>        const state = {
             allChannels: [],
             channelsData: [],
             favorites: JSON.parse(localStorage.getItem('favorites')) || [],
@@ -1024,7 +1008,6 @@
             lastClearButtonClickTime: 0,
             elcanoRetries: 0,
             eventsRetries: 0,
-            darkMode: localStorage.getItem('darkMode') !== 'false',
             primaryColor: localStorage.getItem('primaryColor') || '#2563eb',
             channelRatings: JSON.parse(localStorage.getItem('channelRatings')) || {},
             lastChannelPlay: JSON.parse(localStorage.getItem('lastChannelPlay')) || null,
@@ -1037,12 +1020,11 @@
             playerActive: false,
             lastPlayedByChannel: JSON.parse(localStorage.getItem('lastPlayedByChannel')) || {},
             // NUEVO ESTADO: Controla si la pantalla completa al hacer clic está activa
-            fullScreenOnClick: localStorage.getItem('fullScreenOnClick') === 'true',
-            // NUEVO ESTADO: Ocultar botón de opciones
+            fullScreenOnClick: localStorage.getItem('fullScreenOnClick') === 'true',            // NUEVO ESTADO: Ocultar botón de opciones
             hideOptionsButton: localStorage.getItem('hideOptionsButton') === 'true',
-        };
+       };
         const LOGOPEDIA_BASE_URL = "https://static.wikia.nocookie.net/logopedia/images/";
-        const IMAGE_PROXY_URL = "https://images.weserv.nl/?url=";
+const IMAGE_PROXY_URL = "https://images.weserv.nl/?url=";
         const ERA_URL = "https://ipfs.io/ipns/k2k4r8oqlcjxsritt5mczkcn4mmvcmymbqw7113fz2flkrerfwfps004/data/listas/listaplana.txt";
         const championsLeagueImages = {
             'M+ LIGA DE CAMPEONES': '0/05/Liga_de_Campeones_por_Movistar_Plus%2B.svg/revision/latest?cb=20220128151054',
@@ -1246,9 +1228,7 @@
                 }
             }
             localStorage.setItem('firstSeen', JSON.stringify(state.firstSeen));
-        }
-
-        function toggleFavorite(channelId) {
+        }        function toggleFavorite(channelId) {
             const index = state.favorites.indexOf(channelId);
             if (index > -1) {
                 state.favorites.splice(index, 1);
@@ -1257,25 +1237,7 @@
             }
             localStorage.setItem('favorites', JSON.stringify(state.favorites));
             renderTVChannels();
-        }
-
-        function toggleDarkMode() {
-            state.darkMode = !state.darkMode;
-            localStorage.setItem('darkMode', state.darkMode);
-            document.body.classList.toggle('dark-mode', state.darkMode);
-            document.getElementById('darkModeCheckbox').checked = state.darkMode;
-            updatePrimaryLightColor();
-        }
-
-        function toggleHideEventDetails() {
-            state.hideEventDetails = !state.hideEventDetails;
-            localStorage.setItem('hideEventDetails', state.hideEventDetails);
-            document.getElementById('hideEventDetailsCheckbox').checked = state.hideEventDetails;
-            document.body.classList.toggle('hide-event-details', state.hideEventDetails);
-            renderTVChannels();
-        }
-
-        // NUEVA FUNCIÓN: Alterna el estado de Pantalla Completa al Clic
+        }        // NUEVA FUNCIÓN: Alterna el estado de Pantalla Completa al Clic
         function toggleFullScreenOnClick() {
             state.fullScreenOnClick = !state.fullScreenOnClick;
             localStorage.setItem('fullScreenOnClick', state.fullScreenOnClick);
@@ -1364,10 +1326,7 @@ if (state.tvSportFilter !== 'all') {
             if (updateNeeded) {
                 renderTVChannels();
             }
-        }
-
-
-        function showStatusMessage(message, type = "info") {
+        }        function showStatusMessage(message, type = "info") {
             let statusElement;
             let container;
             
@@ -1383,11 +1342,11 @@ if (state.tvSportFilter !== 'all') {
             statusElement.className = `status-message ${type}`;
             statusElement.classList.remove('hide');
             
-            if (state.darkMode && type === 'error') {
+            if (type === 'error') {
                  statusElement.style.color = 'var(--text)';
-            } else if (state.darkMode && type === 'warning') {
+            } else if (type === 'warning') {
                 statusElement.style.color = 'var(--warning)';
-            } else if (state.darkMode && (type === 'success' || type === 'info')) {
+            } else if (type === 'success' || type === 'info') {
                 statusElement.style.color = 'var(--primary)';
             } else {
                 statusElement.style.color = '';
@@ -1395,7 +1354,7 @@ if (state.tvSportFilter !== 'all') {
 
 
             if (type === "success" || type === "info") {
-                setTimeout(() => {
+setTimeout(() => {
                     statusElement.classList.add('hide');
                     statusElement.addEventListener('transitionend', () => {
                         if (statusElement.classList.contains('hide')) {
@@ -1963,11 +1922,14 @@ if (state.tvSportFilter !== 'all') {
                     const date = cells[0].textContent.trim();
                     const time = cells[1].textContent.trim();
                     const sportName = cells[2].textContent.trim();
-                    const competition = cells[3].textContent.trim();
-                    const match = cells[4].textContent.trim();
+                    const competition = cells[3].textContent.trim();                    const match = cells[4].textContent.trim();
                     const canalesCell = cells[5];
                     const links = canalesCell.querySelectorAll('a[href^="acestream://"]');
                     if (links.length > 0) {
+                        // Concatenamos el nombre del deporte, competición y partido para un cálculo de duración más robusto
+                        const durationString = `${sportName} ${competition} ${match}`;
+                        const eventStartTime = getEventTime(date, time);
+                        const durationMinutes = calculateDuration(durationString);
                         let sportEmoji = '❓';
                         const normalizedSport = normalizeText(sportName);
                         if (normalizedSport.includes('futbol')) {
@@ -2025,11 +1987,9 @@ if (state.tvSportFilter !== 'all') {
                         } else if (normalizedSport.includes('criquet') || normalizedSport.includes('cricket')) {
                             sportEmoji = '🏏';
                         }
-                        const eventStartTime = getEventTime(date, time);
-                        const durationMinutes = calculateDuration(sportName);
                         const eventEndTime = new Date(eventStartTime.getTime() + durationMinutes * 60000);
                         links.forEach(link => {
-                            const acestreamId = link.href.split('://')[1];
+const acestreamId = link.href.split('://')[1];
                             let channelName = link.textContent.trim();
                             for (const key in channelMappings) {
                                 const regex = new RegExp(key, 'gi');
@@ -2304,25 +2264,20 @@ if (state.tvSportFilter !== 'all') {
                 if (state.tvCurrentFilter === 'all') {
                     groupName = determineBrandGroup(channel);
                     isEventGroup = false;
-                } 
-                // Si el filtro es 'events_only', agrupamos por evento y mostramos detalles
+                }                // Si el filtro es 'events_only', agrupamos por evento y mostramos detalles
                 else if (state.tvCurrentFilter === 'events_only' && channel.source === 'events' && channel.event) {
                      groupName = `${channel.event.date}###${channel.event.competition}###${channel.event.match}`;
                      isEventGroup = true;
                 }
                 // Lógica original para otros filtros (incluyendo Live, Favorites, Marcas, y Eventos fuera del filtro 'events_only' o 'all')
                 else if (channel.source === 'events' && channel.event) {
-                    if (state.hideEventDetails) {
-                        groupName = determineBrandGroup(channel);
-                    } else {
-                        groupName = `${channel.event.date}###${channel.event.competition}###${channel.event.match}`;
-                        isEventGroup = true;
-                        const normalizedChannelName = normalizeText(channel.name);
-                        if (!eventGroupKeysByChannelName.has(normalizedChannelName)) {
-                            eventGroupKeysByChannelName.set(normalizedChannelName, new Set());
-                        }
-                        eventGroupKeysByChannelName.get(normalizedChannelName).add(groupName);
+                    groupName = `${channel.event.date}###${channel.event.competition}###${channel.event.match}`;
+                    isEventGroup = true;
+                    const normalizedChannelName = normalizeText(channel.name);
+                    if (!eventGroupKeysByChannelName.has(normalizedChannelName)) {
+                        eventGroupKeysByChannelName.set(normalizedChannelName, new Set());
                     }
+                    eventGroupKeysByChannelName.get(normalizedChannelName).add(groupName);
                 } else {
                     groupName = determineBrandGroup(channel);
                     const normalizedChannelName = normalizeText(channel.name);
@@ -2844,16 +2799,14 @@ if (state.tvSportFilter !== 'all') {
                 g,
                 b
             };
-        }
-
-        function updatePrimaryLightColor() {
+        }        function updatePrimaryLightColor() {
             const rgb = hexToRgb(state.primaryColor);
-            const isDarkMode = document.body.classList.contains('dark-mode');
+            const isDarkMode = true;
             document.documentElement.style.setProperty('--primary-light', isDarkMode ? `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.2)` : `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.1)`);
         }
 
         function cleanObsoleteRatings() {
-            const activeChannelIds = new Set(state.channelsData.map(c => c.id));
+const activeChannelIds = new Set(state.channelsData.map(c => c.id));
             const ratingsToKeep = {};
             for (const channelId in state.channelRatings) {
                 if (activeChannelIds.has(channelId)) {
@@ -2934,7 +2887,7 @@ if (state.tvSportFilter !== 'all') {
                 else if (channel.name.includes('DAZN F1')) bgColor = '#353535';
                 else if (channel.name.includes('M+')) bgColor = '#0085C1';
                 else if (channel.name.includes('EUROSPORT')) bgColor = '#5e17eb';
-                backgroundImageStyle = `background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 100%), ${bgColor};`;
+                backgroundImageStyle = `background: linear-gradient(to top, rgba(0,0,0,0.6) 100%, rgba(0,0,0,0) 100%), ${bgColor};`;
 
                 channelNameHTML = `<div style="position: absolute; bottom: 5px; left: 5px; right: 5px; text-align: center;"><h3 style="font-size: 0.6rem; font-weight: 700; color: ${nameStyle}; white-space: normal; margin: 0;">${channel.displayableName}</h3></div>`;
             }
@@ -3545,20 +3498,15 @@ removeFocusClasses: function() {
         }
 
         document.addEventListener('DOMContentLoaded', () => {
-            document.body.classList.add('dark-mode');
-            document.body.classList.add('tv-mode-active');
+            document.body.classList.add('dark-mode');            document.body.classList.add('tv-mode-active');
             
-            // Inicialización del nuevo ajuste
-            document.body.classList.toggle('hide-options-button-active', state.hideOptionsButton);
+            // Inicialización del nuevo ajuste            document.body.classList.toggle('hide-options-button-active', state.hideOptionsButton);
             
             initializeTVNavigation();
             loadInitialChannels();
 
-            document.getElementById('darkModeCheckbox').checked = state.darkMode;
-            document.getElementById('hideEventDetailsCheckbox').checked = state.hideEventDetails;
             document.getElementById('fullScreenOnClickCheckbox').checked = state.fullScreenOnClick; 
             document.getElementById('hideOptionsButtonCheckbox').checked = state.hideOptionsButton; // Establecer estado inicial del nuevo switch
-            document.body.classList.toggle('hide-event-details', state.hideEventDetails);
             
             const copyModal = document.getElementById('copyModal');
             const cancelCopyBtn = document.getElementById('cancelCopyBtn');
@@ -3609,15 +3557,10 @@ removeFocusClasses: function() {
                     state.tvSearchTerm = e.target.value;
                     renderTVChannels();
                 }, 300);
-            });
-
-            document.getElementById('darkModeCheckbox').addEventListener('change', toggleDarkMode);
-            document.getElementById('hideEventDetailsCheckbox').addEventListener('change', toggleHideEventDetails);
-            document.getElementById('fullScreenOnClickCheckbox').addEventListener('change', toggleFullScreenOnClick); 
+            });            document.getElementById('fullScreenOnClickCheckbox').addEventListener('change', toggleFullScreenOnClick); 
             // NUEVO EVENT LISTENER para el nuevo switch
             document.getElementById('hideOptionsButtonCheckbox').addEventListener('change', toggleHideOptionsButton); 
-            
-            document.getElementById('closeSettingsBtn').addEventListener('click', () => document.getElementById('settingsModal').classList.remove('modal--active'));
+document.getElementById('closeSettingsBtn').addEventListener('click', () => document.getElementById('settingsModal').classList.remove('modal--active'));
             document.querySelectorAll('.color-option').forEach(btn => {
                 btn.addEventListener('click', () => changePrimaryColor(btn.dataset.color));
             });
@@ -3640,3 +3583,4 @@ removeFocusClasses: function() {
 </body>
 
 </html>
+ml>

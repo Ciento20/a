@@ -2970,25 +2970,41 @@ if (state.tvSportFilter !== 'all') {
                 const subGroups = group.subGroups;
 
                 if (group.isEvent && isEventMode) {
-                    const formattedDate = formatEventDate(group.date);
-                    
-                    if (formattedDate !== lastDateRendered) {
-                        
-                        let prefix = 'Eventos del ';
-                        const firstWord = formattedDate.split(' ')[0].toLowerCase();
-                        
-                        // Si empieza por Hoy, Mañana, o Ayer, usamos "Eventos de"
-                        if (firstWord === 'hoy' || firstWord === 'mañana' || firstWord === 'ayer' || firstWord === 'el') {
-                            prefix = 'Eventos de ';
-                        }
+    const formattedDate = formatEventDate(group.date);
+    
+    if (formattedDate !== lastDateRendered) {
+        
+        let prefix = 'Eventos del ';
+        let coloredDateHtml = formattedDate;
+        const parts = formattedDate.split(' ');
+        const firstWord = parts[0].toLowerCase();
+        
+        if (firstWord === 'hoy' || firstWord === 'mañana' || firstWord === 'ayer' || firstWord === 'el') {
+            prefix = 'Eventos de ';
 
-                        // Construimos el encabezado con el prefijo
-                        html += `<h2 class="tv-date-header">${prefix}${formattedDate}</h2>`;
-                        lastDateRendered = formattedDate;
-                    }
-                } else {
-                    lastDateRendered = null;
-                }                let groupTitle = group.name;
+            // Si empieza con 'el', la estructura es "el [Día] [fecha]". Coloreamos el día y la fecha.
+            if (firstWord === 'el') {
+                const dayOfWeek = parts[1]; // Ejemplo: "Sábado"
+                const datePart = parts.slice(2).join(' '); // Ejemplo: "13/7/25"
+                coloredDateHtml = `el <span style="color: var(--primary);">${dayOfWeek} ${datePart}</span>`;
+            } 
+            // Si es 'Hoy', 'Mañana', o 'Ayer', coloreamos solo esa palabra
+            else {
+                coloredDateHtml = `<span style="color: var(--primary);">${formattedDate}</span>`;
+            }
+        } else {
+            // Caso donde formattedDate es solo la fecha (ej. "13/7/25"). Coloreamos la fecha completa.
+            coloredDateHtml = `<span style="color: var(--primary);">${formattedDate}</span>`;
+        }
+
+        // Construimos el encabezado con el prefijo y la fecha coloreada
+        html += `<h2 class="tv-date-header">${prefix}${coloredDateHtml}</h2>`;
+        lastDateRendered = formattedDate;
+    }
+} else {
+    lastDateRendered = null;
+}
+let groupTitle = group.name;
                 let groupTitleStyle = '';
                 
                 if (group.isEvent && isEventMode) {
@@ -3002,20 +3018,17 @@ if (state.tvSportFilter !== 'all') {
                     const isFirstGroupAfterDateHeader = !lastDateRendered || (group.date && formatEventDate(group.date) === lastDateRendered);
                     if(isFirstGroupAfterDateHeader) {
                         groupTitleStyle = 'margin-top: 0;';
-                    }
-
-                } else if (group.name.includes('###')) {
-                    // Si no es modo eventos y el nombre del grupo contiene '###' (grupo de evento renderizado bajo filtro de marca o All)
+                    }                } else if (group.name.includes('###')) {
+                    // Si el nombre del grupo contiene '###' (grupo de evento renderizado bajo filtro de marca o All)
                     if (isAllMode) {
                         // En modo 'all', omitimos los grupos de evento para evitar duplicidad de canales
                         continue;
                     }
                     
-                    // Si es un filtro de marca, re-formateamos el título para mostrarlo correctamente.
+                    // Lógica para mostrar eventos con formato completo (independientemente del filtro)
                     const parts = group.name.split('###');
                     if (parts.length >= 3) {
                          // El formato es: Date###Competition###Match
-                         const date = parts[0];
                          const competition = parts[1];
                          const match = parts[2];
                          const eventInfo = group.channels[0]?.event; 
@@ -3023,15 +3036,14 @@ if (state.tvSportFilter !== 'all') {
                          const time = eventInfo?.time || ''; // <--- Hora del evento
                          const competitionHtml = `<span style="color: var(--primary);">${competition}</span>`;
                          
-                         // Incluimos la hora al principio
-                         groupTitle = `${date} <span style="margin-right: 5px;">${time}</span> ${sportEmoji} ${competitionHtml} - ${match}`;
+                         // Se muestra la hora, emoji, competición y el partido
+                         groupTitle = `<span style="margin-right: 7.5px;">${time}</span> ${sportEmoji} ${competitionHtml} - ${match}`;
                     } else {
                         // Fallback por si el formato es inesperado
                         groupTitle = group.name.replace(/###/g, ' - ');
                     }
                 }
-
-                html += ` <div class="tv-group"><header class="tv-group-header"><h2 class="tv-group-title" style="${groupTitleStyle}">${groupTitle}</h2></header> `;
+html += ` <div class="tv-group"><header class="tv-group-header"><h2 class="tv-group-title" style="${groupTitleStyle}">${groupTitle}</h2></header> `;
 let cardsHTML = '';
                 const sortedSubGroupNames = Object.keys(subGroups).sort((a, b) => {
                     const aHasLive = subGroups[a].some(c => c.isLive);

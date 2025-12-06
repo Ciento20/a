@@ -2988,9 +2988,7 @@ if (state.tvSportFilter !== 'all') {
                     }
                 } else {
                     lastDateRendered = null;
-                }
-
-                let groupTitle = group.name;
+                }                let groupTitle = group.name;
                 let groupTitleStyle = '';
                 
                 if (group.isEvent && isEventMode) {
@@ -3006,14 +3004,35 @@ if (state.tvSportFilter !== 'all') {
                         groupTitleStyle = 'margin-top: 0;';
                     }
 
-                } else if (isAllMode && group.name.includes('###')) {
-                    // Omitir grupos de eventos en modo "Todos"
-                    continue;
+                } else if (group.name.includes('###')) {
+                    // Si no es modo eventos y el nombre del grupo contiene '###' (grupo de evento renderizado bajo filtro de marca o All)
+                    if (isAllMode) {
+                        // En modo 'all', omitimos los grupos de evento para evitar duplicidad de canales
+                        continue;
+                    }
+                    
+                    // Si es un filtro de marca, re-formateamos el título para mostrarlo correctamente.
+                    const parts = group.name.split('###');
+                    if (parts.length >= 3) {
+                         // El formato es: Date###Competition###Match
+                         const date = parts[0];
+                         const competition = parts[1];
+                         const match = parts[2];
+                         const eventInfo = group.channels[0]?.event; 
+                         const sportEmoji = eventInfo?.sportEmoji || '❓';
+                         const time = eventInfo?.time || ''; // <--- Hora del evento
+                         const competitionHtml = `<span style="color: var(--primary);">${competition}</span>`;
+                         
+                         // Incluimos la hora al principio
+                         groupTitle = `${date} <span style="margin-right: 5px;">${time}</span> ${sportEmoji} ${competitionHtml} - ${match}`;
+                    } else {
+                        // Fallback por si el formato es inesperado
+                        groupTitle = group.name.replace(/###/g, ' - ');
+                    }
                 }
 
                 html += ` <div class="tv-group"><header class="tv-group-header"><h2 class="tv-group-title" style="${groupTitleStyle}">${groupTitle}</h2></header> `;
-
-                let cardsHTML = '';
+let cardsHTML = '';
                 const sortedSubGroupNames = Object.keys(subGroups).sort((a, b) => {
                     const aHasLive = subGroups[a].some(c => c.isLive);
                     const bHasLive = subGroups[b].some(c => c.isLive);

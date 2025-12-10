@@ -1023,6 +1023,113 @@
             fullScreenOnClick: localStorage.getItem('fullScreenOnClick') === 'true',            // NUEVO ESTADO: Ocultar botón de opciones
             hideOptionsButton: localStorage.getItem('hideOptionsButton') === 'true',
        };
+        /**
+ * Constantes de la API y URLs base.
+ * ¡Mantener sincronizadas con la fuente de datos!
+ */
+const API_URL = 'https://streamed.st/api/matches/all-today';
+const IMAGE_BASE_URL = 'https://streamed.pk/api/images/';
+const BASE_URL = 'https://streamed.pk';
+
+/**
+ * ⚽ Extrae de forma asíncrona todas las URLs de imágenes (insignias y pósteres)
+ * de los partidos programados para hoy.
+ *
+ * @returns {Promise<Array<{description: string, url: string}>>} Una promesa que resuelve con
+ * un array de objetos, donde cada objeto contiene la descripción de la imagen
+ * y su URL completa. Devuelve un array vacío si no hay partidos o si hay un error.
+ */
+async function getTodayImageUrls() {
+    const allImageUrls = []; // Array para almacenar las URLs extraídas
+
+    try {
+        // 1. Realizar la petición a la API
+        const response = await fetch(API_URL);
+
+        // Verificar si la respuesta fue exitosa (código 200-299)
+        if (!response.ok) {
+            console.error(`Error en la red: ${response.status} ${response.statusText}`);
+            // Es crucial lanzar un error o devolver un array vacío en caso de fallo
+            return [];
+        }
+
+        // 2. Procesar la respuesta como JSON
+        const matches = await response.json();
+
+        if (matches.length === 0) {
+            console.log('No hay partidos programados para hoy.');
+            return [];
+        }
+
+        // 3. Recorrer la lista de partidos y generar URLs
+        matches.forEach(match => {
+            const matchTitle = match.title || 'Partido sin título';
+
+            // === A. PROCESAR INSIGNIAS DE EQUIPOS ===
+            if (match.teams) {
+                // Equipo Local
+                if (match.teams.home && match.teams.home.badge) {
+                    const teamName = match.teams.home.name || 'Local';
+                    const badgeFilename = match.teams.home.badge;
+                    
+                    const badgeSrc = `${IMAGE_BASE_URL}badge/${badgeFilename}.webp`;
+                    allImageUrls.push({
+                        description: `Insignia ${teamName} (${matchTitle})`,
+                        url: badgeSrc
+                    });
+                }
+
+                // Equipo Visitante
+                if (match.teams.away && match.teams.away.badge) {
+                    const teamName = match.teams.away.name || 'Visitante';
+                    const badgeFilename = match.teams.away.badge;
+                    
+                    const badgeSrc = `${IMAGE_BASE_URL}badge/${badgeFilename}.webp`;
+                    allImageUrls.push({
+                        description: `Insignia ${teamName} (${matchTitle})`,
+                        url: badgeSrc
+                    });
+                }
+            }
+
+            // === B. PROCESAR PÓSTER DEL PARTIDO ===
+            if (match.poster) {
+                const posterFilename = match.poster;
+                // La URL del póster usa la BASE_URL diferente
+                const posterSrc = `${BASE_URL}${posterFilename}.webp`; 
+                
+                allImageUrls.push({
+                    description: `Póster de ${matchTitle}`,
+                    url: posterSrc
+                });
+            }
+        });
+
+        // 4. Devolver el array con todas las URLs encontradas
+        return allImageUrls;
+
+    } catch (error) {
+        // Capturar errores de red o de JSON
+        console.error('Error al obtener y procesar las URLs de los partidos:', error);
+        return []; // Devolver un array vacío en caso de cualquier fallo
+    }
+}
+
+// Exportar la función si estás usando módulos ES6 (recomendado)
+// export { getTodayImageUrls };
+
+// Si no usas módulos, la función estará disponible globalmente
+        state.todayImageUrls = [];
+
+        async function loadTodayImageUrls() {
+            try {
+                state.todayImageUrls = await getTodayImageUrls();
+                console.log(`[Images] URLs de imágenes cargadas: ${state.todayImageUrls.length}`);
+            } catch (error) {
+                console.error("[Images] Fallo al cargar URLs de imágenes:", error);
+            }
+        }
+
         const LOGOPEDIA_BASE_URL = "https://static.wikia.nocookie.net/logopedia/images/";
 const IMAGE_PROXY_URL = "https://images.weserv.nl/?url=";
         const ERA_URL = "https://ipfs.io/ipns/k2k4r8oqlcjxsritt5mczkcn4mmvcmymbqw7113fz2flkrerfwfps004/data/listas/listaplana.txt";
@@ -1492,13 +1599,13 @@ setTimeout(() => {
                 channels,
                 message
             };
-        }
-
-
-        async function loadInitialChannels() {
+        }        async function loadInitialChannels() {
             const tvChannelsGrid = document.getElementById("tvChannelsGrid");
             
             document.getElementById('tvStatusMessageContainer').innerHTML = '';
+
+            // NUEVO: Lanzar la carga de URLs de imágenes inmediatamente (no bloquea el flujo principal)
+            const imageLoadPromise = loadTodayImageUrls(); 
 
             const isShowingBackup = loadAndRenderBackupChannels();
             const temporaryLoadMessage = isShowingBackup ? "Mostrando historial. Obteniendo datos en tiempo real..." : "Cargando datos en tiempo real...";
@@ -1892,6 +1999,16 @@ setTimeout(() => {
                 return eventTime;
             }
             return eventTime;
+        }        function findBadgeUrl(teamName, eventMatchTitle) {
+            const normalizedTeam = normalizeText(teamName);
+            const normalizedTitle = normalizeText(eventMatchTitle);
+            const found = state.todayImageUrls.find(item => {
+                const normalizedDescription = normalizeText(item.description);
+                // Buscar por nombre del equipo Y parte del título del partido para mayor precisión
+                return normalizedDescription.includes(normalizedTeam) && normalizedDescription.includes(normalizedTitle.substring(0, 10));
+            });
+            // La URL devuelta ya está proxied desde getTodayImageUrls
+            return found ? found.url : null;
         }
 
         function processEventsData(htmlContent) {
@@ -1921,8 +2038,30 @@ setTimeout(() => {
                 if (cells.length >= 6) {
                     const date = cells[0].textContent.trim();
                     const time = cells[1].textContent.trim();
-                    const sportName = cells[2].textContent.trim();
-                    const competition = cells[3].textContent.trim();                    const match = cells[4].textContent.trim();
+                    const sportName = cells[2].textContent.trim();                    const competition = cells[3].textContent.trim();
+                    const match = cells[4].textContent.trim();
+                    
+                    // NUEVO: Intentar extraer nombres de equipos para buscar insignias
+                    let homeTeamName = null;
+                    let awayTeamName = null;
+                    let homeBadgeImage = null;
+                    let awayBadgeImage = null;
+                    
+                    // Expresión regular mejorada para capturar el formato 'Equipo A VS Equipo B'
+                    const matchParts = match.match(/^(.*?)\s+(?:VS|vs)\s+(.*)$/i);
+                    
+                    if (matchParts && matchParts.length >= 3) {
+                        homeTeamName = matchParts[1].trim();
+                        awayTeamName = matchParts[2].trim();
+                        
+                        // Buscar URL de insignias
+                        if (homeTeamName) {
+                            homeBadgeImage = findBadgeUrl(homeTeamName, match);
+                        }
+                        if (awayTeamName) {
+                            awayBadgeImage = findBadgeUrl(awayTeamName, match);
+                        }
+                    }
                     const canalesCell = cells[5];
                     const links = canalesCell.querySelectorAll('a[href^="acestream://"]');
                     if (links.length > 0) {
@@ -2018,10 +2157,14 @@ const acestreamId = link.href.split('://')[1];
                                     competition,
                                     match,
                                     date,
-                                    sportEmoji,
-                                    sportName,
+                                    sportEmoji,                                    sportName,
                                     startTime: eventStartTime.getTime(),
-                                    endTime: eventEndTime.getTime()
+                                    endTime: eventEndTime.getTime(),
+                                    // NUEVO: Insignias de equipos
+                                    homeTeamName: homeTeamName,
+                                    awayTeamName: awayTeamName,
+                                    homeBadgeImage: homeBadgeImage,
+                                    awayBadgeImage: awayBadgeImage
                                 }
                             });
                             trackFirstSeen(acestreamId);
@@ -2961,9 +3104,36 @@ if (formattedDate !== lastDateRendered) {
                     const liveTimeClass = group.hasLive ? 'live-time-blink' : '';
                     
                     // MODIFICACIÓN CLAVE: Aplicar estilo al nombre de la competición (group.competition)
-                    const competitionHtml = `<span style="color: var(--primary);">${group.competition}</span>`;
+                    const competitionHtml = `<span style="color: var(--primary);">${group.competition}</span>`;                    // MODIFICACIÓN CLAVE: Implementar insignias de equipos
+                    let matchDisplay = group.match;
+                    const channelExample = group.channels.find(c => c.event && c.event.homeTeamName);
                     
-                    groupTitle = `<span class="${liveTimeClass}" style="margin-right: 7.5px;">${group.time}</span> ${group.sportEmoji} ${competitionHtml} - ${group.match}`;
+                    if (channelExample && channelExample.event) {
+                        const event = channelExample.event;
+                        let homeTeamHtml = event.homeTeamName || '';
+                        let awayTeamHtml = event.awayTeamName || '';
+                        
+                        const badgeStyle = 'width: 16px; height: 16px; vertical-align: middle; margin: 0 4px; border-radius: 50%; object-fit: contain;';
+                        
+                        if (event.homeBadgeImage) {
+                             homeTeamHtml = `<span style="display: inline-flex; align-items: center; justify-content: center;"><img src="${event.homeBadgeImage}" alt="${event.homeTeamName}" style="${badgeStyle}"> ${event.homeTeamName}</span>`;
+                        }
+                        if (event.awayBadgeImage) {
+                             awayTeamHtml = `<span style="display: inline-flex; align-items: center; justify-content: center;"><img src="${event.awayBadgeImage}" alt="${event.awayTeamName}" style="${badgeStyle}"> ${event.awayTeamName}</span>`;
+                        }
+                        
+                        // Si no hay imágenes, volvemos a mostrar el partido sin los círculos 🔴 🔵, solo el texto
+                        if (!event.homeBadgeImage && !event.awayBadgeImage) {
+                            matchDisplay = `${event.homeTeamName} VS ${event.awayTeamName}`;
+                        } else {
+                            // Formato final: [Insignia Local] Local VS [Insignia Visitante] Visitante
+                            matchDisplay = `${homeTeamHtml} VS ${awayTeamHtml}`;
+                        }
+
+                    }
+                    
+                    // Reestructuración del groupTitle para el nuevo formato
+                    groupTitle = `<span class="${liveTimeClass}" style="margin-right: 7.5px;">${group.time}</span> ${group.sportEmoji} ${competitionHtml} - ${matchDisplay}`;
                     
                     const isFirstGroupAfterDateHeader = !lastDateRendered || (group.date && formatEventDate(group.date) === lastDateRendered);
                     if(isFirstGroupAfterDateHeader) {

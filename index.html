@@ -2614,6 +2614,7 @@ const acestreamId = link.href.split('://')[1];
             'DAZN F1',
             'DAZN',
             'DAZN La Liga',
+            'DAZN Baloncesto',
             'M+ La Liga',
             'Liga de Campeones',
             'La Liga Hypermotion',
@@ -2626,8 +2627,9 @@ const acestreamId = link.href.split('://')[1];
         ];
         const groupRegexes = {
             'DAZN F1': /DAZN F1/i,
-            'DAZN': /DAZN(?!.*F1|.*La Liga)/i,
+            'DAZN Baloncesto': /DAZN Baloncesto/i,
             'DAZN La Liga': /DAZN La Liga/i,
+            'DAZN': /DAZN(?!.*F1|.*La Liga|.*Baloncesto)/i,
             'Liga de Campeones': /Liga de Campeones/i,
             'La Liga Hypermotion': /La Liga Hypermotion/i,
             'M+ La Liga': /M\+ La Liga/i,

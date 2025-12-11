@@ -1090,7 +1090,8 @@ const IMAGE_PROXY_URL = "https://images.weserv.nl/?url=";
   'DAZN 3': '0/0f/DAZN_3_2024.svg/revision/latest?cb=20240713212252',
   'DAZN 4': 'f/f7/DAZN_4_2024.svg/revision/latest?cb=20240713211915',
   'DAZN BALONCESTO 2': '2/2b/B77YC301.svg/revision/20251211214725',
-  'DAZN BALONCESTO 3': '2/2b/B77YC301.svg/revision/latest?cb=20251211214725'
+  'DAZN BALONCESTO 3': '2/2b/B77YC301.svg/revision/latest?cb=20251211214725',
+  'M+ NAVIDAD': '2/2c/Navidad_por_M%2B.svg/revision/latest?cb=20251210160452'
 };
 
         function getPlaceholderInfo(channelName) {
@@ -1595,24 +1596,17 @@ setTimeout(() => {
             const numberedChannels = [];
             const lines = infoCanales.split('\n').filter(line => line.trim() !== '');
             const channelMappings = {
-                'DAZN LA LIGA 1': 'DAZN La Liga',
-                'MOVISTAR': 'M+',
-                'CLASICOS': 'Clásicos',
-                'ESTRENOS': 'Estrenos',
-                'VAMOS': 'Vamos',
-                'ACCION': 'Acción',
-                'LALIGA': 'La Liga',
-                'DEPORTES': 'Deportes',
-                'PLUS': 'Plus',
-                'M.': 'M+',
-                'LIGA DE CAMPEONES': 'M+ Liga de Campeones',
-                'BALONCESTO 1': 'Baloncesto',
-                'BALONCESTO': 'Baloncesto',
-                'LA LIGA': 'La Liga',
-                'HYPERMOTION': 'La Liga Hypermotion',
-                'EUROSPORT': '★EUROSPORT',
-                'ELLAS': 'Ellas'
-            };
+    'Movistar': 'M+',
+    'DAZN LA LIGA 1': 'DAZN La Liga',
+    'LALIGA': 'La Liga',
+    'Premier': 'Premier League',
+    'Eurosport': '★EUROSPORT',
+    'HYPERMOTION': 'La Liga Hypermotion',
+    'LIGA DE CAMPEONES': 'M+ Liga de Campeones',
+    'PLUS': 'Plus',
+    'VAMOS': 'Vamos',
+    'Deportes': 'Deportes'
+};
             for (let i = 0; i < lines.length; i += 2) {
                 const nameLine = lines[i].trim();
                 const idLine = lines[i + 1] ? lines[i + 1].trim() : '';
@@ -1746,15 +1740,15 @@ setTimeout(() => {
             const doc = parser.parseFromString(htmlContent, 'text/html');
             const cards = doc.querySelectorAll('article.canal-card');
             const nameMappings = {
-                'Ellas Vamos': 'Ellas',
-                'Movistar': 'M+',
-                'Clasicos': 'Clásicos',
-                'Accion': 'Acción',
-                'Deportes': 'Deportes',
-                'Plus': 'Plus',
-                'M+ Liga de Campeones': 'M+ Liga de Campeones',
-                'Golf': 'Golf',
-            };
+    'Ellas Vamos': 'Ellas',
+    'Movistar': 'M+',
+    'Clasicos': 'Clásicos',
+    'Accion': 'Acción',
+    'Deportes': 'Deportes',
+    'Plus': 'Plus',
+    'M+ Liga de Campeones': 'M+ Liga de Campeones',
+    'Golf': 'Golf'
+};
             cards.forEach(card => {
                 const nameElement = card.querySelector('.canal-nombre');
                 const acestreamLinkElement = card.querySelector('.acestream-link');
@@ -1806,16 +1800,16 @@ setTimeout(() => {
         function processElcanoData(links) {
             const numberedChannels = [];
             const nameMap = {
-                'M. LaLiga': 'M+ La Liga',
-                'LaLiga Smartbank': 'La Liga Hypermotion',
-                'LaLiga': 'La Liga',
-                'MovistarPlus': 'M+ Plus',
-                'Vamos': 'M+ Vamos',
-                'Deporte': 'M+ Deportes',
-                'Dedporte': 'M+ Deportes',
-                'Dazn': 'DAZN',
-                'Campeones': 'M+ Liga de Campeones'
-            };
+    'M. LaLiga': 'M+ La Liga',
+    'LaLiga Smartbank': 'La Liga Hypermotion',
+    'LaLiga': 'La Liga',
+    'MovistarPlus': 'M+ Plus',
+    'Vamos': 'M+ Vamos',
+    'Deporte': 'M+ Deportes',
+    'Dedporte': 'M+ Deportes',
+    'Dazn': 'DAZN',
+    'Campeones': 'M+ Liga de Campeones'
+};
             links.forEach(link => {
                 if (link.url && link.url.startsWith('acestream://')) {
                     const acestreamId = link.url.split('://')[1];

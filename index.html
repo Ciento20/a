@@ -2910,10 +2910,10 @@
             let backgroundStyle = '';
 
             // 1. Asignar color de fondo por marca (simplificado para texto)
-            if (channel.name.includes('DAZN') && !channel.name.includes('F1')) bgColor = '#353535';
-            else if (channel.name.includes('DAZN F1')) bgColor = '#353535';
-            else if (channel.name.includes('M+')) bgColor = '#353535';
-            else if (channel.name.includes('EUROSPORT')) bgColor = '#353535';            // 2. Aplicar el logo si está disponible
+            if (channel.name.includes('DAZN') && !channel.name.includes('F1')) bgColor = '#202020';
+            else if (channel.name.includes('DAZN F1')) bgColor = '#202020';
+            else if (channel.name.includes('M+')) bgColor = '#202020';
+            else if (channel.name.includes('EUROSPORT')) bgColor = '#202020';            // 2. Aplicar el logo si está disponible
             if (logoUrl) {
                 // Si hay logo, el fondo es el logo y el color de marca.
                 backgroundStyle = `background: ${bgColor} url('${logoUrl}') center center / 80% auto no-repeat;`;

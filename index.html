@@ -926,18 +926,16 @@
             gap: 0
         }
 
-        /* MODIFICACIÓN: Ocultar el nombre del canal y ajustar el indicador de EN VIVO */
+        /* MODIFICACIÓN: Ocultar el nombre del canal y ajustar el indicador de EN VIVO */        /* El nombre del canal se oculta por defecto en el CSS. Se hace visible en línea en el JS si no hay logo. */
         .tv-card h3 {
-            visibility: hidden;
-            opacity: 0;
-            /* Mantenemos el resto de estilos por si se desea cambiar en el futuro */
+            display: none;
             font-size: 0.6rem;
             font-weight: 700;
             color: white;
             white-space: normal;
             margin: 0;
             text-align: center;
-            transition: visibility 0s, opacity 0.3s linear;
+            /* Aseguramos que el resto de estilos no afecten la visibilidad general */
         }
 
         .tv-card-live span {
@@ -2920,10 +2918,14 @@
             } else {
                 // Si no hay logo, el fondo es solo el color de marca
                 backgroundStyle = `background: ${bgColor};`;
+            }            let channelNameHTML = '';
+            // MODIFICACIÓN CLAVE: Si NO hay logo, hacemos visible el nombre del canal centrado en el card.
+            if (!logoUrl) {
+                channelNameHTML = `<div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 5px;"><h3 style="font-size: 0.6rem; font-weight: 700; color: white; white-space: normal; margin: 0; text-align: center; display: block;">${channel.displayableName}</h3></div>`;
+            } else {
+                // Si hay logo, se mantiene el contenedor vacío o con estilos mínimos para estructura si es necesario
+                channelNameHTML = `<div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; padding: 5px;"><h3 style="display: none;">${channel.displayableName}</h3></div>`;
             }
-            
-            // MODIFICACIÓN: El nombre del canal es ahora invisible por CSS, se mantiene el div para la estructura
-            let channelNameHTML = `<div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; padding: 5px;"><h3 style="font-size: 0.6rem; font-weight: 700; color: ${nameStyle}; white-space: normal; margin: 0; text-align: center;">${channel.displayableName}</h3></div>`;
 
             let liveIndicator = '';
             if (channel.isLive) {
@@ -3378,6 +3380,18 @@
             // Asignar eventos a los ajustes
             document.getElementById('fullScreenOnClickCheckbox').addEventListener('change', toggleFullScreenOnClick);
             document.getElementById('hideOptionsButtonCheckbox').addEventListener('change', toggleHideOptionsButton);
+
+            // Nuevo: Activar pantalla completa al hacer clic en cualquier parte del cuerpo, si la opción está activa
+            document.body.addEventListener('click', (e) => {
+                // Evitar activar si se hace clic dentro de un modal, la barra lateral o elementos interactivos
+                if (e.target.closest('.modal') || e.target.closest('#tvSidebar') || e.target.closest('a') || e.target.closest('button') || e.target.closest('input')) {
+                    return;
+                }
+
+                if (state.fullScreenOnClick) {
+                    requestFullScreen();
+                }
+            });
 
             // Asignar eventos de los botones de color
             document.querySelectorAll('.color-picker .color-option').forEach(btn => {

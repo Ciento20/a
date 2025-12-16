@@ -2399,11 +2399,15 @@
 
             if (currentSportFilter !== 'all') {
                 currentFilter = 'all'; // El filtro de deporte prevalece si no hay búsqueda explícita
-            }
-
-
-            if (isSearching && searchTerm) {
+            }            if (isSearching) {
                 filteredChannels = filteredChannels.filter(channel => {
+                    // Si el filtro de búsqueda está activo pero el término está vacío,
+                    // solo mostramos canales que NO sean de eventos.
+                    if (searchTerm === '') {
+                        return channel.source !== 'events';
+                    }
+                    
+                    // Lógica de búsqueda normal si hay un término
                     const normalizedSearchTerm = normalizeText(searchTerm);
                     const nameMatches = normalizeText(channel.name).includes(normalizedSearchTerm);
                     const idMatches = channel.id && channel.id.toLowerCase().includes(normalizedSearchTerm.replace('#', ''));

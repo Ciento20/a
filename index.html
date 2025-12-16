@@ -614,34 +614,19 @@
             flex-direction: column;
         }
 
-        #tvSidebar button#settingsModeBtn {
-            width: 20px;
-            height: 20px;
-            padding: 0;
-            font-size: 0.6rem;
-            background-color: #383838;
-            color: #e0e0e0;
-            border: none;
-            border-radius: 50%;
-            margin: 0.25rem auto;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
+        /* Bloque eliminado: #tvSidebar button#settingsModeBtn */
 
-        #tvSidebar button#settingsModeBtn:hover,
-        #tvSidebar button#settingsModeBtn.tv-sidebar-link-focused {
-            background-color: var(--primary) !important;
-            border: 1px solid white;
-            outline-offset: 1px;
-            transform: scale(1.1);
-        }
+        /* Bloque eliminado: #tvSidebar button#settingsModeBtn:hover */
 
         #tvBottomNav {
             padding: 0 2.5px;
             margin-top: 0.5rem;
+        }
+        
+        /* Nuevo estilo para el botón de Ajustes en el fondo */
+        #tvBottomNav .tv-nav-link {
+            margin: 0.25rem auto;
+            width: 100%; /* Ocupa todo el ancho */
         }
 
         .tv-card {
@@ -932,7 +917,7 @@
                 </ul>
             </nav>
         </div>
-        <div id="tvBottomNav"><button id="settingsModeBtn" tabindex="0"> ⚙️ </button></div>
+        <div id="tvBottomNav"><a href="#" id="settingsModeBtn" class="tv-nav-link" tabindex="0"> <span>⚙️</span> Ajustes </a></div>
     </aside>
     <main id="tvMainContent">
         <div id="tvStatusMessageContainer" style="margin-bottom:.75rem"></div>
@@ -1166,8 +1151,8 @@
             document.querySelectorAll('#tvSidebar .tv-nav-link').forEach(link => {
                 link.classList.remove('tv-sidebar-link-focused');
             });
-            document.querySelectorAll('#tvBottomNav button').forEach(button => {
-                button.classList.remove('tv-sidebar-link-focused');
+            document.querySelectorAll('#tvBottomNav .tv-nav-link').forEach(link => {
+                link.classList.remove('tv-sidebar-link-focused');
             });
         }
 
@@ -2872,6 +2857,13 @@
                     brandLink.classList.add('tv-sidebar-link-focused');
                 }
             }
+
+            // Aplicar foco al botón de ajustes si es necesario (ej: al cerrar el modal de ajustes)
+            const settingsBtn = document.getElementById('settingsModeBtn');
+            if(settingsBtn) {
+                 settingsBtn.classList.remove('tv-sidebar-link-focused'); // Limpiar por si acaso
+                 // Se puede añadir lógica si queremos que el botón de ajustes retenga el foco visualmente.
+            }
         }
 
         const createTVChannelCard = (channel, allOptionsJson = '[]') => {
@@ -3350,7 +3342,8 @@
             });
             
             // Asignar eventos del modal de ajustes y copiado
-            document.getElementById('settingsModeBtn').addEventListener('click', () => {
+            document.getElementById('settingsModeBtn').addEventListener('click', (e) => {
+                e.preventDefault(); // Evitar navegación si es un <a>
                 document.getElementById('settingsModal').classList.add('modal--active');
             });
             document.getElementById('closeSettingsBtn').addEventListener('click', () => {

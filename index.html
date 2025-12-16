@@ -2263,10 +2263,8 @@
             const eventGroupKeysByChannelName = new Map();
             sortedChannels.forEach(channel => {
                 let groupName;
-                let isEventGroup = false;
-
-                // Nueva Lógica de Agrupación: Si el filtro es 'all' o 'search', agrupamos por marca y forzamos ocultar detalles de evento
-                if (state.tvCurrentFilter === 'all') {
+                let isEventGroup = false;                // Nueva Lógica de Agrupación: Si el filtro es 'all' O ('search' Y NO es evento), agrupamos por marca y forzamos ocultar detalles de evento
+                if (state.tvCurrentFilter === 'all' || (state.tvCurrentFilter === 'search' && channel.source !== 'events')) {
                     groupName = determineBrandGroup(channel);
                     isEventGroup = false;
                 }

@@ -2266,9 +2266,14 @@
                 let isEventGroup = false;
 
                 // Nueva Lógica de Agrupación: Si el filtro es 'all' o 'search', agrupamos por marca y forzamos ocultar detalles de evento
-                if (state.tvCurrentFilter === 'all' || state.tvCurrentFilter === 'search') {
+                if (state.tvCurrentFilter === 'all') {
                     groupName = determineBrandGroup(channel);
                     isEventGroup = false;
+                }
+                // Si el filtro es 'search' y es un canal de evento, mantener la lógica de eventos
+                else if (state.tvCurrentFilter === 'search' && channel.source === 'events' && channel.event) {
+                    groupName = `${channel.event.date}###${channel.event.competition}###${channel.event.match}`;
+                    isEventGroup = true;
                 }
                 // Si el filtro es 'events_only', agrupamos por evento y mostramos detalles
                 else if (state.tvCurrentFilter === 'events_only' && channel.source === 'events' && channel.event) {

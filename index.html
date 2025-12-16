@@ -507,7 +507,9 @@
             z-index: 100;
             display: flex;
             flex-direction: column;
-            justify-content: center
+            justify-content: center;
+            /* Transiciones suaves */
+            transition: all 0.3s ease-in-out; 
         }
 
         #tvSidebar .sidebar-logo {
@@ -612,22 +614,93 @@
             background: #151515;
             display: flex;
             flex-direction: column;
+            /* Transiciones suaves */
+            transition: all 0.3s ease-in-out; 
         }
 
-        /* Bloque eliminado: #tvSidebar button#settingsModeBtn */
+        /* MEDIA QUERY PARA ORIENTACIÓN VERTICAL */
+        @media screen and (orientation: portrait) {
+            #tvSidebar {
+                width: 100vw;
+                height: 50px;
+                left: 0;
+                top: auto;
+                bottom: 0;
+                padding: 0.25rem 0.5rem;
+                border-right: none;
+                border-top: 0.5px solid #383838;
+                flex-direction: row;
+                justify-content: space-around;
+                align-items: center;
+                overflow-x: auto;
+                overflow-y: hidden;
+            }
 
-        /* Bloque eliminado: #tvSidebar button#settingsModeBtn:hover */
+            #tvSidebar .sidebar-logo {
+                display: none; /* Ocultar el logo en modo vertical para ahorrar espacio */
+            }
+            
+            #tvSidebar > div:first-child {
+                display: flex;
+                align-items: center;
+                flex-grow: 1;
+                justify-content: space-around;
+            }
+            
+            #tvSidebar nav {
+                width: 100%;
+                margin: 0;
+            }
+            
+            #tvSidebar ul {
+                display: flex;
+                flex-direction: row;
+                justify-content: space-around;
+                width: 100%;
+            }
+            
+            #tvSidebar li {
+                margin: 0 !important;
+                flex: 1;
+                text-align: center;
+            }
+            
+            #tvSidebar .tv-nav-link {
+                padding: 2px 0;
+                font-size: 0.35rem; /* Reducir tamaño de fuente */
+            }
 
-        #tvBottomNav {
-            padding: 0 2.5px;
-            margin-top: 0.5rem;
+            #tvSidebar .tv-nav-link span {
+                font-size: 0.5rem !important; /* Reducir tamaño del icono */
+            }
+
+            #tvMainContent {
+                margin-left: 0; /* Eliminar margen lateral */
+                margin-bottom: 50px; /* Añadir margen inferior igual a la altura de la barra */
+                min-height: calc(100vh - 50px);
+                padding: 0.75rem; /* Ajustar padding */
+            }
+
+            /* Asegurar que el contenedor de búsqueda se vea bien */
+            #searchContainer {
+                padding: 0.5rem;
+                flex-direction: row;
+                align-items: center;
+            }
+            
+            #searchContainer span {
+                 margin-right: 5px;
+            }
+
+            #globalSearchInput {
+                padding: 6px 10px !important;
+                font-size: 0.7rem !important;
+            }
         }
         
-        /* Nuevo estilo para el botón de Ajustes en el fondo */
-        #tvBottomNav .tv-nav-link {
-            margin: 0.25rem auto;
-            width: 100%; /* Ocupa todo el ancho */
-        }
+        
+        
+        
 
         .tv-card {
             min-width: 150px;
@@ -895,29 +968,14 @@
         <div>
             <nav>
                 <ul style="list-style:none;padding:0;margin:0">
-                    <li style="margin-bottom:.25rem"><a href="#" class="tv-nav-link" data-filter="search"
-                            tabindex="0"> <span>🔍</span>Buscar</a></li>
-                    <li style="margin-bottom:.25rem"><a href="#" class="tv-nav-link" data-filter="events_only"
+                    <li style="margin-bottom:.2rem"><a href="#" class="tv-nav-link" data-filter="search"
+                            tabindex="0"> <span>🔍</span>Buscar</a></li>                    <li style="margin-bottom:.25rem"><a href="#" class="tv-nav-link" data-filter="events_only"
                             tabindex="0"><span>📅</span> Eventos </a></li>
-                    
-                    
-                    <li style="margin:.25rem 0;border-top:.5px solid #383838"></li>
-                    <li style="margin-top:.25rem"><a href="#" class="tv-nav-link brand-filter dazn-filter"
-                            data-filter="dazn" tabindex="0"> <img
-                                src="https://images.weserv.nl/?url=https%3A%2F%2Fstatic.wikia.nocookie.net%2Flogopedia%2Fimages%2F7%2F7c%2FDAZN.svg%2Frevision%2Flatest%3Fcb%3D20210824163814"
-                                alt="DAZN Logo"> </a></li>
-                    <li><a href="#" class="tv-nav-link brand-filter movistar-filter" data-filter="m+" tabindex="0"><img
-                                src="https://images.weserv.nl/?url=https://static.wikia.nocookie.net/logopedia/images/a/af/Movistar_2025.svg/revision/latest?cb=20251005163444"
-                                alt="Movistar+ Logo"> </a></li>
-                    <li style="margin-bottom:.25rem"><a href="#" class="tv-nav-link brand-filter eurosport-filter"
-                            data-filter="eurosport" tabindex="0"> <img
-                                src="https://images.weserv.nl/?url=https://static.wikia.nocookie.net/logopedia/images/9/99/Eurosport_Mobile_Logo.png/revision/latest?cb=20180407080639">
-                        </a></li>
-                    
+                    <li style="margin-bottom:.25rem"><a href="#" id="settingsModeBtn" class="tv-nav-link" tabindex="0"> <span>⚙️</span> Ajustes </a></li>
                 </ul>
             </nav>
         </div>
-        <div id="tvBottomNav"><a href="#" id="settingsModeBtn" class="tv-nav-link" tabindex="0"> <span>⚙️</span> Ajustes </a></div>
+        <div id="tvBottomNav"></div>
     </aside>
     <main id="tvMainContent">
         <div id="tvStatusMessageContainer" style="margin-bottom:.75rem"></div>
@@ -2268,10 +2326,16 @@
                     groupName = `${channel.event.date}###${channel.event.competition}###${channel.event.match}`;
                     isEventGroup = true;
                     const normalizedChannelName = normalizeText(channel.name);
-                    if (!eventGroupKeysByChannelName.has(normalizedChannelName)) {
-                        eventGroupKeysByChannelName.set(normalizedChannelName, new Set());
+                    if (!state.hideEventDetails && eventGroupKeysByChannelName.has(normalizedChannelName)) {
+                        const eventGroupKeys = eventGroupKeysByChannelName.get(normalizedChannelName);
+                        for (const eventGroupKey of eventGroupKeys) {
+                            const eventGroup = groups[eventGroupKey];
+                            if (eventGroup) {
+                                eventGroup.channels.push(channel);
+                                return;
+                            }
+                        }
                     }
-                    eventGroupKeysByChannelName.get(normalizedChannelName).add(groupName);
                 } else {
                     groupName = determineBrandGroup(channel);
                     const normalizedChannelName = normalizeText(channel.name);

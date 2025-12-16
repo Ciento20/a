@@ -521,23 +521,6 @@
             white-space: nowrap
         }
 
-        #tvSidebar input#tvSearch {
-            width: 100%;
-            padding: 4px 2.5px;
-            border-radius: 3px;
-            font-size: 0.4rem;
-            box-sizing: border-box;
-            background-color: #383838;
-            color: #ffffff;
-            border: 0.5px solid #555555;
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4)
-        }
-
-        #tvSidebar input#tvSearch:focus {
-            outline: none;
-            border-color: var(--primary)
-        }
-
         #tvSidebar .tv-nav-link {
             display: flex;
             flex-direction: column;
@@ -829,28 +812,7 @@
             transform: scale(1.05);
         }
 
-        .favorite-toggle-btn {
-            background: none;
-            border: none;
-            cursor: pointer;
-            padding: 0;
-            margin-right: 2.5px;
-            font-size: 0.6rem;
-            color: #FFD700;
-            transition: transform 0.1s ease;
-            display: flex;
-            align-items: center;
-        }
-
-        .favorite-toggle-btn:hover {
-            transform: scale(1.1);
-        }
-
-        .favorite-toggle-btn.is-not-favorite {
-            color: var(--channel-name-color);
-            opacity: 0.7;
-            font-weight: 400;
-        }
+        /* ELIMINADO: .favorite-toggle-btn */
 
         /* ESTILOS PARA EL MENSAJE DE NO RESULTADOS */
         .no-results-container {
@@ -926,7 +888,8 @@
             gap: 0
         }
 
-        /* MODIFICACIÓN: Ocultar el nombre del canal y ajustar el indicador de EN VIVO */        /* El nombre del canal se oculta por defecto en el CSS. Se hace visible en línea en el JS si no hay logo. */
+        /* MODIFICACIÓN: Ocultar el nombre del canal y ajustar el indicador de EN VIVO */
+        /* El nombre del canal se oculta por defecto en el CSS. Se hace visible en línea en el JS si no hay logo. */
         .tv-card h3 {
             display: none;
             font-size: 0.6rem;
@@ -945,18 +908,14 @@
 <body class="tv-mode-active dark-mode">
     <aside id="tvSidebar">
         <div>
-            <div style="margin-bottom:.5rem;padding:0 2.5px"><input type="text" id="tvSearch"
-                    placeholder="Buscar canal..." tabindex="0"></div>
             <nav>
                 <ul style="list-style:none;padding:0;margin:0">
+                    <li style="margin-bottom:.25rem"><a href="#" class="tv-nav-link" data-filter="search"
+                            tabindex="0"> <span>🔍</span>Buscar</a></li>
                     <li style="margin-bottom:.25rem"><a href="#" class="tv-nav-link" data-filter="events_only"
                             tabindex="0"><span>📅</span> Eventos </a></li>
-                    <li style="margin-bottom:.25rem"><a href="#" class="tv-nav-link" data-filter="all" tabindex="0"><span>🌐</span>
-                            Todos </a></li>
-                    <li style="margin-bottom:.25rem"><a href="#" class="tv-nav-link" data-filter="live" tabindex="0"><span>🔴</span>
-                            Directo </a></li>
-                    <li style="margin-bottom:.25rem"><a href="#" class="tv-nav-link" data-filter="favorites"
-                            tabindex="0"> <span>⭐</span>Favoritos </a></li>
+                    
+                    
                     <li style="margin:.25rem 0;border-top:.5px solid #383838"></li>
                     <li style="margin-top:.25rem"><a href="#" class="tv-nav-link brand-filter dazn-filter"
                             data-filter="dazn" tabindex="0"> <img
@@ -969,13 +928,7 @@
                             data-filter="eurosport" tabindex="0"> <img
                                 src="https://images.weserv.nl/?url=https://static.wikia.nocookie.net/logopedia/images/9/99/Eurosport_Mobile_Logo.png/revision/latest?cb=20180407080639">
                         </a></li>
-                    <div id="tvSportFilters"><a href="#" class="tv-nav-link sport-filter" data-sport-key="futbol"
-                            tabindex="0" title="Fútbol">⚽</a><a href="#" class="tv-nav-link sport-filter"
-                            data-sport-key="baloncesto" tabindex="0" title="Baloncesto">🏀</a><a href="#"
-                            class="tv-nav-link sport-filter" data-sport-key="tenis" tabindex="0" title="Tenis">🎾</a><a
-                            href="#" class="tv-nav-link sport-filter" data-sport-key="motorsport" tabindex="0"
-                            title="Motorsport">🏁</a><a href="#" class="tv-nav-link sport-filter" data-sport-key="f1"
-                            tabindex="0" title="F1">🏎️</a></div>
+                    
                 </ul>
             </nav>
         </div>
@@ -983,6 +936,10 @@
     </aside>
     <main id="tvMainContent">
         <div id="tvStatusMessageContainer" style="margin-bottom:.75rem"></div>
+        <div id="searchContainer" style="display: none; margin-bottom: 0.75rem; padding: 0.5rem 0.75rem; background: #222222; border-radius: 6px; align-items: center; border: 1px solid #383838;">
+            <span style="font-size: 0.75rem; color: #e0e0e0; margin-right: 10px;">🔍 Buscar :</span>
+            <input type="text" id="globalSearchInput" placeholder="Escribe para buscar un canal o evento..." style="flex-grow: 1; padding: 8px 12px; border-radius: 4px; font-size: 0.75rem; box-sizing: border-box; background-color: #383838; color: #ffffff; border: 0.5px solid #555555; box-shadow: none;">
+        </div>
         <h1 style="color:white;margin-top:0"></h1>
         <div class="tv-channels-grid" id="tvChannelsGrid"></div>
     </main>
@@ -1056,7 +1013,7 @@
         const state = {
             allChannels: [],
             channelsData: [],
-            favorites: JSON.parse(localStorage.getItem('favorites')) || [],
+            // ELIMINADO: favorites: JSON.parse(localStorage.getItem('favorites')) || [],
             channelHistory: JSON.parse(localStorage.getItem('channelHistory')) || {},
             currentChannel: null,
             clearButtonClickCount: 0,
@@ -1068,6 +1025,7 @@
             lastChannelPlay: JSON.parse(localStorage.getItem('lastChannelPlay')) || null,
             firstSeen: JSON.parse(localStorage.getItem('firstSeen')) || {},
             hideEventDetails: localStorage.getItem('hideEventDetails') === 'true',
+            // MODIFICADO: El filtro por defecto es 'all', y 'search' reemplaza 'favorites'
             tvCurrentFilter: localStorage.getItem('tvCurrentFilter') || 'all',
             tvSportFilter: localStorage.getItem('tvSportFilter') || 'all',
             tvSearchTerm: '',
@@ -1122,8 +1080,9 @@
         const MAX_RETRIES = 3;
         const BACKUP_EXPIRY_HOURS = 480;
         const HISTORY_EXPIRY_HOURS = 168;
-        const TV_BRAND_FILTER_KEYS = ['all', 'events_only', 'live', 'favorites', 'dazn', 'm+', 'eurosport'];
-        const TV_SPORT_FILTER_KEYS = ['futbol', 'baloncesto', 'tenis', 'motorsport', 'f1'];
+        // MODIFICADO: 'favorites' cambiado a 'search'
+        const TV_BRAND_FILTER_KEYS = ['all', 'events_only', 'live', 'search', 'dazn', 'm+', 'eurosport'];
+        const TV_SPORT_FILTER_KEYS = [];
         const OTHER_SUBGROUPS = ['LIGA ENDESA', 'CANAL DE TENIS', 'SUPERTENNIS', 'BUNDESLIGA', 'PRIMERA FEDERACIÓN', '1RFEF', 'ARAGON TV', 'BEIN', 'BT SPORT', 'CANAL+SPORT', 'ESPN', 'ESSPN', 'SKY', 'ESPORT 3', 'FOX', 'GOL PLAY', 'REAL MADRID TV', 'ORANGE TV', 'RALLY TV', 'MOTOR', 'NBA', 'NFL', 'PREMIER SPORTS', 'DISCOVERY CHANNEL', 'DARK', 'AMC', 'LA 1', 'LA 2', 'ANTENA 3', 'Cuatro', 'Telecinco', 'LA SEXTA', '24 HORAS', 'TELEDEPORTE', 'CAZA Y PESCA', 'CANAL COCINA', 'DECASA', 'ONETORO', 'ZIGGO', 'XTRM', 'MIXED TV', 'DAZN', '(DE)', '(PL)', '(RU)'];
 
         function normalizeText(text) {
@@ -1171,16 +1130,7 @@
             localStorage.setItem('firstSeen', JSON.stringify(state.firstSeen));
         }
 
-        function toggleFavorite(channelId) {
-            const index = state.favorites.indexOf(channelId);
-            if (index > -1) {
-                state.favorites.splice(index, 1);
-            } else {
-                state.favorites.push(channelId);
-            }
-            localStorage.setItem('favorites', JSON.stringify(state.favorites));
-            renderTVChannels();
-        }
+        // ELIMINADO: function toggleFavorite(channelId)
 
         function toggleFullScreenOnClick() {
             state.fullScreenOnClick = !state.fullScreenOnClick;
@@ -1224,25 +1174,38 @@
         function applyTVFilter(filter, type) {
             let updateNeeded = false;
             if (type === 'brand') {
-                if (filter === 'all' && state.tvSearchTerm) {
-                    state.tvSearchTerm = '';
-                    const tvSearchInput = document.getElementById('tvSearch');
-                    if (tvSearchInput) {
-                        tvSearchInput.value = '';
+                if (filter === 'search') {
+                    // Si se pulsa 'Buscar', activa el filtro de búsqueda y limpia el término si ya estaba activo.
+                    if (state.tvCurrentFilter !== 'search') {
+                         state.tvCurrentFilter = 'search';
+                         localStorage.setItem('tvCurrentFilter', 'search');
+                         state.tvSearchTerm = ''; // Limpiar el término anterior al entrar en modo búsqueda
+                         updateNeeded = true;
+                    } else if (state.tvSearchTerm) {
+                         state.tvSearchTerm = ''; // Si ya está en modo búsqueda y tiene término, limpiarlo
+                         updateNeeded = true;
+                    } else {
+                         state.tvCurrentFilter = 'all'; // Si ya está en modo búsqueda y no hay término, volver a 'all'
+                         localStorage.setItem('tvCurrentFilter', 'all');
+                         updateNeeded = true;
                     }
-                    updateNeeded = true;
-                }
-                if (state.tvCurrentFilter !== filter) {
+                } else if (state.tvCurrentFilter !== filter) {
                     state.tvCurrentFilter = filter;
                     localStorage.setItem('tvCurrentFilter', filter);
+                    // Si se cambia a otro filtro, limpiar el término de búsqueda y desactivar modo búsqueda
+                    if (filter !== 'search') {
+                         state.tvSearchTerm = '';
+                    }
                     updateNeeded = true;
-                } else if (filter === 'all' || filter === 'live' || filter === 'favorites' || filter === 'events_only') {
-                    updateNeeded = false;
+                } else if (filter === 'all' || filter === 'live' || filter === 'events_only') {
+                    updateNeeded = false; // No hacer nada si se vuelve a pulsar
                 } else {
+                    // Desactivar filtro de marca si se pulsa de nuevo
                     state.tvCurrentFilter = 'all';
                     localStorage.setItem('tvCurrentFilter', 'all');
                     updateNeeded = true;
                 }
+
                 if (state.tvSportFilter !== 'all') {
                     state.tvSportFilter = 'all';
                     localStorage.setItem('tvSportFilter', 'all');
@@ -1257,9 +1220,12 @@
                     state.tvCurrentFilter = 'all';
                     localStorage.setItem('tvCurrentFilter', 'all');
                 }
-            }
-            if (updateNeeded) {
+            }            if (updateNeeded) {
                 renderTVChannels();
+                // NUEVA LÓGICA: Enfocar el cuadro de búsqueda si el filtro 'search' está activo
+                if (state.tvCurrentFilter === 'search') {
+                    document.getElementById('globalSearchInput')?.focus();
+                }
             }
         }
 
@@ -1447,9 +1413,9 @@
             for (const rawName in logosMap) {
                 let simplifiedName = rawName;
 
-                // Aplicar la normalización que se hace en processChannelNames
-                const simplifiedChannelName = normalizeChannelName(rawName);
-                simplifiedLogosMap[simplifiedChannelName.toUpperCase().trim()] = logosMap[rawName];
+                // Aplicar la normalización que se hace en cleanNameAndExtractQuality (solo para Eurosport/Teledeporte)
+                const { name: cleanedName } = cleanNameAndExtractQuality(rawName);
+                simplifiedLogosMap[cleanedName.toUpperCase().trim()] = logosMap[rawName];
 
                 // Si el nombre crudo ya era la versión simplificada, simplemente lo añadimos también
                 simplifiedLogosMap[rawName.toUpperCase().trim()] = logosMap[rawName];
@@ -1515,8 +1481,8 @@
 
             // PASO 3: Cargar Canales en Tiempo Real
             const results = await Promise.allSettled([
-                fetchAndProcessSource('events', EVENTS_URL, loadEventsSource, BACKUP_KEYS.events),
-                fetchAndProcessSource('era', ERA_URL, loadEraChannels, BACKUP_KEYS.era),
+                fetchAndProcessSource('events', EVENTS_URL, processEventsData, BACKUP_KEYS.events),
+                fetchAndProcessSource('era', ERA_URL, processEraData, BACKUP_KEYS.era),
                 // fetchAndProcessSource('gist', GIST_URL, loadGistChannels, BACKUP_KEYS.gist), // ELIMINADO: Gist ya no es fuente de canales
                 fetchProxyContentAndProcess('shickat', SHICKAT_URL, processShickatData, BACKUP_KEYS.shickat),
                 fetchProxyContentAndProcess('elcano', ELCANO_URL, processElcanoDataFromHtml, BACKUP_KEYS.elcano)
@@ -1554,6 +1520,7 @@
                         showStatusMessage("Canales actualizados correctamente.", "success");
                     }
                 } else if (isShowingBackup) {
+                    if (statusElement) statusElement.remove();
                     showStatusMessage("Fallo al actualizar canales. Se sigue mostrando el historial.", "error");
                 } else {
                     tvChannelsGrid.innerHTML = ` <div class="no-results"><div class="no-results-icon">📡</div><div class="no-results-text">Error al cargar los canales.</div><div class="no-results-hint">No se han conseguido cargar los canales (modo offline/sin historial).</div><button class="retry-button" onclick="loadInitialChannels()">Reintentar</button></div> `;
@@ -1569,17 +1536,45 @@
             }
         }
 
-        function normalizeChannelName(name) {
+        // NUEVA FUNCIÓN CENTRAL DE LIMPIEZA
+        function cleanNameAndExtractQuality(rawName) {
+            let name = rawName.replace(/(\(|\)|-->.*$)/g, '').trim(); // Elimina paréntesis y sufijos '-->'
+            let quality = 'SD';
+            let multiAudio = false;
+
+            // 1. Detección y eliminación de calidad/extras
+            const tempName = name.toUpperCase();
+            
+            if (tempName.includes('4K') || tempName.includes('UHD')) quality = 'UHD';
+            else if (tempName.includes('FHD') || tempName.includes('1080')) quality = 'FHD';
+            else if (tempName.includes('HD') || tempName.includes('720')) quality = 'HD';
+            else if (tempName.includes('SD')) quality = 'SD';
+
+            multiAudio = tempName.includes('MULTI');
+
+            // Limpia el nombre de las keywords de calidad, multi-audio y sufijos comunes
+            name = name
+                .replace(/1080P|1080|720|UHD|FHD|HD|SD|MultiAudio|Multi Audio|Multi|multi|4K/gi, '')
+                .replace(/\(ES\)|\(Es\)|(Estable|New Era II|New Loop|New Era VI|BAR|eleven|eventos)/gi, '')
+                .replace(/\s+/g, ' ') // Normaliza espacios
+                .trim();
+
+            // 2. Normalización final de nombres específicos (Eurosport, Teledeporte)
             if (name.includes('Eurosport 1')) {
-                return '★EUROSPORT 1';
+                name = '★EUROSPORT 1';
             } else if (name.includes('Eurosport 2')) {
-                return '★EUROSPORT 2';
+                name = '★EUROSPORT 2';
             } else if (name.includes('Eurosport')) {
-                return '★EUROSPORT 1';
+                name = '★EUROSPORT 1';
             } else if (name.includes('Teledeporte')) {
-                return 'Teledeporte';
+                name = 'Teledeporte';
             }
-            return name;
+
+            return {
+                name,
+                quality: standardizeQuality(quality), // Asegura un formato estándar (4K, FHD, HD, SD)
+                multiAudio
+            };
         }
 
         async function loadGistChannels(infoContent) {
@@ -1588,29 +1583,25 @@
             return [];
         }
 
-        async function loadEraChannels(infoContent) {
-            return processGistData(infoContent).map(c => ({
-                ...c,
-                source: 'era',
-                name: c.name
-            }));
-        }
-
-        function processGistData(infoCanales) {
+        async function processEraData(infoContent) {
             const numberedChannels = [];
-            const lines = infoCanales.split('\n').filter(line => line.trim() !== '');
+            const lines = infoContent.split('\n').filter(line => line.trim() !== '');
+            
+            // --- Mapeos específicos de ERA (anteriormente Gist) ---
             const channelMappings = {
-                'Movistar': 'M+',
+                'MOVISTAR': 'M+',
                 'DAZN LA LIGA 1': 'DAZN La Liga',
                 'LALIGA': 'La Liga',
                 'Premier': 'Premier League',
-                'Eurosport': '★EUROSPORT',
+                'EUROSPORT': '★EUROSPORT',
                 'HYPERMOTION': 'La Liga Hypermotion',
                 'LIGA DE CAMPEONES': 'M+ Liga de Campeones',
                 'PLUS': 'Plus',
                 'VAMOS': 'Vamos',
                 'BALONCESTO 1': 'Baloncesto'
             };
+            // ----------------------------------------------------
+
             for (let i = 0; i < lines.length; i += 2) {
                 const nameLine = lines[i].trim();
                 const idLine = lines[i + 1] ? lines[i + 1].trim() : '';
@@ -1618,41 +1609,26 @@
                     let namePart = nameLine.split('-->')[0].trim().toUpperCase();
                     const acestreamId = idLine.replace(/p$/, '');
                     if (acestreamId.length === 40) {
-                        let quality = 'SD';
-                        let multiAudio = false;
-                        if (namePart.includes('FHD')) {
-                            quality = 'FHD';
-                            namePart = namePart.replace('FHD', '').trim();
-                        } else if (namePart.includes('4K')) {
-                            quality = '4K';
-                            namePart = namePart.replace('4K', '').trim();
-                        } else if (namePart.includes('HD')) {
-                            quality = 'HD';
-                            namePart = namePart.replace('HD', '').trim();
-                        } else if (namePart.includes('SD')) {
-                            quality = 'SD';
-                            namePart = namePart.replace('SD', '').trim();
-                        }
-                        if (namePart.includes('MULTI')) {
-                            multiAudio = true;
-                            namePart = namePart.replace('MULTI', '').trim();
-                        }
-                        namePart = namePart.replace(/\(ES\)|\(Es\)/g, '', ).trim();
+                        
+                        // 1. Aplicar mapeo de nombre específico de ERA
                         let simplifiedName = namePart;
                         for (const key in channelMappings) {
                             if (simplifiedName.includes(key)) {
                                 simplifiedName = simplifiedName.replace(key, channelMappings[key]);
                             }
                         }
-                        simplifiedName = normalizeChannelName(simplifiedName);
+                        
+                        // 2. Limpiar calidad/multi-audio y normalizar
+                        const { name, quality, multiAudio } = cleanNameAndExtractQuality(simplifiedName);
+                        
                         numberedChannels.push({
                             id: acestreamId,
                             number: acestreamId.substring(0, 3),
-                            name: simplifiedName,
+                            name: name,
                             quality: quality,
                             multiAudio: multiAudio,
                             isKnown: true,
-                            source: 'gist'
+                            source: 'era'
                         });
                         trackFirstSeen(acestreamId);
                     }
@@ -1757,6 +1733,8 @@
             const parser = new DOMParser();
             const doc = parser.parseFromString(htmlContent, 'text/html');
             const cards = doc.querySelectorAll('article.canal-card');
+
+            // --- Mapeos específicos de Shickat ---
             const nameMappings = {
                 'Ellas Vamos': 'Ellas',
                 'Movistar': 'M+',
@@ -1767,6 +1745,8 @@
                 'M+ Liga de Campeones': 'M+ Liga de Campeones',
                 'Golf': 'Golf'
             };
+            // ------------------------------------
+
             cards.forEach(card => {
                 const nameElement = card.querySelector('.canal-nombre');
                 const acestreamLinkElement = card.querySelector('.acestream-link');
@@ -1774,16 +1754,9 @@
                     const rawName = nameElement.textContent.trim();
                     const acestreamId = acestreamLinkElement.textContent.trim();
                     if (acestreamId.length === 40) {
-                        let quality = '720p';
+                        
+                        // 1. Aplicar mapeo de nombre específico de Shickat
                         let simplifiedName = rawName;
-                        if (rawName.includes('(HD)')) {
-                            quality = '720p';
-                            simplifiedName = rawName.replace('(HD)', '').trim();
-                        } else if (rawName.includes('(FHD)')) {
-                            quality = '1080p';
-                            simplifiedName = simplifiedName.replace('(FHD)', '').trim();
-                        }
-                        const multiAudio = simplifiedName.includes('MultiAudio');
                         for (const key in nameMappings) {
                             if (simplifiedName.includes(key)) {
                                 simplifiedName = simplifiedName.replace(key, nameMappings[key]);
@@ -1798,11 +1771,14 @@
                         if (simplifiedName.includes('LaLiga')) {
                             simplifiedName = simplifiedName.replace('LaLiga', 'La Liga');
                         }
-                        simplifiedName = normalizeChannelName(simplifiedName);
+                        
+                        // 2. Limpiar calidad/multi-audio y normalizar
+                        const { name, quality, multiAudio } = cleanNameAndExtractQuality(simplifiedName);
+
                         numberedChannels.push({
                             id: acestreamId,
                             number: acestreamId.substring(0, 3),
-                            name: simplifiedName,
+                            name: name,
                             quality: quality,
                             multiAudio: multiAudio,
                             isKnown: true,
@@ -1817,6 +1793,8 @@
 
         function processElcanoData(links) {
             const numberedChannels = [];
+            
+            // --- Mapeos específicos de Elcano ---
             const nameMap = {
                 'M. LaLiga': 'M+ La Liga',
                 'LaLiga Smartbank': 'La Liga Hypermotion',
@@ -1828,17 +1806,14 @@
                 'Dazn': 'DAZN',
                 'Campeones': 'M+ Liga de Campeones'
             };
+            // ------------------------------------
+
             links.forEach(link => {
                 if (link.url && link.url.startsWith('acestream://')) {
                     const acestreamId = link.url.split('://')[1];
-                    let quality = '720p';
-                    let multiAudio = false;
-                    if (link.name.includes('1080')) quality = '1080p';
-                    if (link.name.includes('720')) quality = '720p';
-                    if (link.name.includes('UHD')) quality = 'UHD';
-                    multiAudio = link.name.includes('MultiAudio') || link.name.includes('Multi Audio') || link.name.toLowerCase().includes('multi');
+                    
+                    // 1. Aplicar mapeo de nombre específico de Elcano
                     let simplifiedName = link.name
-                        .replace(/1080P|1080|720|UHD|MultiAudio|Multi Audio|\(.*?\)/g, '')
                         .replace(/\s+/g, ' ')
                         .trim();
                     for (const key in nameMap) {
@@ -1847,11 +1822,15 @@
                             break;
                         }
                     }
-                    simplifiedName = normalizeChannelName(simplifiedName);
+                    
+                    // 2. Limpiar calidad/multi-audio y normalizar
+                    // Pasamos el nombre crudo para que la función central pueda extraer los indicadores de calidad del nombre original
+                    const { name, quality, multiAudio } = cleanNameAndExtractQuality(link.name);
+
                     numberedChannels.push({
                         id: acestreamId,
                         number: acestreamId.substring(0, 3),
-                        name: simplifiedName,
+                        name: name,
                         quality: quality,
                         multiAudio: multiAudio,
                         isKnown: true,
@@ -1922,6 +1901,8 @@
                 return numberedChannels;
             }
             const rows = table.querySelectorAll('tbody tr');
+            
+            // --- Mapeos específicos de Eventos ---
             const channelMappings = {
                 'Movistar': 'M+',
                 'DAZN LA LIGA 1': 'DAZN La Liga',
@@ -1934,6 +1915,8 @@
                 'VAMOS': 'Vamos',
                 'Deportes': 'Deportes'
             };
+            // ------------------------------------
+
             rows.forEach(row => {
                 const cells = row.querySelectorAll('td');
                 if (cells.length >= 6) {
@@ -2010,24 +1993,20 @@
                         links.forEach(link => {
                             const acestreamId = link.href.split('://')[1];
                             let channelName = link.textContent.trim();
+                            
+                            // 1. Aplicar mapeo de nombre específico de Eventos
                             for (const key in channelMappings) {
                                 const regex = new RegExp(key, 'gi');
                                 channelName = channelName.replace(regex, channelMappings[key]);
                             }
-                            let simplifiedName = channelName
-                                .replace(/Estable|New Era II|New Loop|New Era VI|FHD|4K|HD|UHD|MultiAudio|SD|\(.*?\)|-->.*$/g, '')
-                                .replace(/\s+/g, ' ')
-                                .trim();
-                            let quality = '720p';
-                            if (channelName.includes('1080') || channelName.includes('FHD')) quality = '1080p';
-                            if (channelName.includes('UHD') || channelName.includes('4K')) quality = 'UHD';
-                            if (channelName.includes('SD') && !channelName.includes('FHD')) quality = 'SD';
-                            const multiAudio = channelName.includes('Multi') || channelName.includes('multi');
-                            simplifiedName = normalizeChannelName(simplifiedName);
+
+                            // 2. Limpiar calidad/multi-audio y normalizar
+                            const { name, quality, multiAudio } = cleanNameAndExtractQuality(channelName);
+
                             numberedChannels.push({
                                 id: acestreamId,
                                 number: acestreamId.substring(0, 3),
-                                name: simplifiedName,
+                                name: name,
                                 quality: quality,
                                 multiAudio: multiAudio,
                                 isKnown: true,
@@ -2286,8 +2265,8 @@
                 let groupName;
                 let isEventGroup = false;
 
-                // Nueva Lógica de Agrupación: Si el filtro es 'all', agrupamos por marca y forzamos ocultar detalles de evento
-                if (state.tvCurrentFilter === 'all') {
+                // Nueva Lógica de Agrupación: Si el filtro es 'all' o 'search', agrupamos por marca y forzamos ocultar detalles de evento
+                if (state.tvCurrentFilter === 'all' || state.tvCurrentFilter === 'search') {
                     groupName = determineBrandGroup(channel);
                     isEventGroup = false;
                 }
@@ -2296,7 +2275,7 @@
                     groupName = `${channel.event.date}###${channel.event.competition}###${channel.event.match}`;
                     isEventGroup = true;
                 }
-                // Lógica original para otros filtros (incluyendo Live, Favorites, Marcas, y Eventos fuera del filtro 'events_only' o 'all')
+                // Lógica original para otros filtros (incluyendo Live, Marcas, y Eventos fuera del filtro 'events_only' o 'all')
                 else if (channel.source === 'events' && channel.event) {
                     groupName = `${channel.event.date}###${channel.event.competition}###${channel.event.match}`;
                     isEventGroup = true;
@@ -2403,7 +2382,22 @@
             const searchTerm = state.tvSearchTerm.trim().toLowerCase();
             state.searchTerm = state.tvSearchTerm.trim();
 
-            if (searchTerm) {
+            let currentFilter = state.tvCurrentFilter;
+            let currentSportFilter = state.tvSportFilter;
+            let isSearching = false;
+
+            // Si el filtro activo es 'search', o si hay un término de búsqueda, forzar búsqueda.
+            if (currentFilter === 'search' || searchTerm) {
+                isSearching = true;
+                currentFilter = 'all'; // Aplicar búsqueda sobre todos los canales
+            }
+
+            if (currentSportFilter !== 'all') {
+                currentFilter = 'all'; // El filtro de deporte prevalece si no hay búsqueda explícita
+            }
+
+
+            if (isSearching && searchTerm) {
                 filteredChannels = filteredChannels.filter(channel => {
                     const normalizedSearchTerm = normalizeText(searchTerm);
                     const nameMatches = normalizeText(channel.name).includes(normalizedSearchTerm);
@@ -2421,37 +2415,20 @@
                     }
                     return nameMatches || idMatches || eventDetailsMatch;
                 });
-            }
-
-            let currentFilter = state.tvCurrentFilter;
-            let currentSportFilter = state.tvSportFilter;
-
-            if (currentSportFilter !== 'all') {
-                currentFilter = 'all';
-            }
-
-            if (currentFilter === 'events_only') {
+            } else if (currentFilter === 'events_only') {
                 filteredChannels = filteredChannels.filter(c => c.source === 'events');
-            } else if (currentFilter === 'favorites') {
-                filteredChannels = filteredChannels.filter(c => state.favorites.includes(c.id));
             } else if (currentFilter === 'live') {
                 filteredChannels = filteredChannels.filter(c => {
                     const allEventChannels = state.channelsData.filter(ch => ch.source === 'events');
                     return isChannelLive(c, allEventChannels);
                 });
-            } else if (currentFilter !== 'all' && currentFilter !== 'events_only' && currentFilter !== 'live' && currentFilter !== 'favorites') {
+            } else if (currentFilter !== 'all' && currentFilter !== 'events_only' && currentFilter !== 'live' && currentFilter !== 'search') {
                 filteredChannels = filteredChannels.filter(channel => normalizeText(channel.name).includes(normalizeText(currentFilter.replace('+', ''))));
             }
 
             if (currentSportFilter !== 'all') {
                 const normalizedSportFilter = normalizeText(currentSportFilter);
-                const sportSearchTerms = {
-                    'futbol': ['futbol', 'soccer', 'Hypermotion', 'copa del rey', 'premier league', 'bundesliga', 'serie a'],
-                    'baloncesto': ['baloncesto', 'basket', 'nba', 'euroliga'],
-                    'tenis': ['tenis', 'wimbledon', 'roland garros', 'us open', 'atp', 'wta'],
-                    'motorsport': ['gp', 'motogp', 'dakar', 'rally', 'wrc', 'nascar', 'motor'],
-                    'f1': ['f1', 'fórmula 1', 'formula 1', 'formulaone', 'fórmulaone']
-                };
+                const sportSearchTerms = {};
                 let targetTerms = sportSearchTerms[normalizedSportFilter] || [normalizedSportFilter];
                 if (normalizedSportFilter === 'motorsport' && sportSearchTerms['f1']) {
                     targetTerms = targetTerms.concat(sportSearchTerms['f1']);
@@ -2974,7 +2951,7 @@
                                 coloredDateHtml = `<span style="color: var(--primary);">${formattedDate}</span>`;
                             }
                         } else {
-                            // Caso donde formattedDate es solo la fecha (ej. "13/7/25"). Coloreamos la fecha completa.
+                            // Caso donde formattedDate es solo la fecha (ej: "13/7/25"). Coloreamos la fecha completa.
                             coloredDateHtml = `<span style="color: var(--primary);">${formattedDate}</span>`;
                         }
 
@@ -3003,8 +2980,8 @@
                     }
                 } else if (group.name.includes('###')) {
                     // Si el nombre del grupo contiene '###' (grupo de evento renderizado bajo filtro de marca o All)
-                    if (isAllMode) {
-                        // En modo 'all', omitimos los grupos de evento para evitar duplicidad de canales
+                    if (isAllMode || state.tvCurrentFilter === 'search') {
+                        // En modo 'all' o 'search', omitimos los grupos de evento para evitar duplicidad de canales
                         continue;
                     }
 
@@ -3061,8 +3038,8 @@
                 html += `</div>`;
             }
             return html;
-        }
-
+        }        
+        
         function renderTVChannels() {
             const tvGrid = document.getElementById('tvChannelsGrid');
             if (!tvGrid) return;
@@ -3072,9 +3049,36 @@
                 statusContainer.innerHTML = '';
             }
 
-            const previouslyFocusedElement = state.tvFocusManager ? state.tvFocusManager.currentFocus : null;
+            // MODIFICACIÓN CLAVE 1: Obtener el campo de búsqueda y guardar el foco y la posición del cursor
+            const searchInput = document.getElementById('globalSearchInput');
+            let isFocused = false;
+            let cursorStart = 0;
+            let cursorEnd = 0;
+
+            if (searchInput && document.activeElement === searchInput) {
+                isFocused = true;
+                cursorStart = searchInput.selectionStart;
+                cursorEnd = searchInput.selectionEnd;
+            }
 
             restoreTVFilterUI();
+
+            // MODIFICACIÓN CLAVE 2: Mostrar/Ocultar y configurar el contenedor de búsqueda (NO LO RECREAMOS)
+            const searchContainer = document.getElementById('searchContainer');
+            const isSearchFilter = state.tvCurrentFilter === 'search';
+
+            if (isSearchFilter) {
+                searchContainer.style.display = 'flex'; // Mostrar contenedor
+                searchInput.value = state.tvSearchTerm; // Asegurar el valor (aunque el listener de input ya lo hace)
+                // Si estaba enfocado antes de renderizar, restaurar el foco y el cursor
+                if (isFocused) {
+                    searchInput.focus();
+                    searchInput.setSelectionRange(cursorStart, cursorEnd);
+                }
+            } else {
+                searchContainer.style.display = 'none'; // Ocultar contenedor
+            }
+
 
             const {
                 groups,
@@ -3091,37 +3095,37 @@
 
             attachTVCardEvents();
 
+            // Lógica de Focus Manager (mantenida por completitud, pero la restauración de búsqueda ya está arriba)
             if (state.tvFocusManager) {
                 state.tvFocusManager.updateFocusableElements();
 
-                const tvSearch = document.getElementById('tvSearch');
+                // Si no es el modo búsqueda y hay que restaurar el foco a otros elementos...
+                if (!isSearchFilter) {
+                    const previouslyFocusedElement = state.tvFocusManager.currentFocus;
+                    // Prioridad 2: Mantener el foco si estaba en un elemento aún presente (e.g., botón de ajustes).
+                    if (previouslyFocusedElement && document.body.contains(previouslyFocusedElement)) {
+                        state.tvFocusManager.setFocus(previouslyFocusedElement);
+                        return;
+                    }
 
-                // Prioridad 1: Mantener el foco si el usuario estaba escribiendo en la búsqueda.
-                if (previouslyFocusedElement === tvSearch || (tvSearch && document.activeElement === tvSearch)) {
-                    state.tvFocusManager.setFocus(tvSearch);
-                    return;
+                    // Prioridad 3 (NUEVO): Enfocar el filtro activo en la barra lateral.
+                    let elementToFocus = null;
+                    const activeSportFilterLink = document.querySelector(`.tv-nav-link.sport-filter.tv-sidebar-link-focused`);
+                    const activeBrandLink = document.querySelector(`.tv-nav-link[data-filter="${state.tvCurrentFilter}"].tv-sidebar-link-focused`);
+
+                    elementToFocus = activeSportFilterLink || activeBrandLink;
+
+                    if (elementToFocus) {
+                        state.tvFocusManager.setFocus(elementToFocus);
+                        return;
+                    }
+
+                    // Fallback: Enfocar 'Todos'
+                    state.tvFocusManager.setFocus(document.querySelector('.tv-nav-link[data-filter="all"]'));
+                } else if (isFocused) {
+                    // Si estamos en modo búsqueda, aseguramos que el focus manager no se interfiera si ya restauramos el foco
+                    state.tvFocusManager.setFocus(searchInput);
                 }
-
-                // Prioridad 2: Mantener el foco si estaba en un elemento aún presente (e.g., botón de ajustes).
-                if (previouslyFocusedElement && document.body.contains(previouslyFocusedElement)) {
-                    state.tvFocusManager.setFocus(previouslyFocusedElement);
-                    return;
-                }
-
-                // Prioridad 3 (NUEVO): Enfocar el filtro activo en la barra lateral.
-                let elementToFocus = null;
-                const activeSportFilterLink = document.querySelector(`.tv-nav-link.sport-filter.tv-sidebar-link-focused`);
-                const activeBrandLink = document.querySelector(`.tv-nav-link[data-filter="${state.tvCurrentFilter}"].tv-sidebar-link-focused`);
-
-                elementToFocus = activeSportFilterLink || activeBrandLink;
-
-                if (elementToFocus) {
-                    state.tvFocusManager.setFocus(elementToFocus);
-                    return;
-                }
-
-                // Fallback: Enfocar 'Todos'
-                state.tvFocusManager.setFocus(document.querySelector('.tv-nav-link[data-filter="all"]'));
             }
         }
         const attachTVCardEvents = () => {
@@ -3134,30 +3138,6 @@
                 if (optionsButton) {
                     optionsButton.removeEventListener('click', handleTVCardOptionsClick);
                     optionsButton.addEventListener('click', handleTVCardOptionsClick);
-                }
-
-                // Si el botón está oculto, asociamos el evento de opciones al clic de la tarjeta, 
-                // pero SÓLO si el clic no es un "play" normal (e.g., el clic en la esquina inferior derecha)
-                if (state.hideOptionsButton) {
-                    card.removeEventListener('auxiliaryclick', handleTVCardOptionsClick);
-                    // Usamos un nombre de evento auxiliar o una comprobación de coordenadas, 
-                    // pero para simplificar y cumplir con el requisito de "sigue funcionando si pulsas" en el área del botón:
-                    // Dejamos que el clic principal dispare play (handleTVCardPlay)
-                    // y la funcionalidad del botón la asociamos con un clic secundario (por ejemplo, doble clic o clic derecho, si no usáramos un control remoto).
-                    // Para el propósito del TV-Mode (navegación con flechas/Enter), el botón sigue siendo seleccionable, y el clic principal de la tarjeta es para "Play".
-
-                    // Si el requisito es que la tarjeta haga Play en cualquier lado, pero el clic **en el área del botón** abra las opciones:
-                    // Necesitaríamos una lógica de coordenadas. Para el modo TV, lo más sencillo es que el **Enter** en la tarjeta haga Play, y un **botón dedicado** haga Opciones.
-                    // Ya que el botón existe (`.tv-link-button`), y se hace invisible con CSS, si el botón tiene un `click` listener, este se disparará si el usuario logra hacer clic exactamente en el área *invisible* del botón.
-
-                    // La solución más simple y robusta para este caso de uso (botón invisible con funcionalidad) es dejar que el evento del botón se capture *solamente* por el botón.
-                    // Si el usuario hace clic en el área visible de la tarjeta, se dispara `handleTVCardPlay`.
-                    // Si el usuario logra hacer clic exactamente en el área invisible del botón, se dispara `handleTVCardOptionsClick` (porque el botón tiene `visibility: hidden`, no `display: none`).
-
-                    // Ya que `handleTVCardPlay` tiene `if (e.target.closest('.tv-link-button')) { return; }`, 
-                    // si el botón es clicado, el evento se propaga al botón, se dispara `handleTVCardOptionsClick`, y `handleTVCardPlay` se detiene.
-
-                    // Con `visibility: hidden` aplicado por CSS, la funcionalidad es correcta sin más cambios en JS.
                 }
             });
         };
@@ -3241,9 +3221,7 @@
             const lastPlayedId = state.lastPlayedByChannel[mainChannelName.trim().toLowerCase()];
 
             const renderOptionItem = (option) => {
-                const isFavorite = state.favorites.includes(option.id);
-                const favoriteIcon = isFavorite ? '★' : '☆';
-                const favoriteClass = isFavorite ? 'is-favorite' : 'is-not-favorite';
+                // ELIMINADO: Lógica de favoritos y el botón de estrella
 
                 const isLastViewed = option.id === lastPlayedId;
                 const lastViewedIndicator = isLastViewed ? '<span class="last-viewed-indicator" title="Último AceStream reproducido para este canal">👁️</span>' : '';
@@ -3277,12 +3255,12 @@
                         sourceBadgeClass = 'channel-name-color';
                 }
 
+                // MODIFICADO: Eliminado el botón de favoritos del HTML
                 return `
                     <div class="channel-option-item" data-id="${option.id}" onclick="handleChannelPlay({ id: '${option.id}', name: '${mainChannelName.replace(/'/g, "\\'")}' })">
                         <div class="channel-option-name-container">
-                            <button class="favorite-toggle-btn ${favoriteClass}" onclick="event.stopPropagation(); toggleFavorite('${option.id}')" title="${isFavorite ? 'Quitar de favoritos' : 'Añadir a favoritos'}">${favoriteIcon}</button>
                             ${lastViewedIndicator}
-                            <span class="channel-option-name" style="max-width: 60%;">${option.name}</span>
+                            <span class="channel-option-name">${option.name}</span>
                         </div>
                         <div class="channel-option-details">
                             <span style="font-weight: 700; color: var(--primary);">${option.quality}</span>
@@ -3328,6 +3306,27 @@
             document.getElementById('tvChannelOptionsModal').classList.remove('modal--active');
         }
 
+        function setupSearchInputListener() {
+            const searchInput = document.getElementById('globalSearchInput');
+            if (searchInput) {
+                searchInput.removeEventListener('input', handleSearchInput); // Evitar duplicados
+                searchInput.addEventListener('input', handleSearchInput);
+            }
+        }
+
+        // Nueva función para manejar el input de búsqueda
+        function handleSearchInput(e) {
+            state.tvSearchTerm = e.target.value;
+            // Asegurar que el filtro de búsqueda está activo y el de deporte inactivo
+            state.tvCurrentFilter = 'search';
+            state.tvSportFilter = 'all'; 
+            localStorage.setItem('tvCurrentFilter', 'search');
+            localStorage.setItem('tvSportFilter', 'all');
+            
+            // Renderiza la lista de canales sin recrear el input de búsqueda
+            renderTVChannels();
+        }
+
         function initializeTVMode() {
             // Asignar eventos de la barra lateral
             document.querySelectorAll('#tvSidebar .tv-nav-link').forEach(link => {
@@ -3342,15 +3341,7 @@
                     }
                 });
             });
-            document.getElementById('tvSearch').addEventListener('input', (e) => {
-                state.tvSearchTerm = e.target.value;
-                state.tvCurrentFilter = 'all'; // Desactiva el filtro de marca si se busca
-                state.tvSportFilter = 'all'; // Desactiva el filtro de deporte si se busca
-                localStorage.setItem('tvCurrentFilter', 'all');
-                localStorage.setItem('tvSportFilter', 'all');
-                renderTVChannels();
-            });
-
+            
             // Asignar eventos del modal de ajustes y copiado
             document.getElementById('settingsModeBtn').addEventListener('click', () => {
                 document.getElementById('settingsModal').classList.add('modal--active');
@@ -3390,7 +3381,10 @@
             });
 
             // Aplicar color principal inicial
-            changePrimaryColor(state.primaryColor);
+            changePrimaryColor(state.primaryColor);            
+            
+            // **MODIFICACIÓN CLAVE**: Adjuntar el listener de búsqueda solo una vez al iniciar
+            setupSearchInputListener();
 
             // Cargar datos y renderizar
             loadInitialChannels();

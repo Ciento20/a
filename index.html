@@ -509,7 +509,7 @@
             flex-direction: column;
             justify-content: center;
             /* Transiciones suaves */
-            transition: all 0.3s ease-in-out; 
+            transition: all 0.3s ease-in-out;
         }
 
         #tvSidebar .sidebar-logo {
@@ -615,7 +615,7 @@
             display: flex;
             flex-direction: column;
             /* Transiciones suaves */
-            transition: all 0.3s ease-in-out; 
+            transition: all 0.3s ease-in-out;
         }
 
         /* MEDIA QUERY PARA ORIENTACIÓN VERTICAL */
@@ -637,48 +637,58 @@
             }
 
             #tvSidebar .sidebar-logo {
-                display: none; /* Ocultar el logo en modo vertical para ahorrar espacio */
+                display: none;
+                /* Ocultar el logo en modo vertical para ahorrar espacio */
             }
-            
-            #tvSidebar > div:first-child {
+
+            /* Contenedor de navegación principal (primer div) */
+            #tvSidebar>div:first-child {
                 display: flex;
                 align-items: center;
                 flex-grow: 1;
+                /* Ocupa todo el espacio disponible */
                 justify-content: space-around;
+                /* Distribuye los elementos */
             }
-            
+
             #tvSidebar nav {
                 width: 100%;
                 margin: 0;
             }
-            
+
             #tvSidebar ul {
                 display: flex;
                 flex-direction: row;
                 justify-content: space-around;
                 width: 100%;
             }
-            
+
             #tvSidebar li {
                 margin: 0 !important;
                 flex: 1;
+                /* Hace que los botones ocupen el mismo ancho */
                 text-align: center;
             }
-            
+
             #tvSidebar .tv-nav-link {
                 padding: 2px 0;
-                font-size: 0.35rem; /* Reducir tamaño de fuente */
+                font-size: 0.35rem;
+                /* Reducir tamaño de fuente */
             }
 
             #tvSidebar .tv-nav-link span {
-                font-size: 0.5rem !important; /* Reducir tamaño del icono */
+                font-size: 0.5rem !important;
+                /* Reducir tamaño del icono */
             }
 
             #tvMainContent {
-                margin-left: 0; /* Eliminar margen lateral */
-                margin-bottom: 50px; /* Añadir margen inferior igual a la altura de la barra */
+                margin-left: 0;
+                /* Eliminar margen lateral */
+                margin-bottom: 50px;
+                /* Añadir margen inferior igual a la altura de la barra */
                 min-height: calc(100vh - 50px);
-                padding: 0.75rem; /* Ajustar padding */
+                padding: 0.75rem;
+                /* Ajustar padding */
             }
 
             /* Asegurar que el contenedor de búsqueda se vea bien */
@@ -687,9 +697,9 @@
                 flex-direction: row;
                 align-items: center;
             }
-            
+
             #searchContainer span {
-                 margin-right: 5px;
+                margin-right: 5px;
             }
 
             #globalSearchInput {
@@ -697,10 +707,9 @@
                 font-size: 0.7rem !important;
             }
         }
-        
-        
-        
-        
+
+
+
 
         .tv-card {
             min-width: 150px;
@@ -720,7 +729,7 @@
             transition: transform 0.3s ease-in-out, border-color 0.3s ease-in-out;
             /* MODIFICACIÓN CLAVE: Tamaño y posición del logo (icono) */
             background-size: 80% auto;
-            background-position: center 30px; 
+            background-position: center 30px;
             background-repeat: no-repeat;
             box-shadow: 0 2px 7.5px rgba(0, 0, 0, 0.4);
         }
@@ -968,20 +977,24 @@
         <div>
             <nav>
                 <ul style="list-style:none;padding:0;margin:0">
-                    <li style="margin-bottom:.2rem"><a href="#" class="tv-nav-link" data-filter="search"
-                            tabindex="0"> <span>🔍</span>Buscar</a></li>                    <li style="margin-bottom:.25rem"><a href="#" class="tv-nav-link" data-filter="events_only"
+                    <li style="margin-bottom:.25rem"><a href="#" id="settingsModeBtn" class="tv-nav-link"
+                            tabindex="0"> <span>⚙️</span> Ajustes </a></li>
+                    <li style="margin-bottom:.25rem"><a href="#" class="tv-nav-link" data-filter="events_only"
                             tabindex="0"><span>📅</span> Eventos </a></li>
-                    <li style="margin-bottom:.25rem"><a href="#" id="settingsModeBtn" class="tv-nav-link" tabindex="0"> <span>⚙️</span> Ajustes </a></li>
-                </ul>
+                    <li style="margin-bottom:.2rem"><a href="#" class="tv-nav-link" data-filter="search"
+                            tabindex="0"> <span>🔍</span>Buscar</a></li>
+                    </ul>
             </nav>
         </div>
         <div id="tvBottomNav"></div>
     </aside>
     <main id="tvMainContent">
         <div id="tvStatusMessageContainer" style="margin-bottom:.75rem"></div>
-        <div id="searchContainer" style="display: none; margin-bottom: 0.75rem; padding: 0.5rem 0.75rem; background: #222222; border-radius: 6px; align-items: center; border: 1px solid #383838;">
+        <div id="searchContainer"
+            style="display: none; margin-bottom: 0.75rem; padding: 0.5rem 0.75rem; background: #222222; border-radius: 6px; align-items: center; border: 1px solid #383838;">
             <span style="font-size: 0.75rem; color: #e0e0e0; margin-right: 10px;">🔍 Buscar :</span>
-            <input type="text" id="globalSearchInput" placeholder="Escribe para buscar un canal o evento..." style="flex-grow: 1; padding: 8px 12px; border-radius: 4px; font-size: 0.75rem; box-sizing: border-box; background-color: #383838; color: #ffffff; border: 0.5px solid #555555; box-shadow: none;">
+            <input type="text" id="globalSearchInput" placeholder="Escribe para buscar un canal o evento..."
+                style="flex-grow: 1; padding: 8px 12px; border-radius: 4px; font-size: 0.75rem; box-sizing: border-box; background-color: #383838; color: #ffffff; border: 0.5px solid #555555; box-shadow: none;">
         </div>
         <h1 style="color:white;margin-top:0"></h1>
         <div class="tv-channels-grid" id="tvChannelsGrid"></div>
@@ -1220,24 +1233,24 @@
                 if (filter === 'search') {
                     // Si se pulsa 'Buscar', activa el filtro de búsqueda y limpia el término si ya estaba activo.
                     if (state.tvCurrentFilter !== 'search') {
-                         state.tvCurrentFilter = 'search';
-                         localStorage.setItem('tvCurrentFilter', 'search');
-                         state.tvSearchTerm = ''; // Limpiar el término anterior al entrar en modo búsqueda
-                         updateNeeded = true;
+                        state.tvCurrentFilter = 'search';
+                        localStorage.setItem('tvCurrentFilter', 'search');
+                        state.tvSearchTerm = ''; // Limpiar el término anterior al entrar en modo búsqueda
+                        updateNeeded = true;
                     } else if (state.tvSearchTerm) {
-                         state.tvSearchTerm = ''; // Si ya está en modo búsqueda y tiene término, limpiarlo
-                         updateNeeded = true;
+                        state.tvSearchTerm = ''; // Si ya está en modo búsqueda y tiene término, limpiarlo
+                        updateNeeded = true;
                     } else {
-                         state.tvCurrentFilter = 'all'; // Si ya está en modo búsqueda y no hay término, volver a 'all'
-                         localStorage.setItem('tvCurrentFilter', 'all');
-                         updateNeeded = true;
+                        state.tvCurrentFilter = 'all'; // Si ya está en modo búsqueda y no hay término, volver a 'all'
+                        localStorage.setItem('tvCurrentFilter', 'all');
+                        updateNeeded = true;
                     }
                 } else if (state.tvCurrentFilter !== filter) {
                     state.tvCurrentFilter = filter;
                     localStorage.setItem('tvCurrentFilter', filter);
                     // Si se cambia a otro filtro, limpiar el término de búsqueda y desactivar modo búsqueda
                     if (filter !== 'search') {
-                         state.tvSearchTerm = '';
+                        state.tvSearchTerm = '';
                     }
                     updateNeeded = true;
                 } else if (filter === 'all' || filter === 'live' || filter === 'events_only') {
@@ -1263,7 +1276,8 @@
                     state.tvCurrentFilter = 'all';
                     localStorage.setItem('tvCurrentFilter', 'all');
                 }
-            }            if (updateNeeded) {
+            }
+            if (updateNeeded) {
                 renderTVChannels();
                 // NUEVA LÓGICA: Enfocar el cuadro de búsqueda si el filtro 'search' está activo
                 if (state.tvCurrentFilter === 'search') {
@@ -1457,7 +1471,9 @@
                 let simplifiedName = rawName;
 
                 // Aplicar la normalización que se hace en cleanNameAndExtractQuality (solo para Eurosport/Teledeporte)
-                const { name: cleanedName } = cleanNameAndExtractQuality(rawName);
+                const {
+                    name: cleanedName
+                } = cleanNameAndExtractQuality(rawName);
                 simplifiedLogosMap[cleanedName.toUpperCase().trim()] = logosMap[rawName];
 
                 // Si el nombre crudo ya era la versión simplificada, simplemente lo añadimos también
@@ -1587,7 +1603,7 @@
 
             // 1. Detección y eliminación de calidad/extras
             const tempName = name.toUpperCase();
-            
+
             if (tempName.includes('4K') || tempName.includes('UHD')) quality = 'UHD';
             else if (tempName.includes('FHD') || tempName.includes('1080')) quality = 'FHD';
             else if (tempName.includes('HD') || tempName.includes('720')) quality = 'HD';
@@ -1629,7 +1645,7 @@
         async function processEraData(infoContent) {
             const numberedChannels = [];
             const lines = infoContent.split('\n').filter(line => line.trim() !== '');
-            
+
             // --- Mapeos específicos de ERA (anteriormente Gist) ---
             const channelMappings = {
                 'MOVISTAR': 'M+',
@@ -1652,7 +1668,7 @@
                     let namePart = nameLine.split('-->')[0].trim().toUpperCase();
                     const acestreamId = idLine.replace(/p$/, '');
                     if (acestreamId.length === 40) {
-                        
+
                         // 1. Aplicar mapeo de nombre específico de ERA
                         let simplifiedName = namePart;
                         for (const key in channelMappings) {
@@ -1660,10 +1676,14 @@
                                 simplifiedName = simplifiedName.replace(key, channelMappings[key]);
                             }
                         }
-                        
+
                         // 2. Limpiar calidad/multi-audio y normalizar
-                        const { name, quality, multiAudio } = cleanNameAndExtractQuality(simplifiedName);
-                        
+                        const {
+                            name,
+                            quality,
+                            multiAudio
+                        } = cleanNameAndExtractQuality(simplifiedName);
+
                         numberedChannels.push({
                             id: acestreamId,
                             number: acestreamId.substring(0, 3),
@@ -1797,7 +1817,7 @@
                     const rawName = nameElement.textContent.trim();
                     const acestreamId = acestreamLinkElement.textContent.trim();
                     if (acestreamId.length === 40) {
-                        
+
                         // 1. Aplicar mapeo de nombre específico de Shickat
                         let simplifiedName = rawName;
                         for (const key in nameMappings) {
@@ -1814,9 +1834,13 @@
                         if (simplifiedName.includes('LaLiga')) {
                             simplifiedName = simplifiedName.replace('LaLiga', 'La Liga');
                         }
-                        
+
                         // 2. Limpiar calidad/multi-audio y normalizar
-                        const { name, quality, multiAudio } = cleanNameAndExtractQuality(simplifiedName);
+                        const {
+                            name,
+                            quality,
+                            multiAudio
+                        } = cleanNameAndExtractQuality(simplifiedName);
 
                         numberedChannels.push({
                             id: acestreamId,
@@ -1836,7 +1860,7 @@
 
         function processElcanoData(links) {
             const numberedChannels = [];
-            
+
             // --- Mapeos específicos de Elcano ---
             const nameMap = {
                 'M. LaLiga': 'M+ La Liga',
@@ -1854,7 +1878,7 @@
             links.forEach(link => {
                 if (link.url && link.url.startsWith('acestream://')) {
                     const acestreamId = link.url.split('://')[1];
-                    
+
                     // 1. Aplicar mapeo de nombre específico de Elcano
                     let simplifiedName = link.name
                         .replace(/\s+/g, ' ')
@@ -1865,10 +1889,14 @@
                             break;
                         }
                     }
-                    
+
                     // 2. Limpiar calidad/multi-audio y normalizar
                     // Pasamos el nombre crudo para que la función central pueda extraer los indicadores de calidad del nombre original
-                    const { name, quality, multiAudio } = cleanNameAndExtractQuality(link.name);
+                    const {
+                        name,
+                        quality,
+                        multiAudio
+                    } = cleanNameAndExtractQuality(link.name);
 
                     numberedChannels.push({
                         id: acestreamId,
@@ -1944,7 +1972,7 @@
                 return numberedChannels;
             }
             const rows = table.querySelectorAll('tbody tr');
-            
+
             // --- Mapeos específicos de Eventos ---
             const channelMappings = {
                 'Movistar': 'M+',
@@ -2036,7 +2064,7 @@
                         links.forEach(link => {
                             const acestreamId = link.href.split('://')[1];
                             let channelName = link.textContent.trim();
-                            
+
                             // 1. Aplicar mapeo de nombre específico de Eventos
                             for (const key in channelMappings) {
                                 const regex = new RegExp(key, 'gi');
@@ -2044,7 +2072,11 @@
                             }
 
                             // 2. Limpiar calidad/multi-audio y normalizar
-                            const { name, quality, multiAudio } = cleanNameAndExtractQuality(channelName);
+                            const {
+                                name,
+                                quality,
+                                multiAudio
+                            } = cleanNameAndExtractQuality(channelName);
 
                             numberedChannels.push({
                                 id: acestreamId,
@@ -2306,7 +2338,7 @@
             const eventGroupKeysByChannelName = new Map();
             sortedChannels.forEach(channel => {
                 let groupName;
-                let isEventGroup = false;                // Nueva Lógica de Agrupación: Si el filtro es 'all' O ('search' Y NO es evento), agrupamos por marca y forzamos ocultar detalles de evento
+                let isEventGroup = false; // Nueva Lógica de Agrupación: Si el filtro es 'all' O ('search' Y NO es evento), agrupamos por marca y forzamos ocultar detalles de evento
                 if (state.tvCurrentFilter === 'all' || (state.tvCurrentFilter === 'search' && channel.source !== 'events')) {
                     groupName = determineBrandGroup(channel);
                     isEventGroup = false;
@@ -2446,14 +2478,15 @@
 
             if (currentSportFilter !== 'all') {
                 currentFilter = 'all'; // El filtro de deporte prevalece si no hay búsqueda explícita
-            }            if (isSearching) {
+            }
+            if (isSearching) {
                 filteredChannels = filteredChannels.filter(channel => {
                     // Si el filtro de búsqueda está activo pero el término está vacío,
                     // solo mostramos canales que NO sean de eventos.
                     if (searchTerm === '') {
                         return channel.source !== 'events';
                     }
-                    
+
                     // Lógica de búsqueda normal si hay un término
                     const normalizedSearchTerm = normalizeText(searchTerm);
                     const nameMatches = normalizeText(channel.name).includes(normalizedSearchTerm);
@@ -2844,7 +2877,7 @@
             document.documentElement.style.setProperty('--primary', color);
             document.documentElement.style.setProperty('--primary-dark', color === '#2563eb' ? '#1e50c7' : color);
             updatePrimaryLightColor();
-            document.querySelectorAll('.color-option').forEach(btn => {
+            document.querySelectorAll('.color-picker .color-option').forEach(btn => {
                 btn.classList.remove('active');
             });
             document.querySelector(`.color-option[data-color="${color}"]`).classList.add('active');
@@ -2924,9 +2957,9 @@
 
             // Aplicar foco al botón de ajustes si es necesario (ej: al cerrar el modal de ajustes)
             const settingsBtn = document.getElementById('settingsModeBtn');
-            if(settingsBtn) {
-                 settingsBtn.classList.remove('tv-sidebar-link-focused'); // Limpiar por si acaso
-                 // Se puede añadir lógica si queremos que el botón de ajustes retenga el foco visualmente.
+            if (settingsBtn) {
+                settingsBtn.classList.remove('tv-sidebar-link-focused'); // Limpiar por si acaso
+                // Se puede añadir lógica si queremos que el botón de ajustes retenga el foco visualmente.
             }
         }
 
@@ -2943,14 +2976,15 @@
             if (channel.name.includes('DAZN') && !channel.name.includes('F1')) bgColor = '#2d2d2d';
             else if (channel.name.includes('DAZN F1')) bgColor = '#2d2d2d';
             else if (channel.name.includes('M+')) bgColor = '#2d2d2d';
-            else if (channel.name.includes('EUROSPORT')) bgColor = '#2d2d2d';            // 2. Aplicar el logo si está disponible
+            else if (channel.name.includes('EUROSPORT')) bgColor = '#2d2d2d'; // 2. Aplicar el logo si está disponible
             if (logoUrl) {
                 // Si hay logo, el fondo es el logo y el color de marca.
                 backgroundStyle = `background: ${bgColor} url('${logoUrl}') center center / 80% auto no-repeat;`;
             } else {
                 // Si no hay logo, el fondo es solo el color de marca
                 backgroundStyle = `background: ${bgColor};`;
-            }            let channelNameHTML = '';
+            }
+            let channelNameHTML = '';
             // MODIFICACIÓN CLAVE: Si NO hay logo, hacemos visible el nombre del canal centrado en el card.
             if (!logoUrl) {
                 channelNameHTML = `<div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 5px;"><h3 style="font-size: 0.6rem; font-weight: 700; color: white; white-space: normal; margin: 0; text-align: center; display: block;">${channel.displayableName}</h3></div>`;
@@ -3101,8 +3135,8 @@
                 html += `</div>`;
             }
             return html;
-        }        
-        
+        }
+
         function renderTVChannels() {
             const tvGrid = document.getElementById('tvChannelsGrid');
             if (!tvGrid) return;
@@ -3382,10 +3416,10 @@
             state.tvSearchTerm = e.target.value;
             // Asegurar que el filtro de búsqueda está activo y el de deporte inactivo
             state.tvCurrentFilter = 'search';
-            state.tvSportFilter = 'all'; 
+            state.tvSportFilter = 'all';
             localStorage.setItem('tvCurrentFilter', 'search');
             localStorage.setItem('tvSportFilter', 'all');
-            
+
             // Renderiza la lista de canales sin recrear el input de búsqueda
             renderTVChannels();
         }
@@ -3404,7 +3438,7 @@
                     }
                 });
             });
-            
+
             // Asignar eventos del modal de ajustes y copiado
             document.getElementById('settingsModeBtn').addEventListener('click', (e) => {
                 e.preventDefault(); // Evitar navegación si es un <a>
@@ -3445,8 +3479,8 @@
             });
 
             // Aplicar color principal inicial
-            changePrimaryColor(state.primaryColor);            
-            
+            changePrimaryColor(state.primaryColor);
+
             // **MODIFICACIÓN CLAVE**: Adjuntar el listener de búsqueda solo una vez al iniciar
             setupSearchInputListener();
 

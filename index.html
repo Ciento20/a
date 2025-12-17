@@ -641,16 +641,28 @@
                 flex: 1;
                 display: flex;
                 justify-content: center;
+                align-items: stretch;
+                height: 100%;
             }
 
             #tvSidebar .tv-nav-link {
-                padding: 2px 0;
-                font-size: 0.35rem;
+                padding: 0;
+                font-size: 0.45rem;
                 width: 100%;
+                height: 100%;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
                 text-align: center;
+                gap: 2px;
             }
 
-            #tvSidebar .tv-nav-link span { font-size: 0.5rem !important; }
+            #tvSidebar .tv-nav-link span {
+                font-size: 0.7rem !important;
+                margin-bottom: 0 !important;
+                pointer-events: none;
+            }
 
             #tvMainContent {
                 margin-left: 0;
@@ -951,8 +963,8 @@
         <div id="tvStatusMessageContainer" style="margin-bottom:.75rem"></div>
         <div id="searchContainer"
             style="display: none; margin-bottom: 0.75rem; padding: 0.5rem 0.75rem; background: #222222; border-radius: 6px; align-items: center; border: 1px solid #383838;">
-            <span style="font-size: 0.75rem; color: #e0e0e0; margin-right: 10px;">🔍 Buscar :</span>
-            <input type="text" id="globalSearchInput" placeholder="Escribe para buscar un canal o evento..."
+            <span style="font-size: 0.75rem; color: #e0e0e0; margin-right: 10px;">   🔍   </span>
+            <input type="text" id="globalSearchInput" placeholder="Escribe para buscar"
                 style="flex-grow: 1; padding: 8px 12px; border-radius: 4px; font-size: 0.75rem; box-sizing: border-box; background-color: #383838; color: #ffffff; border: 0.5px solid #555555; box-shadow: none;">
         </div>
         <h1 style="color:white;margin-top:0"></h1>

@@ -1120,20 +1120,11 @@
             let updateNeeded = false;
             if (type === 'brand') {
                 if (filter === 'search') {
-                    // Si se pulsa 'Buscar', activa el filtro de búsqueda y limpia el término si ya estaba activo.
-                    if (state.tvCurrentFilter !== 'search') {
-                        state.tvCurrentFilter = 'search';
-                        localStorage.setItem('tvCurrentFilter', 'search');
-                        state.tvSearchTerm = ''; // Limpiar el término anterior al entrar en modo búsqueda
-                        updateNeeded = true;
-                    } else if (state.tvSearchTerm) {
-                        state.tvSearchTerm = ''; // Si ya está en modo búsqueda y tiene término, limpiarlo
-                        updateNeeded = true;
-                    } else {
-                        state.tvCurrentFilter = 'all'; // Si ya está en modo búsqueda y no hay término, volver a 'all'
-                        localStorage.setItem('tvCurrentFilter', 'all');
-                        updateNeeded = true;
-                    }
+                    // Siempre activa el modo búsqueda al pulsar el botón, sin alternar el cierre
+                    state.tvCurrentFilter = 'search';
+                    localStorage.setItem('tvCurrentFilter', 'search');
+                    // Si ya había un término, lo mantenemos; si no, aseguramos que esté listo
+                    updateNeeded = true;
                 } else if (state.tvCurrentFilter !== filter) {
                     state.tvCurrentFilter = filter;
                     localStorage.setItem('tvCurrentFilter', filter);
@@ -1588,13 +1579,9 @@
             for (const proxy of PROXIES) {
                 try {
                     const proxyUrl = proxy + encodeURIComponent(url);
-                    const controller = new AbortController();
-                    const timeoutId = setTimeout(() => controller.abort(), 15000);
-
                     const response = await fetch(proxyUrl, {
-                        signal: controller.signal
+                        signal: AbortSignal.timeout(15000)
                     });
-                    clearTimeout(timeoutId);
 
                     if (!response.ok) throw new Error(`Proxy ${proxy} responded with ${response.status}`);
 

@@ -851,7 +851,10 @@
             transform: scale(1.05);
         }
 
-        /* ELIMINADO: .favorite-toggle-btn */
+        
+
+        /* ESTILOS DE LIMPIEZA */
+        .favorite-toggle-btn, .fav-active { display: none !important; }
 
         /* ESTILOS PARA EL MENSAJE DE NO RESULTADOS */
         .no-results-container {
@@ -1038,13 +1041,9 @@
     </div>
     <script>
         const state = {
-            allChannels: [],
             channelsData: [],
-            // ELIMINADO: favorites: JSON.parse(localStorage.getItem('favorites')) || [],
             channelHistory: JSON.parse(localStorage.getItem('channelHistory')) || {},
             currentChannel: null,
-            clearButtonClickCount: 0,
-            lastClearButtonClickTime: 0,
             elcanoRetries: 0,
             eventsRetries: 0,
             primaryColor: localStorage.getItem('primaryColor') || '#2563eb',
@@ -1052,7 +1051,6 @@
             lastChannelPlay: JSON.parse(localStorage.getItem('lastChannelPlay')) || null,
             firstSeen: JSON.parse(localStorage.getItem('firstSeen')) || {},
             hideEventDetails: localStorage.getItem('hideEventDetails') === 'true',
-            // MODIFICADO: El filtro por defecto es 'all', y 'search' reemplaza 'favorites'
             tvCurrentFilter: localStorage.getItem('tvCurrentFilter') || 'all',
             tvSportFilter: localStorage.getItem('tvSportFilter') || 'all',
             tvSearchTerm: '',
@@ -1108,7 +1106,7 @@
         const BACKUP_EXPIRY_HOURS = 480;
         const HISTORY_EXPIRY_HOURS = 168;
         // MODIFICADO: 'favorites' cambiado a 'search'
-        const TV_BRAND_FILTER_KEYS = ['all', 'events_only', 'live', 'search', 'dazn', 'm+', 'eurosport'];
+        const TV_BRAND_FILTER_KEYS = ['all', 'events_only', 'live', 'search', 'dazn', 'm+', 'eurosport']; // Favoritos eliminado
         const TV_SPORT_FILTER_KEYS = [];
         const OTHER_SUBGROUPS = ['LIGA ENDESA', 'CANAL DE TENIS', 'SUPERTENNIS', 'BUNDESLIGA', 'PRIMERA FEDERACIÓN', '1RFEF', 'ARAGON TV', 'BEIN', 'BT SPORT', 'CANAL+SPORT', 'ESPN', 'ESSPN', 'SKY', 'ESPORT 3', 'FOX', 'GOL PLAY', 'REAL MADRID TV', 'ORANGE TV', 'RALLY TV', 'MOTOR', 'NBA', 'NFL', 'PREMIER SPORTS', 'DISCOVERY CHANNEL', 'DARK', 'AMC', 'LA 1', 'LA 2', 'ANTENA 3', 'Cuatro', 'Telecinco', 'LA SEXTA', '24 HORAS', 'TELEDEPORTE', 'CAZA Y PESCA', 'CANAL COCINA', 'DECASA', 'ONETORO', 'ZIGGO', 'XTRM', 'MIXED TV', 'DAZN', '(DE)', '(PL)', '(RU)'];
 
@@ -1117,10 +1115,7 @@
             return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
         }
 
-        function extractPID(enlace) {
-            if (!enlace) return '';
-            return enlace.replace('acestream://', '').trim();
-        }
+        
         async function hashContent(text) {
             const encoder = new TextEncoder();
             const data = encoder.encode(text);
@@ -1157,7 +1152,7 @@
             localStorage.setItem('firstSeen', JSON.stringify(state.firstSeen));
         }
 
-        // ELIMINADO: function toggleFavorite(channelId)
+        
 
         function toggleFullScreenOnClick() {
             state.fullScreenOnClick = !state.fullScreenOnClick;
@@ -1568,28 +1563,16 @@
 
         // NUEVA FUNCIÓN CENTRAL DE LIMPIEZA
         function cleanNameAndExtractQuality(rawName) {
-            let name = rawName.replace(/(\(|\)|-->.*$)/g, '').trim(); // Elimina paréntesis y sufijos '-->'
-            let quality = 'SD';
-            let multiAudio = false;
+            let name = rawName.replace(/(\(|\)|-->.*$)/g, '').trim();
+            const quality = standardizeQuality(name);
+            const multiAudio = name.toUpperCase().includes('MULTI');
 
-            // 1. Detección y eliminación de calidad/extras
-            const tempName = name.toUpperCase();
-
-            if (tempName.includes('4K') || tempName.includes('UHD')) quality = 'UHD';
-            else if (tempName.includes('FHD') || tempName.includes('1080')) quality = 'FHD';
-            else if (tempName.includes('HD') || tempName.includes('720')) quality = 'HD';
-            else if (tempName.includes('SD')) quality = 'SD';
-
-            multiAudio = tempName.includes('MULTI');
-
-            // Limpia el nombre de las keywords de calidad, multi-audio y sufijos comunes
             name = name
                 .replace(/1080P|1080|720|UHD|FHD|HD|SD|MultiAudio|Multi Audio|Multi|multi|4K/gi, '')
                 .replace(/\(ES\)|\(Es\)|(Estable|New Era II|New Loop|New Era VI|BAR|eleven|eventos)/gi, '')
-                .replace(/\s+/g, ' ') // Normaliza espacios
+                .replace(/\s+/g, ' ')
                 .trim();
 
-            // 2. Normalización final de nombres específicos (Eurosport, Teledeporte)
             if (name.includes('Eurosport 1')) {
                 name = '★EUROSPORT 1';
             } else if (name.includes('Eurosport 2')) {
@@ -1600,11 +1583,7 @@
                 name = 'Teledeporte';
             }
 
-            return {
-                name,
-                quality: standardizeQuality(quality), // Asegura un formato estándar (4K, FHD, HD, SD)
-                multiAudio
-            };
+            return { name, quality, multiAudio };
         }
 
         async function loadGistChannels(infoContent) {
@@ -3289,7 +3268,7 @@
             const lastPlayedId = state.lastPlayedByChannel[mainChannelName.trim().toLowerCase()];
 
             const renderOptionItem = (option) => {
-                // ELIMINADO: Lógica de favoritos y el botón de estrella
+                
 
                 const isLastViewed = option.id === lastPlayedId;
                 const lastViewedIndicator = isLastViewed ? '<span class="last-viewed-indicator" title="Último AceStream reproducido para este canal">👁️</span>' : '';
@@ -3323,7 +3302,7 @@
                         sourceBadgeClass = 'channel-name-color';
                 }
 
-                // MODIFICADO: Eliminado el botón de favoritos del HTML
+                
                 return `
                     <div class="channel-option-item" data-id="${option.id}" onclick="handleChannelPlay({ id: '${option.id}', name: '${mainChannelName.replace(/'/g, "\\'")}' })">
                         <div class="channel-option-name-container">

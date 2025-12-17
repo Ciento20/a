@@ -474,16 +474,7 @@
             50% {
                 opacity: .5
             }
-        }
-
-        .live-separator {
-            display: none
-        }
-
-        .subgroup-title,
-        .subgroup-content {
-            display: none !important
-        }
+        }        /* Clases de separación y subtítulos obsoletas eliminadas */
 
         .tv-mode-active {
             background: #151515 !important;
@@ -521,38 +512,7 @@
             text-align: center;
             font-size: 0.375rem;
             line-height: 1.1
-        }
-
-        #tvSidebar .tv-nav-link.brand-filter {
-            padding: 2.5px 0;
-            margin: 2.5px auto;
-            justify-content: center;
-            width: 100%;
-            height: auto
-        }
-
-        #tvSidebar .tv-nav-link.dazn-filter {
-            width: 40px;
-            height: 24px
-        }
-
-        #tvSidebar .tv-nav-link.movistar-filter {
-            width: 40px;
-            height: 16.5px
-        }
-
-        #tvSidebar .tv-nav-link.eurosport-filter {
-            width: 40px;
-            height: 24px
-        }
-
-        #tvSidebar .tv-nav-link.brand-filter img {
-            max-width: 90%;
-            max-height: 90%;
-            width: auto;
-            height: auto;
-            object-fit: contain
-        }
+        }        /* Estilos de filtros de marca eliminados por redundancia (no se usan imágenes en el sidebar actual) */
 
         #tvSidebar .tv-nav-link.sport-filter {
             font-size: 0.6rem;
@@ -854,7 +814,7 @@
         
 
         /* ESTILOS DE LIMPIEZA */
-        .favorite-toggle-btn, .fav-active { display: none !important; }
+        /* Lógica de favoritos eliminada para optimización de interfaz TV */
 
         /* ESTILOS PARA EL MENSAJE DE NO RESULTADOS */
         .no-results-container {
@@ -951,12 +911,9 @@
     <aside id="tvSidebar">
         <nav>
                 <ul style="list-style:none;padding:0;margin:0">
-                    <li style="margin-bottom:.25rem"><a href="#" id="settingsModeBtn" class="tv-nav-link"
-                            tabindex="0"> <span>⚙️</span> Ajustes </a></li>
-                    <li style="margin-bottom:.25rem"><a href="#" class="tv-nav-link" data-filter="events_only"
-                            tabindex="0"><span>📅</span> Eventos </a></li>
-                    <li style="margin-bottom:.2rem"><a href="#" class="tv-nav-link" data-filter="search"
-                            tabindex="0"> <span>🔍</span>Buscar</a></li>
+                    <li style="margin-bottom:.25rem"><a href="#" id="settingsModeBtn" class="tv-nav-link"> <span>⚙️</span> Ajustes </a></li>
+                    <li style="margin-bottom:.25rem"><a href="#" class="tv-nav-link" data-filter="events_only"><span>📅</span> Eventos </a></li>
+                    <li style="margin-bottom:.2rem"><a href="#" class="tv-nav-link" data-filter="search"> <span>🔍</span>Buscar</a></li>
                     </ul>
             </nav>
         </div>
@@ -964,8 +921,7 @@
     </aside>
     <main id="tvMainContent">
         <div id="tvStatusMessageContainer" style="margin-bottom:.75rem"></div>
-        <div id="searchContainer"
-            style="display: none; margin-bottom: 0.75rem; padding: 0.5rem 0.75rem; background: #222222; border-radius: 6px; align-items: center; border: 1px solid #383838;">
+        <div id="searchContainer" style="display: none; margin-bottom: 0.75rem; padding: 0.5rem 0.75rem; background: #222222; border-radius: 6px; align-items: center; border: 1px solid #383838;">
             <span style="font-size: 0.75rem; color: #e0e0e0; margin-right: 10px;">   🔍   </span>
             <input type="text" id="globalSearchInput" placeholder="Escribe para buscar"
                 style="flex-grow: 1; padding: 8px 12px; border-radius: 4px; font-size: 0.75rem; box-sizing: border-box; background-color: #383838; color: #ffffff; border: 0.5px solid #555555; box-shadow: none;">
@@ -1095,7 +1051,7 @@
         const EVENTS_URL = 'https://eventos-eight-dun.vercel.app/';
         const SHICKAT_URL = 'https://shickat.me/';
         const BACKUP_KEYS = {
-            gist: 'gist_channels_backup',
+            
             elcano: 'elcano_channels_backup',
             events: 'events_channels_backup',
             shickat: 'shickat_channels_backup',
@@ -1106,7 +1062,7 @@
         const BACKUP_EXPIRY_HOURS = 480;
         const HISTORY_EXPIRY_HOURS = 168;
         // MODIFICADO: 'favorites' cambiado a 'search'
-        const TV_BRAND_FILTER_KEYS = ['all', 'events_only', 'live', 'search', 'dazn', 'm+', 'eurosport']; // Favoritos eliminado
+        const TV_BRAND_FILTER_KEYS = ['all', 'events_only', 'live', 'search', 'dazn', 'm+', 'eurosport'];
         const TV_SPORT_FILTER_KEYS = [];
         const OTHER_SUBGROUPS = ['LIGA ENDESA', 'CANAL DE TENIS', 'SUPERTENNIS', 'BUNDESLIGA', 'PRIMERA FEDERACIÓN', '1RFEF', 'ARAGON TV', 'BEIN', 'BT SPORT', 'CANAL+SPORT', 'ESPN', 'ESSPN', 'SKY', 'ESPORT 3', 'FOX', 'GOL PLAY', 'REAL MADRID TV', 'ORANGE TV', 'RALLY TV', 'MOTOR', 'NBA', 'NFL', 'PREMIER SPORTS', 'DISCOVERY CHANNEL', 'DARK', 'AMC', 'LA 1', 'LA 2', 'ANTENA 3', 'Cuatro', 'Telecinco', 'LA SEXTA', '24 HORAS', 'TELEDEPORTE', 'CAZA Y PESCA', 'CANAL COCINA', 'DECASA', 'ONETORO', 'ZIGGO', 'XTRM', 'MIXED TV', 'DAZN', '(DE)', '(PL)', '(RU)'];
 
@@ -1586,11 +1542,7 @@
             return { name, quality, multiAudio };
         }
 
-        async function loadGistChannels(infoContent) {
-            // ELIMINADO: Esta función ya no se usa para cargar canales
-            // Se mantiene el nombre solo por si alguna otra parte del código la referenciara, pero sin su funcionalidad original
-            return [];
-        }
+        
 
         async function processEraData(infoContent) {
             const numberedChannels = [];

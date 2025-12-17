@@ -971,8 +971,6 @@
             channelsData: [],
             channelHistory: JSON.parse(localStorage.getItem('channelHistory')) || {},
             currentChannel: null,
-            elcanoRetries: 0,
-            eventsRetries: 0,
             primaryColor: localStorage.getItem('primaryColor') || '#2563eb',
             channelRatings: JSON.parse(localStorage.getItem('channelRatings')) || {},
             lastChannelPlay: JSON.parse(localStorage.getItem('lastChannelPlay')) || null,
@@ -1034,7 +1032,7 @@
         const HISTORY_EXPIRY_HOURS = 168;
         // Limpieza: Se confirma la eliminación de 'favorites' para optimización de interfaz TV
         const TV_BRAND_FILTER_KEYS = ['all', 'events_only', 'live', 'search', 'dazn', 'm+', 'eurosport'];
-        const TV_SPORT_FILTER_KEYS = [];
+        const TV_SPORT_FILTER_KEYS = ['futbol', 'baloncesto', 'tenis', 'motor', 'f1', 'ciclismo'];
         const OTHER_SUBGROUPS = ['LIGA ENDESA', 'CANAL DE TENIS', 'SUPERTENNIS', 'BUNDESLIGA', 'PRIMERA FEDERACIÓN', '1RFEF', 'ARAGON TV', 'BEIN', 'BT SPORT', 'CANAL+SPORT', 'ESPN', 'ESSPN', 'SKY', 'ESPORT 3', 'FOX', 'GOL PLAY', 'REAL MADRID TV', 'ORANGE TV', 'RALLY TV', 'MOTOR', 'NBA', 'NFL', 'PREMIER SPORTS', 'DISCOVERY CHANNEL', 'DARK', 'AMC', 'LA 1', 'LA 2', 'ANTENA 3', 'Cuatro', 'Telecinco', 'LA SEXTA', '24 HORAS', 'TELEDEPORTE', 'CAZA Y PESCA', 'CANAL COCINA', 'DECASA', 'ONETORO', 'ZIGGO', 'XTRM', 'MIXED TV', 'DAZN', '(DE)', '(PL)', '(RU)'];
 
         function normalizeText(text) {
@@ -1442,7 +1440,7 @@
             const results = await Promise.allSettled([
                 fetchAndProcessSource('events', EVENTS_URL, processEventsData, BACKUP_KEYS.events),
                 fetchAndProcessSource('era', ERA_URL, processEraData, BACKUP_KEYS.era),
-                // fetchAndProcessSource('gist', GIST_URL, loadGistChannels, BACKUP_KEYS.gist), // ELIMINADO: Gist ya no es fuente de canales
+                //  // ELIMINADO: Gist ya no es fuente de canales
                 fetchProxyContentAndProcess('shickat', SHICKAT_URL, processShickatData, BACKUP_KEYS.shickat),
                 fetchProxyContentAndProcess('elcano', ELCANO_URL, processElcanoDataFromHtml, BACKUP_KEYS.elcano)
             ]);
@@ -1654,9 +1652,7 @@
             }
         }
 
-        async function loadElcanoSource(htmlContent) {
-            return processElcanoDataFromHtml(htmlContent);
-        }
+        
 
         function processElcanoDataFromHtml(htmlContent) {
             const jsonMatch = htmlContent.match(/const linksData\s*=\s*({[\s\S]*?});/);
@@ -1672,13 +1668,9 @@
             return processElcanoData(linksData.links);
         }
 
-        async function loadEventsSource(htmlContent) {
-            return processEventsData(htmlContent);
-        }
+        
 
-        async function loadShickatChannels(htmlContent) {
-            return processShickatData(htmlContent);
-        }
+        
 
         function processShickatData(htmlContent) {
             const numberedChannels = [];
@@ -2885,8 +2877,6 @@
             // Indicador EN VIVO eliminado por solicitud
             let liveIndicator = '';
 
-            const rating = state.channelRatings[channel.id] !== undefined ? state.channelRatings[channel.id] : 2.5;
-            const ratingStars = getStarRating(rating);
             const optionsButton = `<button class="tv-link-button" data-channel-id="${channel.id}" title="Ver opciones alternativas">+</button>`;
 
             return ` <div class="tv-card ${isLiveClass}" data-channel-id="${channel.id}" data-all-options='${allOptionsJson}' style="${backgroundStyle}" tabindex="0" role="button" aria-label="Ver canal ${channel.name}"> ${optionsButton} ${channelNameHTML}</div> `;

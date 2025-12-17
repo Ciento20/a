@@ -25,26 +25,26 @@
             --success: #4cc9f0;
             --warning: #f8961e;
             --info: #4895ef;
-            --movistar-blue: #2a62ad;
-            --eurosport-blue: #5e17eb;
-            --dazn-black: #000000;
-            --f1-red: #ff3535;
-            --action-red: #ff544d;
+            --movistar: #2a62ad;
+            --eurosport: #5e17eb;
+            --dazn: #000000;
+            --f1: #ff3535;
+            --action: #ff544d;
             --cinema-red: #fa3732;
-            --sports-green: #11a45b;
-            --vamos-green: #1fc23d;
-            --copadelrey-green: #449653;
-            --champions-teal: #52c29c;
-            --liga-teal: #21ffb8;
-            --hypermotion-cyan: #04d2d7;
-            --golf-teal: #4ee1b0;
-            --eurosport-number-red: #ff3535;
-            --plus-blue: #3399ff;
-            --western-red: #e60000;
-            --documentary-purple: #a06cf5;
-            --originals-blue: #3985b0;
-            --ellas-green: #35fd9b;
-            --series-orange: #ff8c1f;
+            --sports: #11a45b;
+            --vamos: #1fc23d;
+            --copadelrey: #449653;
+            --champions: #52c29c;
+            --liga: #21ffb8;
+            --hypermotion: #04d2d7;
+            --golf: #4ee1b0;
+            --eurosport-number: #ff3535;
+            --plus: #3399ff;
+            --western: #e60000;
+            --documentary: #a06cf5;
+            --originals: #3985b0;
+            --ellas: #35fd9b;
+            --series: #ff8c1f;
             --gist-source-color: #2d077d;
             --elcano-source-color: #7d070e;
             --special-gist-color: #9c27b0;
@@ -454,9 +454,7 @@
             opacity: 1
         }
 
-        .floating-save-button {
-            display: none !important
-        }
+        
 
         .live-time-blink {
             color: var(--primary) !important;
@@ -474,7 +472,7 @@
             50% {
                 opacity: .5
             }
-        }        /* Clases de separación y subtítulos obsoletas eliminadas */
+        } 
 
         .tv-mode-active {
             background: #151515 !important;
@@ -512,27 +510,9 @@
             text-align: center;
             font-size: 0.375rem;
             line-height: 1.1
-        }        /* Estilos de filtros de marca eliminados por redundancia (no se usan imágenes en el sidebar actual) */
+        }       
 
-        #tvSidebar .tv-nav-link.sport-filter {
-            font-size: 0.6rem;
-            padding: 5px 0;
-            height: 10px;
-            width: 20px;
-            border-radius: 50%;
-            margin: 0 2.5px
-        }
-
-        #tvSportFilters {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: 2.5px;
-            padding: 2.5px 0;
-            margin-bottom: 0.25rem;
-            border-bottom: 0.5px solid #383838;
-            border-top: 0.5px solid #383838
-        }
+        
 
         #tvSidebar .tv-nav-link span {
             margin-right: 0 !important;
@@ -559,11 +539,11 @@
             background: #151515;
             display: flex;
             flex-direction: column;
-            /* Transiciones suaves */
+          
             transition: all 0.3s ease-in-out;
         }
 
-        /* MEDIA QUERY PARA ORIENTACIÓN VERTICAL */        @media screen and (orientation: portrait) {
+               @media screen and (orientation: portrait) {
             #tvSidebar {
                 width: 100%;
                 box-sizing: border-box;
@@ -659,7 +639,7 @@
             padding: 5px 0;
             cursor: pointer;
             transition: transform 0.3s ease-in-out, border-color 0.3s ease-in-out;
-            /* MODIFICACIÓN CLAVE: Tamaño y posición del logo (icono) */
+            
             background-size: 80% auto;
             background-position: center 30px;
             background-repeat: no-repeat;
@@ -811,12 +791,6 @@
             transform: scale(1.05);
         }
 
-        
-
-        /* ESTILOS DE LIMPIEZA */
-        /* Lógica de favoritos eliminada para optimización de interfaz TV */
-
-        /* ESTILOS PARA EL MENSAJE DE NO RESULTADOS */
         .no-results-container {
             display: flex;
             justify-content: center;
@@ -890,8 +864,6 @@
             gap: 0
         }
 
-        /* MODIFICACIÓN: Ocultar el nombre del canal y ajustar el indicador de EN VIVO */
-        /* El nombre del canal se oculta por defecto en el CSS. Se hace visible en línea en el JS si no hay logo. */
         .tv-card h3 {
             display: none;
             font-size: 0.6rem;
@@ -900,10 +872,9 @@
             white-space: normal;
             margin: 0;
             text-align: center;
-            /* Aseguramos que el resto de estilos no afecten la visibilidad general */
+        
         }
 
-        /* Bloque eliminado para ocultar el indicador EN VIVO en las tarjetas */
     </style>
 </head>
 
@@ -917,7 +888,7 @@
                     </ul>
             </nav>
         </div>
-        <div id="tvBottomNav"></div>
+        
     </aside>
     <main id="tvMainContent">
         <div id="tvStatusMessageContainer" style="margin-bottom:.75rem"></div>
@@ -1061,7 +1032,7 @@
         const MAX_RETRIES = 3;
         const BACKUP_EXPIRY_HOURS = 480;
         const HISTORY_EXPIRY_HOURS = 168;
-        // MODIFICADO: 'favorites' cambiado a 'search'
+        // Limpieza: Se confirma la eliminación de 'favorites' para optimización de interfaz TV
         const TV_BRAND_FILTER_KEYS = ['all', 'events_only', 'live', 'search', 'dazn', 'm+', 'eurosport'];
         const TV_SPORT_FILTER_KEYS = [];
         const OTHER_SUBGROUPS = ['LIGA ENDESA', 'CANAL DE TENIS', 'SUPERTENNIS', 'BUNDESLIGA', 'PRIMERA FEDERACIÓN', '1RFEF', 'ARAGON TV', 'BEIN', 'BT SPORT', 'CANAL+SPORT', 'ESPN', 'ESSPN', 'SKY', 'ESPORT 3', 'FOX', 'GOL PLAY', 'REAL MADRID TV', 'ORANGE TV', 'RALLY TV', 'MOTOR', 'NBA', 'NFL', 'PREMIER SPORTS', 'DISCOVERY CHANNEL', 'DARK', 'AMC', 'LA 1', 'LA 2', 'ANTENA 3', 'Cuatro', 'Telecinco', 'LA SEXTA', '24 HORAS', 'TELEDEPORTE', 'CAZA Y PESCA', 'CANAL COCINA', 'DECASA', 'ONETORO', 'ZIGGO', 'XTRM', 'MIXED TV', 'DAZN', '(DE)', '(PL)', '(RU)'];
@@ -1144,9 +1115,7 @@
             document.querySelectorAll('#tvSidebar .tv-nav-link').forEach(link => {
                 link.classList.remove('tv-sidebar-link-focused');
             });
-            document.querySelectorAll('#tvBottomNav .tv-nav-link').forEach(link => {
-                link.classList.remove('tv-sidebar-link-focused');
-            });
+            
         }
 
         function applyTVFilter(filter, type) {
@@ -1409,14 +1378,16 @@
             let channels = null;
             let message = '';
             let contentHash = null;
+            const retryKey = `${sourceName}Retries`;
+            const currentRetries = state[retryKey] !== undefined ? state[retryKey] : 0;
 
             try {
                 const response = await fetch(url);
                 if (!response.ok) throw new Error("Error al obtener el contenido de la fuente");
                 const infoContent = await response.text();
 
+                if (state[retryKey] !== undefined) state[retryKey] = 0;
                 contentHash = await hashContent(infoContent);
-
                 const backup = loadBackup(backupKey);
 
                 if (backup && backup.contentHash === contentHash) {
@@ -1431,14 +1402,21 @@
                 }
 
             } catch (error) {
-                console.error(`Fallo al cargar de ${sourceName}:`, error);
+                console.error(`Fallo al cargar de ${sourceName} (Intento ${currentRetries + 1}):`, error);
+                
+                if (state[retryKey] !== undefined && state[retryKey] < MAX_RETRIES) {
+                    state[retryKey]++;
+                    const delay = Math.pow(2, state[retryKey]) * 1000;
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    return fetchAndProcessSource(sourceName, url, processor, backupKey);
+                }
 
                 const backup = loadBackup(backupKey);
                 if (backup && backup.data) {
                     channels = backup.data;
-                    message = `Fallo de ${sourceName}. Mostrando canales del historial.`;
+                    message = `Fallo de ${sourceName} tras ${state[retryKey] || 0} reintentos. Mostrando historial.`;
                 } else {
-                    message = `Fallo de ${sourceName}. Sin historial disponible.`;
+                    message = `Fallo de ${sourceName} tras ${state[retryKey] || 0} reintentos. Sin historial disponible.`;
                 }
             }
 
@@ -1606,6 +1584,8 @@
             let lastError;
             let content = null;
             let finalMessage = '';
+            const retryKey = `${sourceName}Retries`;
+            const currentRetries = state[retryKey] !== undefined ? state[retryKey] : 0;
 
             for (const proxy of PROXIES) {
                 try {
@@ -1621,9 +1601,9 @@
                     if (!response.ok) throw new Error(`Proxy ${proxy} responded with ${response.status}`);
 
                     content = await response.text();
+                    if (state[retryKey] !== undefined) state[retryKey] = 0;
 
                     const contentHash = await hashContent(content);
-
                     const backup = loadBackup(backupKey);
 
                     if (backup && backup.contentHash === contentHash) {
@@ -1653,16 +1633,23 @@
                 }
             }
 
+            if (state[retryKey] !== undefined && state[retryKey] < MAX_RETRIES) {
+                state[retryKey]++;
+                console.log(`Reintentando lista de proxies para ${sourceName} (Intento ${state[retryKey]})`);
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                return fetchProxyContentAndProcess(sourceName, url, processor, backupKey);
+            }
+
             const backup = loadBackup(backupKey);
             if (backup && backup.data) {
-                finalMessage = `Fallo de ${sourceName}. Mostrando canales del historial.`;
+                finalMessage = `Fallo de ${sourceName} tras ${state[retryKey] || 0} ciclos de proxies. Mostrando historial.`;
                 return {
                     name: sourceName,
                     channels: backup.data,
                     message: finalMessage
                 };
             } else {
-                finalMessage = `Fallo de ${sourceName}. Sin historial disponible.`;
+                finalMessage = `Fallo de ${sourceName} tras ${state[retryKey] || 0} ciclos de proxies. Sin historial disponible.`;
                 throw lastError || new Error(`Todos los proxies fallaron para la fuente ${sourceName}.`);
             }
         }

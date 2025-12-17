@@ -66,16 +66,15 @@
             --channel-name-color: #e2e2ff;
             --player-bg: #1e1e1e;
             --channel-number-color: #b0b0b0
-        }
-
-        body {
+        }        body {
             background: #151515 !important;
             color: #e0e0e0 !important;
             font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
             line-height: 1.6;
             margin: 0;
             padding: 0;
-            transition: all .3s
+            transition: all .3s;
+            overflow-x: hidden;
         }
 
         .channel-card {
@@ -157,14 +156,12 @@
 
         .modal--active {
             display: flex
-        }
-
-        .modal__content {
+        }        .modal__content {
             background: var(--card-bg);
             border-radius: var(--radius-md);
             padding: 0.6rem;
             width: 90%;
-            max-width: 175px;
+            max-width: 225px;
             box-shadow: var(--shadow-sm)
         }
 
@@ -491,9 +488,7 @@
         .tv-mode-active {
             background: #151515 !important;
             color: #e0e0e0 !important
-        }
-
-        #tvSidebar {
+        }        #tvSidebar {
             background: #111111;
             color: #e0e0e0;
             padding: 0.75rem 0.25rem;
@@ -508,20 +503,10 @@
             display: flex;
             flex-direction: column;
             justify-content: center;
-            /* Transiciones suaves */
             transition: all 0.3s ease-in-out;
         }
 
-        #tvSidebar .sidebar-logo {
-            font-size: 0.5rem;
-            font-weight: 800;
-            color: white;
-            margin-bottom: 1rem;
-            padding-left: 2.5px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap
-        }
+        
 
         #tvSidebar .tv-nav-link {
             display: flex;
@@ -618,42 +603,27 @@
             transition: all 0.3s ease-in-out;
         }
 
-        /* MEDIA QUERY PARA ORIENTACIÓN VERTICAL */
-        @media screen and (orientation: portrait) {
+        /* MEDIA QUERY PARA ORIENTACIÓN VERTICAL */        @media screen and (orientation: portrait) {
             #tvSidebar {
-                width: 100vw;
+                width: 100%;
+                box-sizing: border-box;
                 height: 50px;
                 left: 0;
                 top: auto;
                 bottom: 0;
-                padding: 0.25rem 0.5rem;
+                padding: 0 10px;
                 border-right: none;
                 border-top: 0.5px solid #383838;
                 flex-direction: row;
-                justify-content: space-around;
+                justify-content: center;
                 align-items: center;
-                overflow-x: auto;
-                overflow-y: hidden;
-            }
-
-            #tvSidebar .sidebar-logo {
-                display: none;
-                /* Ocultar el logo en modo vertical para ahorrar espacio */
-            }
-
-            /* Contenedor de navegación principal (primer div) */
-            #tvSidebar>div:first-child {
-                display: flex;
-                align-items: center;
-                flex-grow: 1;
-                /* Ocupa todo el espacio disponible */
-                justify-content: space-around;
-                /* Distribuye los elementos */
+                overflow: hidden;
             }
 
             #tvSidebar nav {
                 width: 100%;
                 margin: 0;
+                padding: 0;
             }
 
             #tvSidebar ul {
@@ -661,50 +631,40 @@
                 flex-direction: row;
                 justify-content: space-around;
                 width: 100%;
+                margin: 0 !important;
+                padding: 0 !important;
+                list-style: none;
             }
 
             #tvSidebar li {
                 margin: 0 !important;
                 flex: 1;
-                /* Hace que los botones ocupen el mismo ancho */
-                text-align: center;
+                display: flex;
+                justify-content: center;
             }
 
             #tvSidebar .tv-nav-link {
                 padding: 2px 0;
                 font-size: 0.35rem;
-                /* Reducir tamaño de fuente */
+                width: 100%;
+                text-align: center;
             }
 
-            #tvSidebar .tv-nav-link span {
-                font-size: 0.5rem !important;
-                /* Reducir tamaño del icono */
-            }
+            #tvSidebar .tv-nav-link span { font-size: 0.5rem !important; }
 
             #tvMainContent {
                 margin-left: 0;
-                /* Eliminar margen lateral */
                 margin-bottom: 50px;
-                /* Añadir margen inferior igual a la altura de la barra */
                 min-height: calc(100vh - 50px);
                 padding: 0.75rem;
-                /* Ajustar padding */
+                width: 100%;
+                box-sizing: border-box;
             }
 
-            /* Asegurar que el contenedor de búsqueda se vea bien */
             #searchContainer {
                 padding: 0.5rem;
                 flex-direction: row;
                 align-items: center;
-            }
-
-            #searchContainer span {
-                margin-right: 5px;
-            }
-
-            #globalSearchInput {
-                padding: 6px 10px !important;
-                font-size: 0.7rem !important;
             }
         }
 
@@ -974,8 +934,7 @@
 
 <body class="tv-mode-active dark-mode">
     <aside id="tvSidebar">
-        <div>
-            <nav>
+        <nav>
                 <ul style="list-style:none;padding:0;margin:0">
                     <li style="margin-bottom:.25rem"><a href="#" id="settingsModeBtn" class="tv-nav-link"
                             tabindex="0"> <span>⚙️</span> Ajustes </a></li>

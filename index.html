@@ -943,6 +943,12 @@
                                 canales</span></div>
                     </div><button class="modal__btn" onclick="resetRatings()">Reiniciar</button>
                 </div>
+                <div class="settings-item">
+                    <div class="settings-item__info"><span class="settings-icon">🔄</span>
+                        <div><span class="settings-label">Forzar Recarga</span><span
+                                class="settings-description">Ignora el historial y obliga a descargar todos los datos de nuevo.</span></div>
+                    </div><button class="modal__btn" onclick="forceReloadChannels()">Recargar</button>
+                </div>
             </div>
             <div class="modal__actions"><button class="modal__btn modal__btn--primary"
                     id="closeSettingsBtn">Cerrar</button></div>
@@ -2795,6 +2801,19 @@
                 showStatusMessage("Puntuaciones de canales restablecidas.", "success");
                 document.getElementById('settingsModal').classList.remove('modal--active');
             }
+        }
+
+        async function forceReloadChannels() {
+            showStatusMessage("Forzando actualización de datos...", "warning");
+            // Limpiar hashes de backup para forzar el procesado completo
+            for (const key in BACKUP_KEYS) {
+                const backup = loadBackup(BACKUP_KEYS[key]);
+                if (backup) {
+                    saveBackup(backup.data, BACKUP_KEYS[key], null);
+                }
+            }
+            document.getElementById('settingsModal').classList.remove('modal--active');
+            await loadInitialChannels();
         }
 
         function getStarRating(score) {

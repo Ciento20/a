@@ -2608,7 +2608,7 @@
                 return 'M+ Vamos';
             }
 
-            if (channelName.includes('★EUROSPORT') && channelName.includes('(')) {
+            if (channelName.includes('★EUROSPORT') && (channelName.includes('DE') || channelName.includes('PL') || channelName.includes('RU'))) {
                 return 'Otros';
             }
             if (groupRegexes['DAZN'] && groupRegexes['DAZN'].test(channelName)) {

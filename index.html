@@ -2207,11 +2207,10 @@
             sortedChannels.forEach(channel => {
                 let groupName;
                 let isEventGroup = false; // Nueva Lógica de Agrupación: Si el filtro es 'all' O ('search' Y NO es evento), agrupamos por marca y forzamos ocultar detalles de evento
-                if (state.tvCurrentFilter === 'all' || (state.tvCurrentFilter === 'search' && channel.source !== 'events')) {
+                if (state.tvCurrentFilter === 'all' || (state.tvCurrentFilter === 'search' && state.tvSearchTerm.trim() === '')) {
                     groupName = determineBrandGroup(channel);
                     isEventGroup = false;
                 }
-                // Si el filtro es 'search' y es un canal de evento, mantener la lógica de eventos
                 else if (state.tvCurrentFilter === 'search' && channel.source === 'events' && channel.event) {
                     groupName = `${channel.event.date}###${channel.event.competition}###${channel.event.match}`;
                     isEventGroup = true;
@@ -2352,7 +2351,7 @@
                     // Si el filtro de búsqueda está activo pero el término está vacío,
                     // solo mostramos canales que NO sean de eventos.
                     if (searchTerm === '') {
-                        return channel.source !== 'events';
+                        return true;
                     }
 
                     // Lógica de búsqueda normal si hay un término

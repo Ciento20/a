@@ -1546,8 +1546,9 @@
                         // 1. Aplicar mapeo de nombre específico de ERA
                         let simplifiedName = namePart;
                         for (const key in channelMappings) {
-                            if (simplifiedName.includes(key)) {
-                                simplifiedName = simplifiedName.replace(key, channelMappings[key]);
+                            const regex = new RegExp(key, 'gi');
+                            if (regex.test(simplifiedName)) {
+                                simplifiedName = simplifiedName.replace(regex, channelMappings[key]);
                             }
                         }
 
@@ -1697,13 +1698,17 @@
                                 break;
                             }
                         }
-                        if (simplifiedName.includes('M. LaLiga')) {
-                            simplifiedName = simplifiedName.replace('M. LaLiga', 'M+ La Liga');
-                        } else if (simplifiedName.includes('Movistar')) {
-                            simplifiedName = simplifiedName.replace('Movistar', 'M+');
+                        const normalizedSimplified = simplifiedName.toUpperCase();
+                        if (normalizedSimplified.includes('M. LALIGA') || normalizedSimplified.includes('MOVISTAR LALIGA')) {
+                            simplifiedName = 'M+ La Liga';
+                        } else if (normalizedSimplified.includes('MOVISTAR')) {
+                            simplifiedName = simplifiedName.replace(/Movistar/gi, 'M+');
                         }
-                        if (simplifiedName.includes('LaLiga')) {
-                            simplifiedName = simplifiedName.replace('LaLiga', 'La Liga');
+                        if (normalizedSimplified.includes('LALIGA')) {
+                            simplifiedName = simplifiedName.replace(/LaLiga/gi, 'La Liga');
+                        }
+                        if (normalizedSimplified.includes('DAZN')) {
+                            simplifiedName = simplifiedName.replace(/Dazn/gi, 'DAZN');
                         }
 
                         // 2. Limpiar calidad/multi-audio y normalizar
@@ -1741,7 +1746,7 @@
                 'Vamos': 'M+ Vamos',
                 'Deporte': 'M+ Deportes',
                 'Dedporte': 'M+ Deportes',
-                'Dazn 1': 'DAZN 1',
+                'Dazn': 'DAZN',
                 'Campeones': 'M+ Liga de Campeones'
             };
             // ------------------------------------
@@ -1751,12 +1756,13 @@
                     const acestreamId = link.url.split('://')[1];
 
                     // 1. Aplicar mapeo de nombre específico de Elcano
-                    let simplifiedName = link.name
-                        .replace(/\s+/g, ' ')
-                        .trim();
+                    let simplifiedName = link.name.replace(/\s+/g, ' ').trim();
+                    const normalizedForMap = simplifiedName.toUpperCase();
                     for (const key in nameMap) {
-                        if (simplifiedName.includes(key)) {
-                            simplifiedName = simplifiedName.replace(key, nameMap[key]);
+                        const upperKey = key.toUpperCase();
+                        if (normalizedForMap.includes(upperKey)) {
+                            const regex = new RegExp(key, 'gi');
+                            simplifiedName = simplifiedName.replace(regex, nameMap[key]);
                             break;
                         }
                     }

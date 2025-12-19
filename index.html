@@ -1012,12 +1012,10 @@
             return IMAGE_PROXY_URL + encodeURIComponent(url);
         }
         const PROXIES = [
-            'https://api.allorigins.win/raw?url=',
-            'https://cors-anywhere.herokuapp.com/',
             'https://api.codetabs.com/v1/proxy/?quest=',
-            'https://proxy-cors-simple.vercel.app/api?url=',
-            'https://yacdn.org/proxy/',
-            'https://cors-proxy.fringe.co.kr/?'
+            'https://api.allorigins.win/raw?url=',
+            'https://thingproxy.freeboard.io/fetch/',
+            'https://corsproxy.io/?'
         ];
         const GIST_URL = "https://gist.githubusercontent.com/Ciento20/f7847e86d06e5011706fa76f2dab90be/raw";
         const ELCANO_URL = 'https://ipfs.io/ipns/elcano.top';
@@ -1586,9 +1584,7 @@
             for (const proxy of PROXIES) {
                 try {
                     const proxyUrl = proxy + encodeURIComponent(url);
-                    const response = await fetch(proxyUrl, {
-                        signal: AbortSignal.timeout(15000)
-                    });
+                    const response = await fetch(proxyUrl);
 
                     if (!response.ok) throw new Error(`Proxy ${proxy} responded with ${response.status}`);
 

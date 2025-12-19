@@ -1496,9 +1496,7 @@
                 .replace(/1080P|1080|720|UHD|FHD|HD|SD|MultiAudio|Multi Audio|Multi|multi|4K/gi, '')
                 .replace(/\(ES\)|\(Es\)|(Estable|New Era II|New Loop|New Era VI|Fórmula 1|BAR|eleven|eventos)/gi, '')
                 .replace(/\s+/g, ' ')
-                .trim();
-
-            if (name.includes('Eurosport 1')) {
+                .trim();            if (name.includes('Eurosport 1')) {
                 name = '★EUROSPORT 1';
             } else if (name.includes('Eurosport 2')) {
                 name = '★EUROSPORT 2';
@@ -1506,6 +1504,8 @@
                 name = '★EUROSPORT 1';
             } else if (name.includes('Teledeporte')) {
                 name = 'Teledeporte';
+            } else if (/dazn/gi.test(name)) {
+                name = name.replace(/dazn/gi, 'DAZN');
             }
 
             return { name, quality, multiAudio };
@@ -1765,15 +1765,13 @@
                             simplifiedName = simplifiedName.replace(regex, nameMap[key]);
                             break;
                         }
-                    }
-
-                    // 2. Limpiar calidad/multi-audio y normalizar
-                    // Pasamos el nombre crudo para que la función central pueda extraer los indicadores de calidad del nombre original
+                    }                    // 2. Limpiar calidad/multi-audio y normalizar
+                    // Enviamos el nombre ya simplificado (con DAZN corregido) a la limpieza final
                     const {
                         name,
                         quality,
                         multiAudio
-                    } = cleanNameAndExtractQuality(link.name);
+                    } = cleanNameAndExtractQuality(simplifiedName);
 
                     numberedChannels.push({
                         id: acestreamId,

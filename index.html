@@ -942,12 +942,17 @@
                                 class="settings-description">Borra la puntuación de estabilidad de todos los
                                 canales</span></div>
                     </div><button class="modal__btn" onclick="resetRatings()">Reiniciar</button>
-                </div>
-                <div class="settings-item">
+                </div>                <div class="settings-item">
                     <div class="settings-item__info"><span class="settings-icon">🔄</span>
                         <div><span class="settings-label">Forzar Recarga</span><span
                                 class="settings-description">Ignora el historial y obliga a descargar todos los datos de nuevo.</span></div>
                     </div><button class="modal__btn" onclick="forceReloadChannels()">Recargar</button>
+                </div>
+                <div class="settings-item">
+                    <div class="settings-item__info"><span class="settings-icon">🗑️</span>
+                        <div><span class="settings-label">Restablecer Web</span><span
+                                class="settings-description">Borra absolutamente todos los datos (Favoritos, historial, ajustes).</span></div>
+                    </div><button class="modal__btn btn-danger" onclick="factoryReset()" style="background-color: #dc2626; color: white;">Borrar Todo</button>
                 </div>
             </div>
             <div class="modal__actions"><button class="modal__btn modal__btn--primary"
@@ -1519,20 +1524,21 @@
 
             // --- Mapeos específicos de ERA (anteriormente Gist) ---
             const channelMappings = {
-                'MOVISTAR': 'M+',
-                'LA LIGA 1': 'La Liga',
-                'LALIGA': 'La Liga',
-                'Premier': 'Premier League',
-                'EUROSPORT': '★EUROSPORT',
-                'HYPERMOTION': 'La Liga Hypermotion',
-                'LIGA DE CAMPEONES': 'M+ Liga de Campeones',
-                'ACCION': 'Acción',
-                'CLASICOS': 'Clásicos',
-                'PLUS': 'Plus',
-                'GOLF': 'Golf',
-                'VAMOS': 'Vamos',
-                'BALONCESTO 1': 'Baloncesto'
-            };
+          'MOVISTAR': 'M+',
+          'LA LIGA 1': 'La Liga',
+          'LALIGA': 'La Liga',
+          'Premier': 'Premier League',
+          'EUROSPORT': '★EUROSPORT',
+          'HYPERMOTION': 'La Liga Hypermotion',
+          'LIGA DE CAMPEONES': 'M+ Liga de Campeones',
+          'ACCION': 'Acción',
+          'CLASICOS': 'Clásicos',
+          'PLUS': 'Plus',
+          'GOLF': 'Golf',
+          'VAMOS': 'Vamos',
+          'BALONCESTO 1': 'Baloncesto',
+          'M. DEPORTES ES': 'M+ Deportes'
+};
             // ----------------------------------------------------
 
             for (let i = 0; i < lines.length; i += 2) {
@@ -1671,15 +1677,15 @@
 
             // --- Mapeos específicos de Shickat ---
             const nameMappings = {
-                'Ellas Vamos': 'Ellas',
-                'Movistar': 'M+',
-                'Clasicos': 'Clásicos',
-                'Accion': 'Acción',
-                'Deportes': 'Deportes',
-                'Plus': 'Plus',
-                'M+ Liga de Campeones': 'M+ Liga de Campeones',
-                'Golf': 'Golf'
-            };
+          'Ellas Vamos': 'Ellas',
+          'Movistar': 'M+',
+          'Clasicos': 'Clásicos',
+          'Accion': 'Acción',
+          'Deportes': 'Deportes',
+          'Plus': 'Plus',
+          'M+ Liga de Campeones': 'M+ Liga de Campeones',
+          'Golf': 'Golf'
+};
             // ------------------------------------
 
             cards.forEach(card => {
@@ -1739,16 +1745,16 @@
 
             // --- Mapeos específicos de Elcano ---
             const nameMap = {
-                'LaLiga': 'La Liga',
-                'LaLiga Smartbank': 'La Liga Hypermotion',
-                'M.': 'M+',
-                'MovistarPlus': 'M+ Plus',
-                'Vamos': 'M+ Vamos',
-                'Deporte': 'M+ Deportes',
-                'Dedporte': 'M+ Deportes',
-                'Dazn': 'DAZN',
-                'Campeones': 'M+ Liga de Campeones'
-            };
+          'M. LaLiga': 'M+ La Liga',
+          'LaLiga Smartbank': 'La Liga Hypermotion',
+          'M.': 'M.',
+          'MovistarPlus': 'M+ Plus',
+          'Vamos': 'M+ Vamos',
+          'Deporte': 'M+ Deportes',
+          'Dedporte': 'M+ Deportes',
+          'Dazn': 'DAZN',
+          'Campeones': 'M+ Liga de Campeones'
+};
             // ------------------------------------
 
             links.forEach(link => {
@@ -1850,17 +1856,17 @@
 
             // --- Mapeos específicos de Eventos ---
             const channelMappings = {
-                'Movistar': 'M+',
-                'DAZN LA LIGA 1': 'DAZN La Liga',
-                'LALIGA': 'La Liga',
-                'Premier': 'Premier League',
-                'Eurosport': '★EUROSPORT',
-                'HYPERMOTION': 'La Liga Hypermotion',
-                'LIGA DE CAMPEONES': 'M+ Liga de Campeones',
-                'PLUS': 'Plus',
-                'VAMOS': 'Vamos',
-                'Deportes': 'Deportes'
-            };
+          'Movistar': 'M+',
+          'DAZN LA LIGA 1': 'DAZN La Liga',
+          'LALIGA': 'La Liga',
+          'Premier': 'Premier League',
+          'Eurosport': '★EUROSPORT',
+          'HYPERMOTION': 'La Liga Hypermotion',
+          'LIGA DE CAMPEONES': 'M+ Liga de Campeones',
+          'PLUS': 'Plus',
+          'VAMOS': 'Vamos',
+          'Deportes': 'Deportes'
+};
             // ------------------------------------
 
             rows.forEach(row => {
@@ -1880,8 +1886,90 @@
                         const durationMinutes = calculateDuration(durationString);
                         let sportEmoji = '❓ -';
                         const normalizedSport = normalizeText(sportName);
-                        if (normalizedSport.includes('futbol')) {
+                        if (normalizedSport.includes('americano')) {
+                            sportEmoji = '🏉 -';
+                        } else if (normalizedSport.includes('tenis')) {
+                            sportEmoji = '🎾 -';
+                        } else if (normalizedSport.includes('golf')) {
+                            sportEmoji = '⛳ -';
+                        } else if (normalizedSport.includes('hockey')) {
+                            sportEmoji = '🏑 -';
+                        } else if (normalizedSport.includes('rugby')) {
+                            sportEmoji = '🏉 -';
+                        } else if (normalizedSport.includes('gimnasia')) {
+                            sportEmoji = '🤸 -';
+                        } else if (normalizedSport.includes('surf')) {
+                            sportEmoji = '🏄 -';
+                        } else if (normalizedSport.includes('ajedrez')) {
+                            sportEmoji = '♟️ -';
+                        } else if (normalizedSport.includes('dardos')) {
+                            sportEmoji = '🎯 -';
+                        } else if (normalizedSport.includes('futbol')) {
                             sportEmoji = '⚽ -';
+                        } else if (normalizedSport.includes('tenis')) {
+                            sportEmoji = '🎾 -';
+                        } else if (normalizedSport.includes('golf')) {
+                            sportEmoji = '⛳ -';
+                        } else if (normalizedSport.includes('hockey')) {
+                            sportEmoji = '🏑 -';
+                        } else if (normalizedSport.includes('rugby')) {
+                            sportEmoji = '🏉 -';
+                        } else if (normalizedSport.includes('gimnasia')) {
+                            sportEmoji = '🤸 -';
+                        } else if (normalizedSport.includes('surf')) {
+                            sportEmoji = '🏄 -';
+                        } else if (normalizedSport.includes('ajedrez')) {
+                            sportEmoji = '♟️ -';
+                        } else if (normalizedSport.includes('dardos')) {
+                            sportEmoji = '🎯 -';
+                        } else if (normalizedSport.includes('tenis')) {
+                            sportEmoji = '🎾 -';
+                        } else if (normalizedSport.includes('golf')) {
+                            sportEmoji = '⛳ -';
+                        } else if (normalizedSport.includes('hockey')) {
+                            sportEmoji = '🏑 -';
+                        } else if (normalizedSport.includes('rugby')) {
+                            sportEmoji = '🏉 -';
+                        } else if (normalizedSport.includes('gimnasia')) {
+                            sportEmoji = '🤸 -';
+                        } else if (normalizedSport.includes('surf')) {
+                            sportEmoji = '🏄 -';
+                        } else if (normalizedSport.includes('ajedrez')) {
+                            sportEmoji = '♟️ -';
+                        } else if (normalizedSport.includes('dardos')) {
+                            sportEmoji = '🎯 -';
+                        } else if (normalizedSport.includes('tenis')) {
+                            sportEmoji = '🎾 -';
+                        } else if (normalizedSport.includes('golf')) {
+                            sportEmoji = '⛳ -';
+                        } else if (normalizedSport.includes('hockey')) {
+                            sportEmoji = '🏑 -';
+                        } else if (normalizedSport.includes('rugby')) {
+                            sportEmoji = '🏉 -';
+                        } else if (normalizedSport.includes('gimnasia')) {
+                            sportEmoji = '🤸 -';
+                        } else if (normalizedSport.includes('surf')) {
+                            sportEmoji = '🏄 -';
+                        } else if (normalizedSport.includes('ajedrez')) {
+                            sportEmoji = '♟️ -';
+                        } else if (normalizedSport.includes('dardos')) {
+                            sportEmoji = '🎯 -';
+                        } else if (normalizedSport.includes('tenis')) {
+                            sportEmoji = '🎾 -';
+                        } else if (normalizedSport.includes('golf')) {
+                            sportEmoji = '⛳ -';
+                        } else if (normalizedSport.includes('hockey')) {
+                            sportEmoji = '🏑 -';
+                        } else if (normalizedSport.includes('rugby')) {
+                            sportEmoji = '🏉 -';
+                        } else if (normalizedSport.includes('gimnasia')) {
+                            sportEmoji = '🤸 -';
+                        } else if (normalizedSport.includes('surf')) {
+                            sportEmoji = '🏄 -';
+                        } else if (normalizedSport.includes('ajedrez')) {
+                            sportEmoji = '♟️ -';
+                        } else if (normalizedSport.includes('dardos')) {
+                            sportEmoji = '🎯 -';
                         } else if (normalizedSport.includes('handball') || normalizedSport.includes('handball')) {
                             sportEmoji = '🤾‍♂️ -';
                         } else if (normalizedSport.includes('baloncesto') || normalizedSport.includes('basket') || normalizedSport.includes('nba')) {
@@ -2801,9 +2889,7 @@
                 showStatusMessage("Puntuaciones de canales restablecidas.", "success");
                 document.getElementById('settingsModal').classList.remove('modal--active');
             }
-        }
-
-        async function forceReloadChannels() {
+        }        async function forceReloadChannels() {
             showStatusMessage("Forzando actualización de datos...", "warning");
             // Limpiar hashes de backup para forzar el procesado completo
             for (const key in BACKUP_KEYS) {
@@ -2814,6 +2900,13 @@
             }
             document.getElementById('settingsModal').classList.remove('modal--active');
             await loadInitialChannels();
+        }
+
+        function factoryReset() {
+            if (confirm('⚠️ ¿ESTÁS SEGURO? Esta acción borrará todos tus datos, ajustes e historial. La página se recargará por completo.')) {
+                localStorage.clear();
+                window.location.reload();
+            }
         }
 
         function getStarRating(score) {

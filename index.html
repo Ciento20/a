@@ -25,26 +25,6 @@
             --success: #4cc9f0;
             --warning: #f8961e;
             --info: #4895ef;
-            --movistar: #2a62ad;
-            --eurosport: #5e17eb;
-            --dazn: #000000;
-            --f1: #ff3535;
-            --action: #ff544d;
-            --cinema-red: #fa3732;
-            --sports: #11a45b;
-            --vamos: #1fc23d;
-            --copadelrey: #449653;
-            --champions: #52c29c;
-            --liga: #21ffb8;
-            --hypermotion: #04d2d7;
-            --golf: #4ee1b0;
-            --eurosport-number: #ff3535;
-            --plus: #3399ff;
-            --western: #e60000;
-            --documentary: #a06cf5;
-            --originals: #3985b0;
-            --ellas: #35fd9b;
-            --series: #ff8c1f;
             --gist-source-color: #2d077d;
             --elcano-source-color: #7d070e;
             --special-gist-color: #9c27b0;
@@ -312,16 +292,20 @@
 
         .color-picker {
             display: flex;
-            gap: 3px
+            gap: 8px;
+            align-items: center;
+            padding: 2px;
         }
 
         .color-option {
-            width: 12px;
-            height: 12px;
+            width: 20px;
+            height: 20px;
             border-radius: 50%;
-            border: 1px solid transparent;
+            border: 2px solid #555;
             cursor: pointer;
-            transition: transform .2s
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+            display: inline-block;
         }
 
         .color-option:hover {
@@ -942,11 +926,12 @@
                                 class="settings-description">Borra la puntuación de estabilidad de todos los
                                 canales</span></div>
                     </div><button class="modal__btn" onclick="resetRatings()">Reiniciar</button>
-                </div>                <div class="settings-item">
-                    <div class="settings-item__info"><span class="settings-icon">🔄</span>
-                        <div><span class="settings-label">Forzar Recarga</span><span
-                                class="settings-description">Ignora el historial y obliga a descargar todos los datos de nuevo.</span></div>
-                    </div><button class="modal__btn" onclick="forceReloadChannels()">Recargar</button>
+                </div>                
+                <div class="settings-item">
+                    <div class="settings-item__info"><span class="settings-icon">⚡</span>
+                        <div><span class="settings-label">Calibración Rápida</span><span
+                                class="settings-description">Testea un enlace de cada canal rápidamente.</span></div>
+                    </div><button class="modal__btn" onclick="startCalibration()" style="background-color: var(--primary); color: white;">Iniciar Test</button>
                 </div>
                 <div class="settings-item">
                     <div class="settings-item__info"><span class="settings-icon">🗑️</span>
@@ -975,6 +960,20 @@
                     id="closeTvOptionsBtn">Cerrar</button></div>
         </div>
     </div>
+
+    <div class="modal" id="calibrationModal">
+        <div class="modal__content" style="max-width: 300px; text-align: center;">
+            <h3 class="modal__title">⚡ Calibrando: <span id="calibChannelName"></span></h3>
+            <p style="font-size: 0.45rem; margin-bottom: 10px;">¿Funciona la señal?</p>
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                <button class="modal__btn" onclick="processCalibration(true)" style="background: var(--success); color: black; padding: 20px; font-size: 0.8rem; font-weight: bold;">✅ SÍ FUNCIONA</button>
+                <button class="modal__btn" onclick="processCalibration(false)" style="background: #dc2626; color: white; padding: 20px; font-size: 0.8rem; font-weight: bold;">❌ NO FUNCIONA</button>
+            </div>
+            <div class="modal__actions">
+                <button class="modal__btn" onclick="stopCalibration()">Detener</button>
+            </div>
+        </div>
+    </div>
     <script>
         const state = {
             channelsData: [],
@@ -993,7 +992,9 @@
             lastPlayedByChannel: JSON.parse(localStorage.getItem('lastPlayedByChannel')) || {},
             channelLogos: JSON.parse(localStorage.getItem('channelLogos')) || {},
             fullScreenOnClick: localStorage.getItem('fullScreenOnClick') === 'true',
-            hideOptionsButton: localStorage.getItem('hideOptionsButton') === 'true'
+            hideOptionsButton: localStorage.getItem('hideOptionsButton') === 'true',
+            calibrationQueue: [],
+            isCalibrating: false
         };
         const LOGOPEDIA_BASE_URL = "https://static.wikia.nocookie.net/logopedia/images/";
         const IMAGE_PROXY_URL = "https://images.weserv.nl/?url=";
@@ -2906,18 +2907,69 @@
                 showStatusMessage("Puntuaciones de canales restablecidas.", "success");
                 document.getElementById('settingsModal').classList.remove('modal--active');
             }
-        }        async function forceReloadChannels() {
-            showStatusMessage("Forzando actualización de datos...", "warning");
-            // Limpiar hashes de backup para forzar el procesado completo
-            for (const key in BACKUP_KEYS) {
-                const backup = loadBackup(BACKUP_KEYS[key]);
-                if (backup) {
-                    saveBackup(backup.data, BACKUP_KEYS[key], null);
+        }        function startCalibration() {
+            const grouped = getGroupedChannels();
+            state.calibrationQueue = [];
+            
+            // Crear cola: Un canal de cada subgrupo (excluyendo el grupo 'Otros')
+            for (const gKey in grouped.groups) {
+                if (gKey === 'Otros') continue;
+
+                const subGroups = grouped.groups[gKey].subGroups;
+                for (const sName in subGroups) {
+                    const best = getBestChannelInSubgroup(subGroups[sName]);
+                    if (best) state.calibrationQueue.push(best);
                 }
             }
+
+            if (state.calibrationQueue.length === 0) return alert('No hay canales para calibrar.');
+            
+            state.isCalibrating = true;
             document.getElementById('settingsModal').classList.remove('modal--active');
-            await loadInitialChannels();
+            nextCalibrationStep();
         }
+
+        function nextCalibrationStep() {
+            if (state.calibrationQueue.length === 0) {
+                stopCalibration();
+                alert('Calibración finalizada.');
+                return;
+            }
+
+            const channel = state.calibrationQueue[0];
+            document.getElementById('calibChannelName').textContent = channel.name;
+            document.getElementById('calibrationModal').classList.add('modal--active');
+            playChannel(channel.id);
+        }
+
+        function processCalibration(works) {
+            const channel = state.calibrationQueue.shift();
+            let rating = state.channelRatings[channel.id] !== undefined ? state.channelRatings[channel.id] : 2.5;
+            
+            if (works) {
+                state.channelRatings[channel.id] = Math.min(5, rating + 1.5);
+                // Si funciona, pasamos al siguiente nombre de canal diferente (ahorramos pasos)
+                nextCalibrationStep();
+            } else {
+                state.channelRatings[channel.id] = Math.max(1, rating - 1.5);
+                // Si no funciona, buscamos si hay otro link para el mismo nombre en el total de data
+                const alternatives = state.channelsData.filter(c => c.name === channel.name && c.id !== channel.id);
+                if (alternatives.length > 0) {
+                    // Insertar la mejor alternativa al principio de la cola para probarla ya
+                    const nextBest = alternatives.sort(compareChannelsForSort)[0];
+                    state.calibrationQueue.unshift(nextBest);
+                }
+                nextCalibrationStep();
+            }
+            saveRatings();
+        }
+
+        function stopCalibration() {
+            state.isCalibrating = false;
+            state.calibrationQueue = [];
+            document.getElementById('calibrationModal').classList.remove('modal--active');
+            renderTVChannels();
+        }        
 
         function factoryReset() {
             if (confirm('⚠️ ¿ESTÁS SEGURO? Esta acción borrará todos tus datos, ajustes e historial. La página se recargará por completo.')) {

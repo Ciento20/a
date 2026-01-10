@@ -504,17 +504,20 @@
             font-size: 0.55rem !important
         }
 
-        #tvSidebar .tv-nav-link:hover,
-        #tvSidebar .tv-nav-link.focused-link {
+        #tvSidebar .tv-nav-link:hover {
             background-color: #2d2d2d
         }
 
+        /* Estilo de cápsula para el botón activo */
         .tv-sidebar-link-focused {
             background-color: var(--primary) !important;
-            border: 1px solid white;
-            outline-offset: 1px;
-            transform: scale(1.02);
+            border-radius: 50px !important; /* Forma de cápsula */
+            color: white !important;
+            padding: 8px 15px !important;
+            transition: all 0.3s ease;
         }
+
+        /* Eliminado borde y escala previa para favorecer estética de cápsula limpia */
 
         #tvMainContent {
             margin-left: 50px;
@@ -568,17 +571,19 @@
             }
 
             #tvSidebar .tv-nav-link {
-                padding: 0;
-                font-size: 0.45rem;
-                width: 100%;
-                height: 100%;
-                display: flex;
-                flex-direction: column;
-                justify-content: center;
-                align-items: center;
-                text-align: center;
-                gap: 2px;
-            }
+            padding: 5px;
+            font-size: 0.45rem;
+            width: auto; /* Permitir que la cápsula no ocupe todo el ancho */
+            min-width: 60px;
+            height: 80%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            gap: 2px;
+            transition: all 0.3s ease;
+        }
 
             #tvSidebar .tv-nav-link span {
                 font-size: 0.7rem !important;

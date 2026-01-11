@@ -127,15 +127,22 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(0, 0, 0, .5);
+            background: rgba(0, 0, 0, .8);
             display: none;
             justify-content: center;
             align-items: center;
-            z-index: 1001
+            z-index: 10001;
+            backdrop-filter: blur(4px);
         }
 
         .modal--active {
-            display: flex
+            display: flex;
+            overscroll-behavior: contain;
+        }
+
+        body:has(.modal--active) {
+            overflow: hidden !important;
+            height: 100vh;
         }        .modal__content {
             background: var(--card-bg);
             border-radius: var(--radius-md);
@@ -913,7 +920,7 @@
     <main id="tvMainContent">
         <div id="tvStatusMessageContainer" style="margin-bottom:.75rem"></div>
         <div id="searchContainer" style="display: none; margin-bottom: 0.75rem; padding: 0.5rem 0.75rem; background: #222222; border-radius: 6px; align-items: center; border: 1px solid #383838;">
-            <span style="font-size: 0.75rem; color: #e0e0e0; margin-right: 10px;">   🔍   </span>
+            <span id="clearSearchLupa" style="font-size: 0.75rem; color: #e0e0e0; margin-right: 10px; cursor: pointer;">   🔍   </span>
             <input type="text" id="globalSearchInput" placeholder="Escribe para buscar"
                 style="flex-grow: 1; padding: 8px 12px; border-radius: 4px; font-size: 0.75rem; box-sizing: border-box; background-color: #383838; color: #ffffff; border: 0.5px solid #555555; box-shadow: none;">
         </div>
@@ -3452,9 +3459,9 @@
                             <span class="channel-option-name">${option.name}</span>
                         </div>
                         <div class="channel-option-details">
-                            <span style="font-weight: 700; color: var(--primary);">${option.quality}</span>
                             ${option.multiAudio ? '<span style="color: var(--success); font-weight: 700;">MA</span>' : ''}
-                            <span style="color: var(--${sourceBadgeClass}); font-weight: 700; border-left: 1px solid #444; padding-left: 3px;">${sourceBadgeText.toUpperCase()}</span>
+                            <span style="color: var(--${sourceBadgeClass}); font-weight: 700;">${sourceBadgeText.toUpperCase()}</span>
+                            <span style="font-weight: 700; color: var(--primary); border-left: 1px solid #444; padding-left: 3px; margin-left: 3px;">${option.quality}</span>
                             <span style="margin-left: 3px;">${ratingStars}</span>
                         </div>
                     </div>
@@ -3497,9 +3504,18 @@
 
         function setupSearchInputListener() {
             const searchInput = document.getElementById('globalSearchInput');
+            const searchLupa = document.getElementById('clearSearchLupa');
             if (searchInput) {
-                searchInput.removeEventListener('input', handleSearchInput); // Evitar duplicados
+                searchInput.removeEventListener('input', handleSearchInput);
                 searchInput.addEventListener('input', handleSearchInput);
+            }
+            if (searchLupa) {
+                searchLupa.onclick = () => {
+                    state.tvSearchTerm = '';
+                    if (searchInput) searchInput.value = '';
+                    renderTVChannels();
+                    if (searchInput) searchInput.focus();
+                };
             }
         }
 
@@ -3533,8 +3549,18 @@
 
             // Asignar eventos del modal de ajustes y copiado
             document.getElementById('settingsModeBtn').addEventListener('click', (e) => {
-                e.preventDefault(); // Evitar navegación si es un <a>
+                e.preventDefault();
                 document.getElementById('settingsModal').classList.add('modal--active');
+            });
+
+            // Cerrar modales al hacer clic fuera del contenido
+            document.querySelectorAll('.modal').forEach(modal => {
+                modal.addEventListener('click', (e) => {
+                    if (e.target === modal) {
+                        modal.classList.remove('modal--active');
+                        if (modal.id === 'calibrationModal') stopCalibration();
+                    }
+                });
             });
             document.getElementById('closeSettingsBtn').addEventListener('click', () => {
                 document.getElementById('settingsModal').classList.remove('modal--active');

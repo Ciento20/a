@@ -670,8 +670,7 @@
             font-size: 0.75rem;
             font-weight: 700;
             color: #e0e0e0;
-            border-left: 2px solid var(--primary);
-            padding-left: 7.5px;
+            padding-left: 0;
             width: 100%;
             margin-top: 0;
         }
@@ -1938,154 +1937,60 @@
                         const durationString = `${sportName} ${competition} ${match}`;
                         const eventStartTime = getEventTime(date, time);
                         const durationMinutes = calculateDuration(durationString);
-                        let sportEmoji = '❓ -';
+                        let sportEmoji = '🏆';
                         const normalizedSport = normalizeText(sportName);
                         if (normalizedSport.includes('americano')) {
-                            sportEmoji = '🏉 -';
+                            sportEmoji = '🏈';
                         } else if (normalizedSport.includes('tenis')) {
-                            sportEmoji = '🎾 -';
+                            sportEmoji = '🎾';
                         } else if (normalizedSport.includes('golf')) {
-                            sportEmoji = '⛳ -';
+                            sportEmoji = '⛳';
                         } else if (normalizedSport.includes('hockey')) {
-                            sportEmoji = '🏑 -';
+                            sportEmoji = '🏑 ';
                         } else if (normalizedSport.includes('rugby')) {
-                            sportEmoji = '🏉 -';
+                            sportEmoji = '🏉';
                         } else if (normalizedSport.includes('gimnasia')) {
-                            sportEmoji = '🤸 -';
+                            sportEmoji = '🤸';
                         } else if (normalizedSport.includes('surf')) {
-                            sportEmoji = '🏄 -';
+                            sportEmoji = '🏄 ';
                         } else if (normalizedSport.includes('ajedrez')) {
-                            sportEmoji = '♟️ -';
+                            sportEmoji = '♟️';
                         } else if (normalizedSport.includes('dardos')) {
-                            sportEmoji = '🎯 -';
+                            sportEmoji = '🎯';
                         } else if (normalizedSport.includes('futbol')) {
-                            sportEmoji = '⚽ -';
-                        } else if (normalizedSport.includes('tenis')) {
-                            sportEmoji = '🎾 -';
-                        } else if (normalizedSport.includes('golf')) {
-                            sportEmoji = '⛳ -';
-                        } else if (normalizedSport.includes('hockey')) {
-                            sportEmoji = '🏑 -';
-                        } else if (normalizedSport.includes('rugby')) {
-                            sportEmoji = '🏉 -';
-                        } else if (normalizedSport.includes('gimnasia')) {
-                            sportEmoji = '🤸 -';
-                        } else if (normalizedSport.includes('surf')) {
-                            sportEmoji = '🏄 -';
-                        } else if (normalizedSport.includes('ajedrez')) {
-                            sportEmoji = '♟️ -';
-                        } else if (normalizedSport.includes('dardos')) {
-                            sportEmoji = '🎯 -';
-                        } else if (normalizedSport.includes('tenis')) {
-                            sportEmoji = '🎾 -';
-                        } else if (normalizedSport.includes('golf')) {
-                            sportEmoji = '⛳ -';
-                        } else if (normalizedSport.includes('hockey')) {
-                            sportEmoji = '🏑 -';
-                        } else if (normalizedSport.includes('rugby')) {
-                            sportEmoji = '🏉 -';
-                        } else if (normalizedSport.includes('gimnasia')) {
-                            sportEmoji = '🤸 -';
-                        } else if (normalizedSport.includes('surf')) {
-                            sportEmoji = '🏄 -';
-                        } else if (normalizedSport.includes('ajedrez')) {
-                            sportEmoji = '♟️ -';
-                        } else if (normalizedSport.includes('dardos')) {
-                            sportEmoji = '🎯 -';
-                        } else if (normalizedSport.includes('tenis')) {
-                            sportEmoji = '🎾 -';
-                        } else if (normalizedSport.includes('golf')) {
-                            sportEmoji = '⛳ -';
-                        } else if (normalizedSport.includes('hockey')) {
-                            sportEmoji = '🏑 -';
-                        } else if (normalizedSport.includes('rugby')) {
-                            sportEmoji = '🏉 -';
-                        } else if (normalizedSport.includes('gimnasia')) {
-                            sportEmoji = '🤸 -';
-                        } else if (normalizedSport.includes('surf')) {
-                            sportEmoji = '🏄 -';
-                        } else if (normalizedSport.includes('ajedrez')) {
-                            sportEmoji = '♟️ -';
-                        } else if (normalizedSport.includes('dardos')) {
-                            sportEmoji = '🎯 -';
-                        } else if (normalizedSport.includes('tenis')) {
-                            sportEmoji = '🎾 -';
-                        } else if (normalizedSport.includes('golf')) {
-                            sportEmoji = '⛳ -';
-                        } else if (normalizedSport.includes('hockey')) {
-                            sportEmoji = '🏑 -';
-                        } else if (normalizedSport.includes('rugby')) {
-                            sportEmoji = '🏉 -';
-                        } else if (normalizedSport.includes('gimnasia')) {
-                            sportEmoji = '🤸 -';
-                        } else if (normalizedSport.includes('surf')) {
-                            sportEmoji = '🏄 -';
-                        } else if (normalizedSport.includes('ajedrez')) {
-                            sportEmoji = '♟️ -';
-                        } else if (normalizedSport.includes('dardos')) {
-                            sportEmoji = '🎯 -';
-                        } else if (normalizedSport.includes('tenis')) {
-                            sportEmoji = '🎾 -';
-                        } else if (normalizedSport.includes('golf')) {
-                            sportEmoji = '⛳ -';
-                        } else if (normalizedSport.includes('hockey')) {
-                            sportEmoji = '🏑 -';
-                        } else if (normalizedSport.includes('rugby')) {
-                            sportEmoji = '🏉 -';
-                        } else if (normalizedSport.includes('gimnasia')) {
-                            sportEmoji = '🤸 -';
-                        } else if (normalizedSport.includes('surf')) {
-                            sportEmoji = '🏄 -';
-                        } else if (normalizedSport.includes('ajedrez')) {
-                            sportEmoji = '♟️ -';
-                        } else if (normalizedSport.includes('dardos')) {
-                            sportEmoji = '🎯 -';
+                            sportEmoji = '⚽';
                         } else if (normalizedSport.includes('handball') || normalizedSport.includes('handball')) {
-                            sportEmoji = '🤾‍♂️ -';
+                            sportEmoji = '🤾‍♂️';
                         } else if (normalizedSport.includes('baloncesto') || normalizedSport.includes('basket') || normalizedSport.includes('nba')) {
-                            sportEmoji = '🏀 -';
-                        } else if (normalizedSport.includes('tenis')) {
-                            sportEmoji = '🎾 -';
+                            sportEmoji = '🏀';
                         } else if (normalizedSport.includes('motogp') || normalizedSport.includes('motos')) {
-                            sportEmoji = '🏍️ -';
+                            sportEmoji = '🏍️';
                         } else if (normalizedSport.includes('paddle') || normalizedSport.includes('padel')) {
-                            sportEmoji = '🥎 -';
+                            sportEmoji = '🥎';
                         } else if (normalizedSport.includes('triatlon') || normalizedSport.includes('triathlon')) {
-                            sportEmoji = '🏊🚴🏃 -';
+                            sportEmoji = '🏊🚴🏃';
                         } else if (normalizedSport.includes('motor') || normalizedSport.includes('rally')) {
-                            sportEmoji = '🚗 -';
+                            sportEmoji = '🚗';
                         } else if (normalizedSport.includes('f1') || normalizedSport.includes('formula')) {
-                            sportEmoji = '🏎️ -';
+                            sportEmoji = '🏎️';
                         } else if (normalizedSport.includes('boxeo') || normalizedSport.includes('lucha')) {
-                            sportEmoji = '🥊 -';
+                            sportEmoji = '🥊';
                         } else if (normalizedSport.includes('ciclismo') || normalizedSport.includes('tour')) {
-                            sportEmoji = '🚴 -';
+                            sportEmoji = '🚴';
                         } else if (normalizedSport.includes('beisbol') || normalizedSport.includes('baseball')) {
-                            sportEmoji = '⚾ -';
-                        } else if (normalizedSport.includes('golf')) {
-                            sportEmoji = '⛳ -';
+                            sportEmoji = '⚾';
                         } else if (normalizedSport.includes('voleibol') || normalizedSport.includes('voley')) {
-                            sportEmoji = '🏐 -';
-                        } else if (normalizedSport.includes('hockey')) {
-                            sportEmoji = '🏑 -';
-                        } else if (normalizedSport.includes('rugby')) {
-                            sportEmoji = '🏉 -';
+                            sportEmoji = '🏐';
                         } else if (normalizedSport.includes('natacion') || normalizedSport.includes('agua')) {
-                            sportEmoji = '🏊 -';
+                            sportEmoji = '🏊';
                         } else if (normalizedSport.includes('atletismo') || normalizedSport.includes('pista')) {
-                            sportEmoji = '🏃 -';
+                            sportEmoji = '🏃';
                         } else if (normalizedSport.includes('gimnasia')) {
-                            sportEmoji = '🤸 -';
+                            sportEmoji = '🤸';
                         } else if (normalizedSport.includes('esqui') || normalizedSport.includes('nieve')) {
-                            sportEmoji = '⛷️ -';
-                        } else if (normalizedSport.includes('surf')) {
-                            sportEmoji = '🏄 -';
+                            sportEmoji = '⛷️';
                         } else if (normalizedSport.includes('e-sports') || normalizedSport.includes('esports')) {
-                            sportEmoji = '🎮 -';
-                        } else if (normalizedSport.includes('ajedrez')) {
-                            sportEmoji = '♟️ -';
-                        } else if (normalizedSport.includes('dardos')) {
-                            sportEmoji = '🎯 -';
+                            sportEmoji = '🎮';
                         } else if (normalizedSport.includes('billares') || normalizedSport.includes('pool')) {
                             sportEmoji = '🎱 -';
                         } else if (normalizedSport.includes('patinaje') || normalizedSport.includes('roller')) {
@@ -3168,7 +3073,7 @@
                     // MODIFICACIÓN CLAVE: Aplicar estilo al nombre de la competición (group.competition)
                     const competitionHtml = `<span style="color: var(--primary);">${group.competition}</span>`;
 
-                    groupTitle = `<span class="${liveTimeClass}" style="margin-right: 7.5px;">${group.time}</span> ${group.sportEmoji} ${competitionHtml} - ${group.match}`;
+                    groupTitle = `<div style="display: flex; flex-direction: column; align-items: flex-start;"><div style="display: flex; align-items: center; gap: 8px;"><span style="font-size: 0.85rem; line-height: 1;">${group.sportEmoji}</span> ${competitionHtml}</div><div style="display: flex; align-items: center;"><span class="${liveTimeClass}" style="margin-right: 7.5px; border-right: 2px solid var(--primary); padding-right: 7.5px; display: inline-block; line-height: 0.8; height: 0.6rem;">${group.time}</span> ${group.match}</div></div>`;
 
                     const isFirstGroupAfterDateHeader = !lastDateRendered || (group.date && formatEventDate(group.date) === lastDateRendered);
                     if (isFirstGroupAfterDateHeader) {
@@ -3193,7 +3098,7 @@
                         const competitionHtml = `<span style="color: var(--primary);">${competition}</span>`;
 
                         // Se muestra la hora, emoji, competición y el partido
-                        groupTitle = `<span style="margin-right: 7.5px;">${time}</span> ${sportEmoji} ${competitionHtml} - ${match}`;
+                        groupTitle = `<div style="display: flex; flex-direction: column; align-items: flex-start;"><div style="display: flex; align-items: center; gap: 8px;"><span style="font-size: 1.2rem; line-height: 1;">${sportEmoji}</span> ${competitionHtml}</div><div style="display: flex; align-items: center;"><span style="margin-right: 7.5px; border-right: 2px solid var(--primary); padding-right: 7.5px; display: inline-block; line-height: 0.8; height: 0.6rem;">${time}</span> ${match}</div></div>`;
                     } else {
                         // Fallback por si el formato es inesperado
                         groupTitle = group.name.replace(/###/g, ' - ');

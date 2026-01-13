@@ -947,6 +947,13 @@
                     </div><label class="settings-switch"><input type="checkbox" id="hideOptionsButtonCheckbox"><span
                             class="settings-slider"></span></label>
                 </div>
+                <div class="settings-item">
+                    <div class="settings-item__info"><span class="settings-icon">📋</span>
+                        <div><span class="settings-label">Copiar enlace en vez de abrir</span><span
+                                class="settings-description">Al hacer clic en un canal, copia el ID de AceStream al portapapeles en lugar de intentar abrirlo.</span></div>
+                    </div><label class="settings-switch"><input type="checkbox" id="copyLinkModeCheckbox"><span
+                            class="settings-slider"></span></label>
+                </div>
             </div>
             <div class="settings-section">
                 <h4 class="settings-section__title">🎨 Apariencia</h4>
@@ -987,13 +994,13 @@
             <div class="modal__actions"><button class="modal__btn modal__btn--primary"
                     id="closeSettingsBtn">Cerrar</button></div>
         </div>
-    </div>
-    <div class="copy-modal" id="copyModal">
+    </div>    <div class="copy-modal" id="copyModal">
         <div class="copy-modal-icon">🔗</div>
-        <div class="copy-modal-text">Enlace AceStream a copiar:</div>
-        <p id="copyUrlDisplayAceStream" class="copy-modal-url"></p><button class="copy-modal-button"
-            id="copyAceStreamBtn" data-format="acestream">Copiar AceStream</button><button
-            class="modal__btn modal__btn--cancel" id="cancelCopyBtn">Cancelar</button>
+        <div class="copy-modal-text">Selecciona el formato de copia:</div>
+        <p id="copyUrlDisplayAceStream" class="copy-modal-url" style="display:none"></p>
+        <button class="copy-modal-button" id="copyAceStreamBtn" style="margin-bottom: 8px;">Copiar para AceStream</button>
+        <button class="copy-modal-button" id="copyVlcBtn" style="background: #f8961e; margin-bottom: 12px;">Copiar para VLC</button>
+        <button class="modal__btn modal__btn--cancel" id="cancelCopyBtn">Cancelar</button>
     </div>
     <div class="copy-message" id="copyMessage">URL copiada con éxito!</div>
     <div class="modal" id="tvChannelOptionsModal">
@@ -1037,6 +1044,7 @@
             channelLogos: JSON.parse(localStorage.getItem('channelLogos')) || {},
             fullScreenOnClick: localStorage.getItem('fullScreenOnClick') === 'true',
             hideOptionsButton: localStorage.getItem('hideOptionsButton') === 'true',
+            copyLinkMode: localStorage.getItem('copyLinkMode') === 'true',
             calibrationQueue: [],
             isCalibrating: false
         };
@@ -1141,8 +1149,16 @@
             state.hideOptionsButton = !state.hideOptionsButton;
             localStorage.setItem('hideOptionsButton', state.hideOptionsButton);
             document.getElementById('hideOptionsButtonCheckbox').checked = state.hideOptionsButton;
+            document.getElementById('copyLinkModeCheckbox').checked = state.copyLinkMode;
             document.body.classList.toggle('hide-options-button-active', state.hideOptionsButton);
             renderTVChannels();
+        }
+
+        function toggleCopyLinkMode() {
+            state.copyLinkMode = !state.copyLinkMode;
+            localStorage.setItem('copyLinkMode', state.copyLinkMode);
+            document.getElementById('copyLinkModeCheckbox').checked = state.copyLinkMode;
+            showStatusMessage(state.copyLinkMode ? "Modo Copiar Enlace activado" : "Modo Reproducción directa activado", "info");
         }
 
         function requestFullScreen() {
@@ -2760,27 +2776,19 @@
             saveRatings();
 
             renderTVChannels();
-        }
-
-        function showCopyModal(acestreamId) {
+        }        function showCopyModal(acestreamId) {
             const acestreamUrl = `acestream://${acestreamId}`;
+            const vlcUrl = `http://vlc.shickat.me:8000/pid/${acestreamId}/stream.mp4`;
             const copyModal = document.getElementById('copyModal');
-            const copyAceStreamBtn = document.getElementById('copyAceStreamBtn');
-            const urlDisplayAceStream = document.getElementById('copyUrlDisplayAceStream');
-            urlDisplayAceStream.textContent = acestreamUrl;
-            copyAceStreamBtn.onclick = () => copyUrlToClipboard(acestreamUrl, 'AceStream');
+            
+            document.getElementById('copyAceStreamBtn').onclick = () => copyUrlToClipboard(acestreamUrl, 'AceStream');
+            document.getElementById('copyVlcBtn').onclick = () => copyUrlToClipboard(vlcUrl, 'VLC');
+            
             copyModal.classList.add('active');
         }
 
         async function copyAcestreamDirectly(acestreamId) {
-            const acestreamUrl = `acestream://${acestreamId}`;
-            try {
-                await navigator.clipboard.writeText(acestreamUrl);
-                showCopySuccessMessage('AceStream');
-            } catch (err) {
-                console.error('Error al copiar el texto: ', err);
-                alert('No se pudo copiar la URL. Por favor, hazlo manualmente.');
-            }
+            showCopyModal(acestreamId);
         }
 
         function hideCopyModal() {
@@ -3292,7 +3300,11 @@
                 }
             }
 
-            handleChannelPlay(channelToPlay);
+            if (state.copyLinkMode) {
+                copyAcestreamDirectly(channelToPlay.id);
+            } else {
+                handleChannelPlay(channelToPlay);
+            }
         }
 
         const handleTVCardOptionsClick = (e) => {
@@ -3476,11 +3488,13 @@
             // Inicializar checkboxes de ajustes
             document.getElementById('fullScreenOnClickCheckbox').checked = state.fullScreenOnClick;
             document.getElementById('hideOptionsButtonCheckbox').checked = state.hideOptionsButton;
+            document.getElementById('copyLinkModeCheckbox').checked = state.copyLinkMode;
             document.body.classList.toggle('hide-options-button-active', state.hideOptionsButton);
 
             // Asignar eventos a los ajustes
             document.getElementById('fullScreenOnClickCheckbox').addEventListener('change', toggleFullScreenOnClick);
             document.getElementById('hideOptionsButtonCheckbox').addEventListener('change', toggleHideOptionsButton);
+            document.getElementById('copyLinkModeCheckbox').addEventListener('change', toggleCopyLinkMode);
 
             // Nuevo: Activar pantalla completa al hacer clic en cualquier parte del cuerpo, si la opción está activa
             document.body.addEventListener('click', (e) => {

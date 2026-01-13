@@ -355,8 +355,8 @@
             border: 0.5px solid var(--border-color);
             border-radius: var(--radius-md);
             padding: 0.75rem;
-            box-shadow: 0 2px 6px rgba(0, 0, 0, .2);
-            z-index: 2000;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+            z-index: 20000; /* Incrementado para estar por encima de todos los modales */
             width: 90%;
             max-width: 160px;
             display: none;
@@ -436,7 +436,7 @@
             padding: 0.3rem 0.6rem;
             border-radius: var(--radius-sm);
             font-size: 0.45rem;
-            z-index: 2001;
+            z-index: 20001; /* Ajustado para estar sobre el modal de copia */
             opacity: 0;
             transition: opacity .4s ease-in-out
         }
@@ -3334,43 +3334,26 @@
             const lastPlayedId = state.lastPlayedByChannel[mainChannelName.trim().toLowerCase()];
 
             const renderOptionItem = (option) => {
-                
-
                 const isLastViewed = option.id === lastPlayedId;
                 const lastViewedIndicator = isLastViewed ? '<span class="last-viewed-indicator" title="Último AceStream reproducido para este canal">👁️</span>' : '';
-
                 const ratingStars = getStarRating(option.rating);
-                let sourceBadgeText = '';
-                let sourceBadgeClass = '';
+                
+                let sourceBadgeText = '', sourceBadgeClass = '';
                 switch (option.source) {
-                    case 'gist':
-                        sourceBadgeText = 'Gist';
-                        sourceBadgeClass = 'gist-source-color';
-                        break;
-                    case 'elcano':
-                        sourceBadgeText = 'Elcano';
-                        sourceBadgeClass = 'elcano-source-color';
-                        break;
-                    case 'events':
-                        sourceBadgeText = 'Eventos';
-                        sourceBadgeClass = 'events-source-color';
-                        break;
-                    case 'shickat':
-                        sourceBadgeText = 'Shickat';
-                        sourceBadgeClass = 'shickat-badge';
-                        break;
-                    case 'era':
-                        sourceBadgeText = 'Era';
-                        sourceBadgeClass = 'era-source-color';
-                        break;
-                    default:
-                        sourceBadgeText = 'Desconocido';
-                        sourceBadgeClass = 'channel-name-color';
+                    case 'gist': sourceBadgeText = 'Gist'; sourceBadgeClass = 'gist-source-color'; break;
+                    case 'elcano': sourceBadgeText = 'Elcano'; sourceBadgeClass = 'elcano-source-color'; break;
+                    case 'events': sourceBadgeText = 'Eventos'; sourceBadgeClass = 'events-source-color'; break;
+                    case 'shickat': sourceBadgeText = 'Shickat'; sourceBadgeClass = 'shickat-badge'; break;
+                    case 'era': sourceBadgeText = 'Era'; sourceBadgeClass = 'era-source-color'; break;
+                    default: sourceBadgeText = 'Desconocido'; sourceBadgeClass = 'channel-name-color';
                 }
 
+                const clickAction = state.copyLinkMode 
+                    ? `copyAcestreamDirectly('${option.id}')` 
+                    : `handleChannelPlay({ id: '${option.id}', name: '${mainChannelName.replace(/'/g, "\\'")}' })`;
                 
                 return `
-                    <div class="channel-option-item" data-id="${option.id}" onclick="handleChannelPlay({ id: '${option.id}', name: '${mainChannelName.replace(/'/g, "\\'")}' })">
+                    <div class="channel-option-item" data-id="${option.id}" onclick="${clickAction}">
                         <div class="channel-option-name-container">
                             ${lastViewedIndicator}
                             <span class="channel-option-name">${option.name}</span>

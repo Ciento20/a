@@ -1088,7 +1088,7 @@
         const GIST_URL = "https://gist.githubusercontent.com/Ciento20/f7847e86d06e5011706fa76f2dab90be/raw";
         const ELCANO_URL = 'https://ipfs.io/ipns/elcano.top';
         const EVENTS_URL_VERCEL = 'https://eventos-eight-dun.vercel.app/';
-        const EVENTS_URL_IPFS = 'https://ipfs.io/ipns/k2k4r8oqlcjxsritt5mczkcn4mmvcmymbqw7113fz2flkrerfwfps004/';
+        const EVENTS_URL_IPFS = 'https://ipfs.io/ipns/k2k4r8oqlcjxsritt5mczkcn4mmvcmymbqw7113fz2flkrerfwfps004/index.html';
         const SHICKAT_URL = 'https://shickat.me/';
         const BACKUP_KEYS = {
             
@@ -1968,6 +1968,17 @@
 
             const hora = cells[0].innerText.trim();
             const competicion = row.querySelector('.competition-name')?.innerText.trim() || "Evento";
+
+            let sportEmoji = '🏆';
+            const compNorm = competicion.toUpperCase();
+            if (compNorm.includes('NCAA') || compNorm.includes('ENDESA')) sportEmoji = '🏀';
+            else if (compNorm.includes('NBA')) sportEmoji = '⛹️';
+            else if (compNorm.includes('NHL')) sportEmoji = '🏒';
+            else if (compNorm.includes('EHF') || compNorm.includes('D1')) sportEmoji = '🤾';
+            else if (compNorm.includes('SERIE A') || compNorm.includes('BUNDESLIGA') || compNorm.includes('LALIGA') || compNorm.includes('LIGA F') || compNorm.includes('PREMIER') || compNorm.includes('NATIONAL LEAGUE') || compNorm.includes('JUPILER')) sportEmoji = '⚽';
+            else if (compNorm.includes('DAKAR')) sportEmoji = '🚘';
+            else if (compNorm.includes('VELADA') || compNorm.includes('INTERNACIONAL')) sportEmoji = '🥊';
+            else if (compNorm.includes('NFL')) sportEmoji = '🏈';
             
             let matchName = "";
             const teamNames = row.querySelectorAll('.team-name');
@@ -1990,11 +2001,22 @@
                 const match = link.getAttribute('onclick').match(/'([^']+)'/);
                 if (match) {
                     const id = match[1];
-                    const channelName = link.innerText.trim() || "Canal";
-                    const { name, quality, multiAudio } = cleanNameAndExtractQuality(channelName);
+                    const rawChannelName = link.innerText.trim() || "Canal";
+                    let simplifiedName = rawChannelName;
+                    const channelMappings = {
+                        'MOVISTAR': 'M+', 'LA LIGA 1': 'La Liga', 'LALIGA': 'La Liga', 'Premier': 'Premier League',
+                        'EUROSPORT': '★EUROSPORT', 'HYPERMOTION': 'La Liga Hypermotion', 'LIGA DE CAMPEONES': 'M+ Liga de Campeones',
+                        'ACCION': 'Acción', 'CLASICOS': 'Clásicos', 'PLUS': 'Plus', 'GOLF': 'Golf', 'VAMOS': 'Vamos',
+                        'BALONCESTO 1': 'Baloncesto', 'M. DEPORTES ES': 'M+ Deportes'
+                    };
+                    for (const key in channelMappings) {
+                        const regex = new RegExp(key, 'gi');
+                        if (regex.test(simplifiedName)) simplifiedName = simplifiedName.replace(regex, channelMappings[key]);
+                    }
+                    const { name, quality, multiAudio } = cleanNameAndExtractQuality(simplifiedName);
                     numberedChannels.push({
                         id: id, number: id.substring(0, 3), name: name, quality: quality, multiAudio: multiAudio, source: 'events',
-                        event: { time: hora, competition: competicion, match: matchName, date: fechaActual, sportEmoji: '🏆', t1_logo, t2_logo, startTime: getEventTime(fechaActual, hora).getTime(), endTime: getEventTime(fechaActual, hora).getTime() + (120 * 60000) }
+                        event: { time: hora, competition: competicion, match: matchName, date: fechaActual, sportEmoji: sportEmoji, t1_logo, t2_logo, startTime: getEventTime(fechaActual, hora).getTime(), endTime: getEventTime(fechaActual, hora).getTime() + (120 * 60000) }
                     });
                 }
             });
@@ -2013,7 +2035,7 @@
                             const { name, quality, multiAudio } = cleanNameAndExtractQuality(groupTitle);
                             numberedChannels.push({
                                 id: id, number: id.substring(0, 3), name: name, quality: quality, multiAudio: multiAudio, source: 'events',
-                                event: { time: hora, competition: competicion, match: matchName, date: fechaActual, sportEmoji: '🏆', t1_logo, t2_logo, startTime: getEventTime(fechaActual, hora).getTime(), endTime: getEventTime(fechaActual, hora).getTime() + (120 * 60000) }
+                                event: { time: hora, competition: competicion, match: matchName, date: fechaActual, sportEmoji: sportEmoji, t1_logo, t2_logo, startTime: getEventTime(fechaActual, hora).getTime(), endTime: getEventTime(fechaActual, hora).getTime() + (120 * 60000) }
                             });
                         }
                     });

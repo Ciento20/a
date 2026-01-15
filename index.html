@@ -1939,77 +1939,90 @@
         }
 
         function processEventsData(htmlContent) {
-            const numberedChannels = [];
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(htmlContent, 'text/html');
+    const numberedChannels = [];
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(htmlContent, 'text/html');
+    let fechaActual = "Hoy";
+
+    const rows = doc.querySelectorAll('tr');
+
+    rows.forEach(row => {
+        const dayParent = row.closest('.events-day');
+        if (dayParent) {
+            const h2Text = dayParent.querySelector('h2')?.innerText.trim();
+            if (h2Text && h2Text.includes(' - ')) {
+                fechaActual = h2Text.split(' - ')[1].trim();
+            } else {
+                fechaActual = dayParent.getAttribute('data-date') || fechaActual;
+            }
+        } else if (row.classList.contains('date-row') || row.innerText.includes('202') || row.querySelector('th')) {
+            let texto = row.innerText.trim();
+            if (texto.includes('Hora')) texto = texto.split('Hora')[0].trim();
+            if (texto.length > 5) fechaActual = texto;
+            return;
+        }
+
+        if (row.classList.contains('event-row')) {
+            const cells = row.querySelectorAll('td');
+            if (cells.length < 3) return;
+
+            const hora = cells[0].innerText.trim();
+            const competicion = row.querySelector('.competition-name')?.innerText.trim() || "Evento";
             
-            const allRows = doc.querySelectorAll('tr');
-            let fechaActual = "Hoy";
+            let matchName = "";
+            const teamNames = row.querySelectorAll('.team-name');
+            const individualEvent = row.querySelector('.evento-name');
+            
+            if (teamNames.length >= 2) {
+                matchName = teamNames[0].innerText.trim() + " vs " + teamNames[1].innerText.trim();
+            } else if (individualEvent) {
+                matchName = individualEvent.innerText.trim();
+            } else {
+                matchName = cells[2]?.innerText.trim() || "Evento Especial";
+            }
 
-            allRows.forEach(row => {
-                // 1. Detección de Fila de Fecha (Tu lógica original)
-                if (row.classList.contains('date-row') || row.querySelector('th') || row.innerText.includes('202')) {
-                    const textoFecha = row.innerText.trim();
-                    if (textoFecha.length > 5) fechaActual = textoFecha;
-                    return;
-                }
+            const t1_logo = row.querySelectorAll('.team-logo')[0]?.src || '';
+            const t2_logo = row.querySelectorAll('.team-logo')[1]?.src || '';
 
-                // 2. Procesamiento de Fila de Evento (Tu lógica original)
-                if (row.classList.contains('event-row')) {
-                    const cells = row.querySelectorAll('td');
-                    if (cells.length < 3) return;
-
-                    const hora = cells[0].innerText.trim();
-                    const competicion = row.querySelector('.competition-name')?.innerText.trim() || "Evento";
-                    const teamLogos = row.querySelectorAll('.team-logo');
-                    const teamNames = row.querySelectorAll('.team-name');
-                    const t1_logo = teamLogos[0]?.src || '';
-                    const t1_name = teamNames[0]?.innerText.trim() || 'Local';
-                    const t2_logo = teamLogos[1]?.src || '';
-                    const t2_name = teamNames[1]?.innerText.trim() || 'Visitante';
-                    const matchName = `${t1_name} vs ${t2_name}`;
-
-                    const detailRow = row.nextElementSibling;
-                    if (detailRow && detailRow.classList.contains('event-detail')) {
-                        const groups = detailRow.querySelectorAll('.stream-channel-group');
-                        
-                        groups.forEach(group => {
-                            const channelNameRaw = group.querySelector('h4')?.innerText.trim() || "Canal";
-                            const links = group.querySelectorAll('a[onclick*="openAcestream"]');
-                            
-                            links.forEach((link, idx) => {
-                                const matchAcestream = link.getAttribute('onclick').match(/'([^']+)'/);
-                                if (matchAcestream) {
-                                    const acestreamId = matchAcestream[1];
-                                    const { name, quality, multiAudio } = cleanNameAndExtractQuality(channelNameRaw);
-                                    
-                                    numberedChannels.push({
-                                        id: acestreamId,
-                                        number: acestreamId.substring(0, 3),
-                                        name: name,
-                                        quality: quality,
-                                        multiAudio: multiAudio,
-                                        source: 'events',
-                                        event: {
-                                            time: hora,
-                                            competition: competicion,
-                                            match: matchName,
-                                            date: fechaActual,
-                                            sportEmoji: '🏆',
-                                            t1_logo: t1_logo,
-                                            t2_logo: t2_logo,
-                                            startTime: getEventTime(fechaActual, hora).getTime(),
-                                            endTime: getEventTime(fechaActual, hora).getTime() + (120 * 60000)
-                                        }
-                                    });
-                                }
-                            });
-                        });
-                    }
+            // Estructura IPFS: Canales están en la celda 4 de la misma fila
+            const inlineLinks = row.querySelectorAll('a[onclick*="openAcestream"], span[onclick*="openAcestream"]');
+            inlineLinks.forEach(link => {
+                const match = link.getAttribute('onclick').match(/'([^']+)'/);
+                if (match) {
+                    const id = match[1];
+                    const channelName = link.innerText.trim() || "Canal";
+                    const { name, quality, multiAudio } = cleanNameAndExtractQuality(channelName);
+                    numberedChannels.push({
+                        id: id, number: id.substring(0, 3), name: name, quality: quality, multiAudio: multiAudio, source: 'events',
+                        event: { time: hora, competition: competicion, match: matchName, date: fechaActual, sportEmoji: '🏆', t1_logo, t2_logo, startTime: getEventTime(fechaActual, hora).getTime(), endTime: getEventTime(fechaActual, hora).getTime() + (120 * 60000) }
+                    });
                 }
             });
-            return numberedChannels;
+
+            // Estructura Vercel: Canales están en la fila siguiente (.event-detail)
+            const detailRow = row.nextElementSibling;
+            if (detailRow && detailRow.classList.contains('event-detail')) {
+                const groups = detailRow.querySelectorAll('.stream-channel-group');
+                groups.forEach(group => {
+                    const groupTitle = group.querySelector('h4')?.innerText.trim() || "Canal";
+                    const links = group.querySelectorAll('a[onclick*="openAcestream"]');
+                    links.forEach(link => {
+                        const match = link.getAttribute('onclick').match(/'([^']+)'/);
+                        if (match) {
+                            const id = match[1];
+                            const { name, quality, multiAudio } = cleanNameAndExtractQuality(groupTitle);
+                            numberedChannels.push({
+                                id: id, number: id.substring(0, 3), name: name, quality: quality, multiAudio: multiAudio, source: 'events',
+                                event: { time: hora, competition: competicion, match: matchName, date: fechaActual, sportEmoji: '🏆', t1_logo, t2_logo, startTime: getEventTime(fechaActual, hora).getTime(), endTime: getEventTime(fechaActual, hora).getTime() + (120 * 60000) }
+                            });
+                        }
+                    });
+                });
+            }
         }
+    });
+    return numberedChannels;
+}
 
         function processEventsData_Old(htmlContent) {
             const numberedChannels = [];
@@ -2480,10 +2493,17 @@
                     subGroups[subGroupName].push(channel);
                 });
                 group.subGroups = subGroups;
-            });
-            const sortedGroupKeys = Object.keys(groups).sort((a, b) => {
+            });            const sortedGroupKeys = Object.keys(groups).sort((a, b) => {
                 const groupA = groups[a];
                 const groupB = groups[b];
+                
+                // Prioridad absoluta: Fecha del evento
+                if (groupA.isEvent && groupB.isEvent) {
+                    const dateCompare = compareEventDates(groupA, groupB);
+                    if (dateCompare !== 0) return dateCompare;
+                    // Si es la misma fecha, ordenar por hora
+                    return groupA.time.localeCompare(groupB.time);
+                }
                 const aHasLive = groupA.channels.some(c => c.isLive);
                 const bHasLive = groupB.channels.some(c => c.isLive);
                 if (aHasLive && !bHasLive) return -1;
@@ -3135,10 +3155,11 @@
 
             for (const groupKey of sortedGroupKeys) {
                 const group = groups[groupKey];
-                const subGroups = group.subGroups;
-                if (group.isEvent) {
+                const subGroups = group.subGroups;                if (group.isEvent) {
                     const formattedDate = formatEventDate(group.date);
                     if (formattedDate !== lastDateRendered) {
+                        // Forzar salto de línea visual si hay un cambio de fecha
+                        html += `<div style="width: 100%; flex-basis: 100%; height: 0;"></div>`;
 
                         let prefix = 'Eventos del ';
                         let coloredDateHtml = formattedDate;

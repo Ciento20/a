@@ -972,15 +972,6 @@
             <div class="settings-section">
                 <h4 class="settings-section__title">🔧 Datos</h4>
                 <div class="settings-item">
-                    <div class="settings-item__info"><span class="settings-icon">📡</span>
-                        <div><span class="settings-label">Fuente de Eventos</span><span class="settings-description">Selecciona de dónde extraer la agenda deportiva.</span></div>
-                    </div>
-                    <select id="eventSourceSelect" class="modal__btn" style="background: var(--bg-light); color: var(--text); border: 1px solid var(--border-color);">
-                        <option value="vercel">Eventos (Vercel)</option>
-                        <option value="ipfs">Eventos (IPFS)</option>
-                    </select>
-                </div>
-                <div class="settings-item">
                     <div class="settings-item__info"><span class="settings-icon">⭐</span>
                         <div><span class="settings-label">Restablecer puntuaciones</span><span
                                 class="settings-description">Borra la puntuación de estabilidad de todos los
@@ -1055,8 +1046,7 @@
             hideOptionsButton: localStorage.getItem('hideOptionsButton') === 'true',
             copyLinkMode: localStorage.getItem('copyLinkMode') === 'true',
             calibrationQueue: [],
-            isCalibrating: false,
-            eventSource: localStorage.getItem('eventSource') || 'vercel'
+            isCalibrating: false
         };
         const LOGOPEDIA_BASE_URL = "https://static.wikia.nocookie.net/logopedia/images/";
         const IMAGE_PROXY_URL = "https://images.weserv.nl/?url=";
@@ -1087,8 +1077,7 @@
         ];
         const GIST_URL = "https://gist.githubusercontent.com/Ciento20/f7847e86d06e5011706fa76f2dab90be/raw";
         const ELCANO_URL = 'https://ipfs.io/ipns/elcano.top';
-        const EVENTS_URL_VERCEL = 'https://eventos-eight-dun.vercel.app/';
-        const EVENTS_URL_IPFS = 'https://ipfs.io/ipns/k2k4r8oqlcjxsritt5mczkcn4mmvcmymbqw7113fz2flkrerfwfps004/';
+        const EVENTS_URL = 'https://eventos-eight-dun.vercel.app/';
         const SHICKAT_URL = 'https://shickat.me/';
         const BACKUP_KEYS = {
             
@@ -1323,38 +1312,22 @@
             const allChannels = channelsArray;
             const eventChannels = allChannels.filter(channel => channel.source === 'events');
             const otherChannels = allChannels.filter(channel => channel.source !== 'events');
-
-            // Crear un mapa de referencia ID -> Nombre Real usando fuentes de confianza
-            const nameMap = {};
-            otherChannels.forEach(c => {
-                if (!nameMap[c.id] || c.source === 'era') {
-                    nameMap[c.id] = { name: c.name, quality: c.quality };
-                }
-            });
-
-            // Corregir nombres en los canales de eventos ANTES de fusionar
-            eventChannels.forEach(eventChan => {
-                if (nameMap[eventChan.id]) {
-                    eventChan.name = nameMap[eventChan.id].name;
-                    eventChan.quality = nameMap[eventChan.id].quality;
-                }
-            });
-
             const eventIds = new Set(eventChannels.map(channel => channel.id));
             const uniqueOtherChannelsMap = new Map();
-            const orderedOtherSources = ['era', 'shickat', 'elcano', 'gist'];
-
+            const orderedOtherSources = ['elcano', 'shickat', 'era', 'gist'];
             orderedOtherSources.forEach(source => {
                 otherChannels.forEach(channel => {
-                    if (channel.source === source && !eventIds.has(channel.id)) {
-                        if (!uniqueOtherChannelsMap.has(channel.id)) {
-                            uniqueOtherChannelsMap.set(channel.id, channel);
+                    if (channel.source === source) {
+                        if (!eventIds.has(channel.id)) {
+                            if (!uniqueOtherChannelsMap.has(channel.id)) {
+                                uniqueOtherChannelsMap.set(channel.id, channel);
+                            }
                         }
                     }
                 });
             });
-
-            return eventChannels.concat(Array.from(uniqueOtherChannelsMap.values()));
+            const mergedOtherChannels = Array.from(uniqueOtherChannelsMap.values());
+            return eventChannels.concat(mergedOtherChannels);
         }
 
         function loadAndRenderBackupChannels() {
@@ -1515,58 +1488,36 @@
             const tvChannelsGrid = document.getElementById("tvChannelsGrid");
             document.getElementById('tvStatusMessageContainer').innerHTML = '';
 
+            // PASO 1: Cargar Logos de Gist (ahora tiene su propia función)
             await loadChannelLogos();
 
+            // PASO 2: Cargar y Renderizar Canales de Backup (sin el Gist)
             const isShowingBackup = loadAndRenderBackupChannels();
             const temporaryLoadMessage = isShowingBackup ? "Mostrando historial. Obteniendo datos en tiempo real..." : "Cargando datos en tiempo real...";
             showStatusMessage(temporaryLoadMessage, "warning");
 
-            // Lógica de redundancia para eventos
-            const fetchEventsWithFallback = async () => {
-                let primaryUrl = state.eventSource === 'vercel' ? EVENTS_URL_VERCEL : EVENTS_URL_IPFS;
-                let secondaryUrl = state.eventSource === 'vercel' ? EVENTS_URL_IPFS : EVENTS_URL_VERCEL;
-                
-                let result = await fetchAndProcessSource('events', primaryUrl, processEventsData, BACKUP_KEYS.events);
-                
-                // Si la fuente primaria falla o no trae canales, intentamos la secundaria silenciosamente
-                if (!result.channels || result.channels.length === 0 || result.message.includes('Fallo')) {
-                    console.log("Fuente de eventos primaria vacía o fallida. Intentando redundancia...");
-                    let fallbackResult = await fetchAndProcessSource('events', secondaryUrl, processEventsData, BACKUP_KEYS.events);
-                    if (fallbackResult.channels && fallbackResult.channels.length > 0) {
-                        return fallbackResult;
-                    }
-                }
-                return result;
-            };            // Fase 1: Carga de fuentes rápidas/principales
-            const primaryResults = await Promise.allSettled([
+            // PASO 3: Cargar Canales en Tiempo Real
+            const results = await Promise.allSettled([
+                fetchAndProcessSource('events', EVENTS_URL, processEventsData, BACKUP_KEYS.events),
                 fetchAndProcessSource('era', ERA_URL, processEraData, BACKUP_KEYS.era),
+                //  // ELIMINADO: Gist ya no es fuente de canales
                 fetchProxyContentAndProcess('shickat', SHICKAT_URL, processShickatData, BACKUP_KEYS.shickat),
                 fetchProxyContentAndProcess('elcano', ELCANO_URL, processElcanoDataFromHtml, BACKUP_KEYS.elcano)
             ]);
 
             let allChannels = [];
-            primaryResults.forEach(r => {
-                if (r.status === 'fulfilled' && r.value.channels) allChannels = allChannels.concat(r.value.channels);
-            });
-
-            // Fase 2: Scraping de Eventos (Vercel/IPFS) una vez finalizado lo anterior
-            console.log("Fuentes principales listas. Iniciando scraping de eventos...");
-            const eventResult = await fetchEventsWithFallback();
             let hasFallback = false;
-            let hasOnlineSuccess = false;            if (eventResult && eventResult.channels) {
-                if (eventResult.message.includes('historial')) {
-                    hasFallback = true;
-                } else {
-                    hasOnlineSuccess = true;
-                }
-                allChannels = allChannels.concat(eventResult.channels);
-            }
+            let hasOnlineSuccess = false;
 
-            // Verificar éxito global de las otras fuentes para el mensaje de estado
-            primaryResults.forEach(r => {
-                if (r.status === 'fulfilled' && r.value.channels) {
-                    if (!r.value.message.includes('historial')) hasOnlineSuccess = true;
-                    else hasFallback = true;
+            results.forEach(result => {
+                if (result.status === 'fulfilled' && result.value.channels) {
+                    if (result.value.message.includes('historial')) {
+                        hasFallback = true;
+                        allChannels = allChannels.concat(result.value.channels);
+                    } else {
+                        allChannels = allChannels.concat(result.value.channels);
+                        hasOnlineSuccess = true;
+                    }
                 }
             });
 
@@ -1962,114 +1913,6 @@
         }
 
         function processEventsData(htmlContent) {
-    const numberedChannels = [];
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(htmlContent, 'text/html');
-    let fechaActual = "Hoy";
-
-    const rows = doc.querySelectorAll('tr');
-
-    rows.forEach(row => {
-        const dayParent = row.closest('.events-day');
-        if (dayParent) {
-            const h2Text = dayParent.querySelector('h2')?.innerText.trim();
-            if (h2Text && h2Text.includes(' - ')) {
-                fechaActual = h2Text.split(' - ')[1].trim();
-            } else {
-                fechaActual = dayParent.getAttribute('data-date') || fechaActual;
-            }
-        } else if (row.classList.contains('date-row') || row.innerText.includes('202') || row.querySelector('th')) {
-            let texto = row.innerText.trim();
-            if (texto.includes('Hora')) texto = texto.split('Hora')[0].trim();
-            if (texto.length > 5) fechaActual = texto;
-            return;
-        }
-
-        if (row.classList.contains('event-row')) {
-            const cells = row.querySelectorAll('td');
-            if (cells.length < 3) return;
-
-            const hora = cells[0].innerText.trim();
-            const competicion = row.querySelector('.competition-name')?.innerText.trim() || "Evento";
-
-            let sportEmoji = '🏆';
-            const compNorm = competicion.toUpperCase();
-            if (compNorm.includes('NCAA') || compNorm.includes('ENDESA')) sportEmoji = '🏀';
-            else if (compNorm.includes('NBA')) sportEmoji = '⛹️';
-            else if (compNorm.includes('NHL')) sportEmoji = '🏒';
-            else if (compNorm.includes('EHF') || compNorm.includes('D1')) sportEmoji = '🤾';
-            else if (compNorm.includes('SERIE A') || compNorm.includes('BUNDESLIGA') || compNorm.includes('LALIGA') || compNorm.includes('LIGA F') || compNorm.includes('PREMIER') || compNorm.includes('NATIONAL LEAGUE') || compNorm.includes('JUPILER')) sportEmoji = '⚽';
-            else if (compNorm.includes('DAKAR')) sportEmoji = '🚘';
-            else if (compNorm.includes('VELADA') || compNorm.includes('INTERNACIONAL')) sportEmoji = '🥊';
-            else if (compNorm.includes('NFL')) sportEmoji = '🏈';
-            
-            let matchName = "";
-            const teamNames = row.querySelectorAll('.team-name');
-            const individualEvent = row.querySelector('.evento-name');
-            
-            if (teamNames.length >= 2) {
-                matchName = teamNames[0].innerText.trim() + " vs " + teamNames[1].innerText.trim();
-            } else if (individualEvent) {
-                matchName = individualEvent.innerText.trim();
-            } else {
-                matchName = cells[2]?.innerText.trim() || "Evento Especial";
-            }
-
-            const t1_logo = row.querySelectorAll('.team-logo')[0]?.src || '';
-            const t2_logo = row.querySelectorAll('.team-logo')[1]?.src || '';
-
-            // Estructura IPFS: Canales están en la celda 4 de la misma fila
-            const inlineLinks = row.querySelectorAll('a[onclick*="openAcestream"], span[onclick*="openAcestream"]');
-            inlineLinks.forEach(link => {
-                const match = link.getAttribute('onclick').match(/'([^']+)'/);
-                if (match) {
-                    const id = match[1];
-                    const channelName = "";
-                    const { name: cleanedName, quality, multiAudio } = cleanNameAndExtractQuality(channelName);
-                    const name = cleanedName || "Canal";
-                    numberedChannels.push({
-                        id: id, 
-                        number: id.substring(0, 3), 
-                        name: "Canal", 
-                        quality: quality, 
-                        multiAudio: multiAudio, 
-                        source: 'events',
-                        event: { time: hora, competition: competicion, match: matchName, date: fechaActual, sportEmoji: sportEmoji, t1_logo, t2_logo, startTime: getEventTime(fechaActual, hora).getTime(), endTime: getEventTime(fechaActual, hora).getTime() + (120 * 60000) }
-                    });
-                }
-            });
-
-            // Estructura Vercel: Canales están en la fila siguiente (.event-detail)
-            const detailRow = row.nextElementSibling;
-            if (detailRow && detailRow.classList.contains('event-detail')) {
-                const groups = detailRow.querySelectorAll('.stream-channel-group');
-                groups.forEach(group => {
-                    const groupTitle = group.querySelector('h4')?.innerText.trim() || "Canal";
-                    const links = group.querySelectorAll('a[onclick*="openAcestream"]');
-                    links.forEach(link => {
-                        const match = link.getAttribute('onclick').match(/'([^']+)'/);
-                        if (match) {
-                            const id = match[1];
-                            const { name, quality, multiAudio } = cleanNameAndExtractQuality(groupTitle);
-                            numberedChannels.push({
-                        id: id, 
-                        number: id.substring(0, 3), 
-                        name: "Canal", 
-                        quality: quality, 
-                        multiAudio: multiAudio, 
-                        source: 'events',
-                                event: { time: hora, competition: competicion, match: matchName, date: fechaActual, sportEmoji: sportEmoji, t1_logo, t2_logo, startTime: getEventTime(fechaActual, hora).getTime(), endTime: getEventTime(fechaActual, hora).getTime() + (120 * 60000) }
-                            });
-                        }
-                    });
-                });
-            }
-        }
-    });
-    return numberedChannels;
-}
-
-        function processEventsData_Old(htmlContent) {
             const numberedChannels = [];
             const parser = new DOMParser();
             const doc = parser.parseFromString(htmlContent, 'text/html');
@@ -2183,8 +2026,11 @@
                             }
 
                             // 2. Limpiar calidad/multi-audio y normalizar
-                            const { name: cleanedName, quality, multiAudio } = cleanNameAndExtractQuality(channelName);
-                    const name = cleanedName || "Canal";
+                            const {
+                                name,
+                                quality,
+                                multiAudio
+                            } = cleanNameAndExtractQuality(channelName);
 
                             numberedChannels.push({
                                 id: acestreamId,
@@ -2535,17 +2381,10 @@
                     subGroups[subGroupName].push(channel);
                 });
                 group.subGroups = subGroups;
-            });            const sortedGroupKeys = Object.keys(groups).sort((a, b) => {
+            });
+            const sortedGroupKeys = Object.keys(groups).sort((a, b) => {
                 const groupA = groups[a];
                 const groupB = groups[b];
-                
-                // Prioridad absoluta: Fecha del evento
-                if (groupA.isEvent && groupB.isEvent) {
-                    const dateCompare = compareEventDates(groupA, groupB);
-                    if (dateCompare !== 0) return dateCompare;
-                    // Si es la misma fecha, ordenar por hora
-                    return groupA.time.localeCompare(groupB.time);
-                }
                 const aHasLive = groupA.channels.some(c => c.isLive);
                 const bHasLive = groupB.channels.some(c => c.isLive);
                 if (aHasLive && !bHasLive) return -1;
@@ -3197,11 +3036,10 @@
 
             for (const groupKey of sortedGroupKeys) {
                 const group = groups[groupKey];
-                const subGroups = group.subGroups;                if (group.isEvent) {
+                const subGroups = group.subGroups;
+                if (group.isEvent) {
                     const formattedDate = formatEventDate(group.date);
                     if (formattedDate !== lastDateRendered) {
-                        // Forzar salto de línea visual si hay un cambio de fecha
-                        html += `<div style="width: 100%; flex-basis: 100%; height: 0;"></div>`;
 
                         let prefix = 'Eventos del ';
                         let coloredDateHtml = formattedDate;
@@ -3243,21 +3081,7 @@
                     // MODIFICACIÓN CLAVE: Aplicar estilo al nombre de la competición (group.competition)
                     const competitionHtml = `<span style="color: var(--primary);">${group.competition}</span>`;
 
-                    const matchParts = group.match.split(' vs ');
-                    const team1 = matchParts[0] || '';
-                    const team2 = matchParts[1] || '';
-                    
-                    // Extraer logos de la data de los canales del evento
-                    const eventChannel = group.channels.find(c => c.source === 'events' && c.event);
-                    const t1_logo = eventChannel?.event?.t1_logo || '';
-                    const t2_logo = eventChannel?.event?.t2_logo || '';
-
-                    const logoStyle = "width:18px; height:18px; object-fit:contain; vertical-align:middle; margin:0 4px; background:#333; border-radius:50%; padding:2px;";
-                    
-                    const team1Html = `<span><img src="${t1_logo}" style="${logoStyle}" onerror="this.style.display='none'">${team1}</span>`;
-                    const team2Html = `<span>${team2}<img src="${t2_logo}" style="${logoStyle}" onerror="this.style.display='none'"></span>`;
-
-                    groupTitle = `<div style="display: flex; flex-direction: column; align-items: flex-start;"><div style="display: flex; align-items: center; gap: 8px;"><span style="font-size: 0.75rem; line-height: 1;">${group.sportEmoji}</span> ${competitionHtml}</div><div style="display: flex; align-items: center;"><span class="${liveTimeClass}" style="margin-right: 7.5px; border-right: 2px solid var(--primary); padding-right: 7.5px; display: inline-block; line-height: 0.8; height: 0.5rem; font-size: 0.55rem;">${group.time}</span> ${team1Html} <span style="color:var(--primary); font-weight:bold; margin:0 5px;">VS</span> ${team2Html}</div></div>`;
+                    groupTitle = `<div style="display: flex; flex-direction: column; align-items: flex-start;"><div style="display: flex; align-items: center; gap: 8px;"><span style="font-size: 0.75rem; line-height: 1;">${group.sportEmoji}</span> ${competitionHtml}</div><div style="display: flex; align-items: center;"><span class="${liveTimeClass}" style="margin-right: 7.5px; border-right: 2px solid var(--primary); padding-right: 7.5px; display: inline-block; line-height: 0.8; height: 0.5rem; font-size: 0.55rem;">${group.time}</span> ${group.match}</div></div>`;
 
                     const isFirstGroupAfterDateHeader = !lastDateRendered || (group.date && formatEventDate(group.date) === lastDateRendered);
                     if (isFirstGroupAfterDateHeader) {
@@ -3654,16 +3478,6 @@
             document.getElementById('fullScreenOnClickCheckbox').addEventListener('change', toggleFullScreenOnClick);
             document.getElementById('hideOptionsButtonCheckbox').addEventListener('change', toggleHideOptionsButton);
             document.getElementById('copyLinkModeCheckbox').addEventListener('change', toggleCopyLinkMode);
-
-            const sourceSelect = document.getElementById('eventSourceSelect');
-            sourceSelect.value = state.eventSource;
-            sourceSelect.addEventListener('change', (e) => {
-                state.eventSource = e.target.value;
-                localStorage.setItem('eventSource', e.target.value);
-                showStatusMessage("Fuente preferida actualizada.", "success");
-                // Recargamos datos pero el renderTVChannels() mantendrá la vista gracias al state.tvCurrentFilter
-                loadInitialChannels();
-            });
 
             // Nuevo: Activar pantalla completa al hacer clic en cualquier parte del cuerpo, si la opción está activa
             document.body.addEventListener('click', (e) => {

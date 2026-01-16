@@ -1323,22 +1323,38 @@
             const allChannels = channelsArray;
             const eventChannels = allChannels.filter(channel => channel.source === 'events');
             const otherChannels = allChannels.filter(channel => channel.source !== 'events');
+
+            // Crear un mapa de referencia ID -> Nombre Real usando fuentes de confianza
+            const nameMap = {};
+            otherChannels.forEach(c => {
+                if (!nameMap[c.id] || c.source === 'era') {
+                    nameMap[c.id] = { name: c.name, quality: c.quality };
+                }
+            });
+
+            // Corregir nombres en los canales de eventos ANTES de fusionar
+            eventChannels.forEach(eventChan => {
+                if (nameMap[eventChan.id]) {
+                    eventChan.name = nameMap[eventChan.id].name;
+                    eventChan.quality = nameMap[eventChan.id].quality;
+                }
+            });
+
             const eventIds = new Set(eventChannels.map(channel => channel.id));
             const uniqueOtherChannelsMap = new Map();
-            const orderedOtherSources = ['elcano', 'shickat', 'era', 'gist'];
+            const orderedOtherSources = ['era', 'shickat', 'elcano', 'gist'];
+
             orderedOtherSources.forEach(source => {
                 otherChannels.forEach(channel => {
-                    if (channel.source === source) {
-                        if (!eventIds.has(channel.id)) {
-                            if (!uniqueOtherChannelsMap.has(channel.id)) {
-                                uniqueOtherChannelsMap.set(channel.id, channel);
-                            }
+                    if (channel.source === source && !eventIds.has(channel.id)) {
+                        if (!uniqueOtherChannelsMap.has(channel.id)) {
+                            uniqueOtherChannelsMap.set(channel.id, channel);
                         }
                     }
                 });
             });
-            const mergedOtherChannels = Array.from(uniqueOtherChannelsMap.values());
-            return eventChannels.concat(mergedOtherChannels);
+
+            return eventChannels.concat(Array.from(uniqueOtherChannelsMap.values()));
         }
 
         function loadAndRenderBackupChannels() {
@@ -1521,29 +1537,36 @@
                     }
                 }
                 return result;
-            };
-
-            const results = await Promise.allSettled([
-                fetchEventsWithFallback(),
+            };            // Fase 1: Carga de fuentes rápidas/principales
+            const primaryResults = await Promise.allSettled([
                 fetchAndProcessSource('era', ERA_URL, processEraData, BACKUP_KEYS.era),
-                //  // ELIMINADO: Gist ya no es fuente de canales
                 fetchProxyContentAndProcess('shickat', SHICKAT_URL, processShickatData, BACKUP_KEYS.shickat),
                 fetchProxyContentAndProcess('elcano', ELCANO_URL, processElcanoDataFromHtml, BACKUP_KEYS.elcano)
             ]);
 
             let allChannels = [];
-            let hasFallback = false;
-            let hasOnlineSuccess = false;
+            primaryResults.forEach(r => {
+                if (r.status === 'fulfilled' && r.value.channels) allChannels = allChannels.concat(r.value.channels);
+            });
 
-            results.forEach(result => {
-                if (result.status === 'fulfilled' && result.value.channels) {
-                    if (result.value.message.includes('historial')) {
-                        hasFallback = true;
-                        allChannels = allChannels.concat(result.value.channels);
-                    } else {
-                        allChannels = allChannels.concat(result.value.channels);
-                        hasOnlineSuccess = true;
-                    }
+            // Fase 2: Scraping de Eventos (Vercel/IPFS) una vez finalizado lo anterior
+            console.log("Fuentes principales listas. Iniciando scraping de eventos...");
+            const eventResult = await fetchEventsWithFallback();
+            let hasFallback = false;
+            let hasOnlineSuccess = false;            if (eventResult && eventResult.channels) {
+                if (eventResult.message.includes('historial')) {
+                    hasFallback = true;
+                } else {
+                    hasOnlineSuccess = true;
+                }
+                allChannels = allChannels.concat(eventResult.channels);
+            }
+
+            // Verificar éxito global de las otras fuentes para el mensaje de estado
+            primaryResults.forEach(r => {
+                if (r.status === 'fulfilled' && r.value.channels) {
+                    if (!r.value.message.includes('historial')) hasOnlineSuccess = true;
+                    else hasFallback = true;
                 }
             });
 
@@ -2001,20 +2024,16 @@
                 const match = link.getAttribute('onclick').match(/'([^']+)'/);
                 if (match) {
                     const id = match[1];
-                    const channelName = link.innerText.trim() || "Canal";
-                    // Si existe coincidencia en fuentes estables, adoptamos su nombre y calidad
-                            let finalName = channelName;
-                            if (stableMatch) {
-                                finalName = stableMatch.name;
-                            }
-
-                            const { 
-                                name, 
-                                quality, 
-                                multiAudio 
-                            } = cleanNameAndExtractQuality(finalName);
+                    const channelName = "";
+                    const { name: cleanedName, quality, multiAudio } = cleanNameAndExtractQuality(channelName);
+                    const name = cleanedName || "Canal";
                     numberedChannels.push({
-                        id: id, number: id.substring(0, 3), name: name, quality: quality, multiAudio: multiAudio, source: 'events',
+                        id: id, 
+                        number: id.substring(0, 3), 
+                        name: "Canal", 
+                        quality: quality, 
+                        multiAudio: multiAudio, 
+                        source: 'events',
                         event: { time: hora, competition: competicion, match: matchName, date: fechaActual, sportEmoji: sportEmoji, t1_logo, t2_logo, startTime: getEventTime(fechaActual, hora).getTime(), endTime: getEventTime(fechaActual, hora).getTime() + (120 * 60000) }
                     });
                 }
@@ -2033,7 +2052,12 @@
                             const id = match[1];
                             const { name, quality, multiAudio } = cleanNameAndExtractQuality(groupTitle);
                             numberedChannels.push({
-                                id: id, number: id.substring(0, 3), name: name, quality: quality, multiAudio: multiAudio, source: 'events',
+                        id: id, 
+                        number: id.substring(0, 3), 
+                        name: "Canal", 
+                        quality: quality, 
+                        multiAudio: multiAudio, 
+                        source: 'events',
                                 event: { time: hora, competition: competicion, match: matchName, date: fechaActual, sportEmoji: sportEmoji, t1_logo, t2_logo, startTime: getEventTime(fechaActual, hora).getTime(), endTime: getEventTime(fechaActual, hora).getTime() + (120 * 60000) }
                             });
                         }
@@ -2086,9 +2110,6 @@
                         const durationString = `${sportName} ${competition} ${match}`;
                         const eventStartTime = getEventTime(date, time);
                         const durationMinutes = calculateDuration(durationString);
-                        
-                        // Lógica de Cotejo de IDs para Normalización
-                        const stableMatch = state.channelsData.find(c => c.id === acestreamId && c.source !== 'events');
                         let sportEmoji = '🏆';
                         const normalizedSport = normalizeText(sportName);
                         if (normalizedSport.includes('americano')) {
@@ -2162,17 +2183,8 @@
                             }
 
                             // 2. Limpiar calidad/multi-audio y normalizar
-                            // Si existe coincidencia en fuentes estables, adoptamos su nombre y calidad
-                            let finalName = channelName;
-                            if (stableMatch) {
-                                finalName = stableMatch.name;
-                            }
-
-                            const { 
-                                name, 
-                                quality, 
-                                multiAudio 
-                            } = cleanNameAndExtractQuality(finalName);
+                            const { name: cleanedName, quality, multiAudio } = cleanNameAndExtractQuality(channelName);
+                    const name = cleanedName || "Canal";
 
                             numberedChannels.push({
                                 id: acestreamId,

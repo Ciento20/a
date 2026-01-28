@@ -1982,29 +1982,30 @@ const EVENTS_URL_BACKUP = 'https://eventos-eight-dun.vercel.app/';
             if (!competicion) competicion = matchName;
 
             const t1_logo = row.querySelectorAll('.team-logo')[0]?.src || '';
-            const t2_logo = row.querySelectorAll('.team-logo')[1]?.src || '';
-
-            const emojiMap = {
-                'Open Australia': '🎾', 'Roland Garros': '🎾', 'Wimbledon': '🎾', 'US Open': '🎾', 'ATP': '🎾', 'WTA': '🎾',
-                'Primera Federación Femenina': '⚽', 'FA Women\'s Super League': '⚽', 'Liga F': '⚽', 'Champions Femenina': '⚽',
-                'Premier League': '⚽', 'La Liga EA Sports': '⚽', 'Primera Federación': '⚽', 'Serie A Italiana': '⚽',
-                'Saudi Pro League': '⚽', 'Bundesliga': '⚽', 'Ligue 1': '⚽', 'Eredivisie': '⚽', 'Copa del Rey': '⚽',
-                'Champions League': '⚽', 'Europa League': '⚽', 'Conference League': '⚽', 'MLS': '⚽',
-                'Liga Endesa': '🏀', 'NBA': '🏀', 'Liga ACB': '🏀', 'Euroliga': '🏀', 'Eurocup': '🏀',
-                'NFL': '🏈', 'NCAA': '🏈',
-                'Rugby': '🏉', 'Gallagher Premiership': '🏉', 'Six Nations': '🏉',
-                'LVBP': '⚾', 'MLB': '⚾',
-                'Moto': '🏍️', 'MotoGP': '🏍️', 'WorldSBK': '🏍️',
-                'F1': '🏎️', 'Formula 1': '🏎️',
-                'UFC': '🥊', 'Boxeo': '🥊', 'PFL': '🥊',
-                'Ciclismo': '🚴', 'Tour de Francia': '🚴', 'Giro de Italia': '🚴', 'Vuelta a España': '🚴',
-                'Golf': '⛳', 'Masters': '⛳', 'PGA': '⛳'
+            const t2_logo = row.querySelectorAll('.team-logo')[1]?.src || '';            const emojiMap = {
+                '🎾': ['Open Australia', 'Roland Garros', 'Wimbledon', 'US Open', 'ATP', 'WTA', 'Hexagon Cup', 'Grand Slam', 'Davis Cup', 'United Cup', 'Copa Davis'],
+                '⚽': ['Primera Federación Femenina', 'FA Women\'s Super League', 'Liga F', 'Champions Femenina', 'Premier League', 'La Liga EA Sports', 'Primera Federación', 'Serie A Italiana', 'Saudi Pro League', 'Bundesliga', 'Ligue 1', 'Eredivisie', 'Copa del Rey', 'Champions League', 'Europa League', 'Conference League', 'MLS', 'Eurocopa', 'Coppa Italia', 'Primera División Argentina', 'Serie A Brasil', 'Copa Libertadores', 'Concacaf', 'FA Cup', 'Carabao Cup', 'Copa Alemania', 'Copa Francia'],
+                '🏀': ['Liga Endesa', 'NBA', 'Liga ACB', 'Euroliga', 'Eurocup', 'NCAA Basketball', 'FIBA', 'Copa del Rey Baloncesto'],
+                '🏈': ['NFL', 'NCAA Football', 'Super Bowl'],
+                '🏉': ['Rugby', 'Gallagher Premiership', 'Six Nations', 'Super Rugby', 'Top 14'],
+                '⚾': ['LVBP', 'MLB', 'World Baseball Classic'],
+                '🏍️': ['Moto', 'MotoGP', 'WorldSBK', 'Motocross', 'MXGP', 'Supercross'],
+                '🏎️': ['F1', 'Formula 1', 'IndyCar', 'Nascar', 'Rally', 'WRC', 'Dakar', 'Extreme E'],
+                '🥊': ['UFC', 'Boxeo', 'PFL', 'Bellator', 'MMA', 'K-1', 'Bare Knuckle'],
+                '🚴': ['Ciclismo', 'Tour de Francia', 'Giro de Italia', 'Vuelta a España', 'AlUla Tour', 'Almanshiyah Train Station', 'Trofeo Calvia', 'Winter Park', 'Paris-Roubaix', 'Liege-Bastogne-Liege', 'Milano-Sanremo', 'Trofeo Felanitx', 'Trofeo Ses Salines', 'Trofeo Pollença', 'Trofeo Palma', 'Trofeo Andratx', 'Challenge Mallorca', 'Volta a Catalunya', 'Itzulia', 'Clásica San Sebastián'],
+                '⛳': ['Golf', 'Masters', 'PGA', 'Bahrain Championship', 'Ryder Cup', 'US Open Golf', 'The Open', 'LIV Golf'],
+                '🤾': ['EHF Europeo', 'Champions League Handball', 'Asobal', 'Liga Guerreras'],
+                '🏐': ['Voleibol', 'Superliga', 'VNL', 'Voley'],
+                '🏒': ['NHL', 'Hockey'],
+                '🎯': ['Darts', 'Dardos'],
+                '🎱': ['Snooker', 'Billar'],
+                '⛵': ['America\'s Cup', 'Vela', 'SailGP']
             };
 
             let detectedEmoji = '🏆';
-            for (const key in emojiMap) {
-                if (competicion.includes(key)) {
-                    detectedEmoji = emojiMap[key];
+            for (const [emoji, keywords] of Object.entries(emojiMap)) {
+                if (keywords.some(key => competicion.includes(key))) {
+                    detectedEmoji = emoji;
                     break;
                 }
             }

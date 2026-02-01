@@ -631,14 +631,15 @@
             flex-direction: column;
             justify-content: flex-end;
             align-items: flex-start;
-            padding: 5px 0;
+            padding: 8px; 
             cursor: pointer;
             transition: transform 0.3s ease-in-out, border-color 0.3s ease-in-out;
-            
-            background-size: 80% auto;
-            background-position: center 30px;
+            background-size: contain;
+            background-position: center center;
             background-repeat: no-repeat;
+            background-origin: content-box;
             box-shadow: 0 2px 7.5px rgba(0, 0, 0, 0.4);
+            box-sizing: border-box;
         }
 
         .tv-card-focused {
@@ -677,13 +678,29 @@
         }
 
         .tv-date-header {
-            font-size: 0.9rem;
-            font-weight: 800;
-            color: #e0e0e0;
-            margin-top: 1rem;
-            margin-bottom: 0.25rem;
-            padding-left: 0;
-            width: 100%;
+            display: flex;
+            align-items: center;
+            text-align: center;
+            font-size: 0.65rem;
+            font-weight: 700;
+            color: var(--gray-dark);
+            margin: 2rem 0 1rem 0;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .tv-date-header::before, .tv-date-header::after {
+            content: '';
+            flex: 1;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .tv-date-header:not(:empty)::before {
+            margin-right: 1.5rem;
+        }
+
+        .tv-date-header:not(:empty)::after {
+            margin-left: 1.5rem;
         }
 
         .tv-date-header:first-of-type {
@@ -2927,7 +2944,7 @@ const EVENTS_URL_BACKUP = 'https://eventos-eight-dun.vercel.app/';
             else if (channel.name.includes('EUROSPORT')) bgColor = '#2d2d2d'; // 2. Aplicar el logo si está disponible
             if (logoUrl) {
                 // Si hay logo, el fondo es el logo y el color de marca.
-                backgroundStyle = `background: ${bgColor} url('${logoUrl}') center center / 80% auto no-repeat;`;
+                backgroundStyle = `background: ${bgColor} url('${logoUrl}') center center / contain no-repeat; background-origin: content-box;`;
             } else {
                 // Si no hay logo, el fondo es solo el color de marca
                 backgroundStyle = `background: ${bgColor};`;
@@ -3029,7 +3046,7 @@ const EVENTS_URL_BACKUP = 'https://eventos-eight-dun.vercel.app/';
                         } else {
                             coloredDateHtml = `<span style="color: var(--primary);">${formattedDate}</span>`;
                         }
-                        html += `<h2 class="tv-date-header">${prefix}${coloredDateHtml}</h2>`;
+                        html += `<h2 class="tv-date-header">${prefix}${formattedDate}</h2>`;
                         lastDateRendered = formattedDate;
                     }
                 } else {
@@ -3297,7 +3314,7 @@ const EVENTS_URL_BACKUP = 'https://eventos-eight-dun.vercel.app/';
 
                 const clickAction = state.copyLinkMode ? `copyAcestreamDirectly('${option.id}')` : `handleChannelPlay({ id: '${option.id}', name: '${mainChannelName.replace(/'/g, "\\'")}' })`;
                 
-                return `<div class="channel-option-item" onclick="${clickAction}"><div class="channel-option-name-container">${lastViewedIndicator}<span class="channel-option-name">${option.name}</span></div><div class="channel-option-details"><span style="color: var(--${bClass}); font-weight: 700;">${option.source.toUpperCase()}</span><span style="font-weight: 700; color: var(--primary); border-left: 1px solid #444; padding-left: 3px; margin-left: 3px;">${option.quality}</span><span style="margin-left: 3px;">${ratingStars}</span></div></div>`;
+                return `<div class="channel-option-item" onclick="${clickAction}"><div class="channel-option-name-container">${lastViewedIndicator}<span class="channel-option-name" style="font-family: monospace; font-size: 0.45rem; color: var(--primary) !important;">ID: ${option.id.substring(0, 8)}...</span></div><div class="channel-option-details"><span style="color: var(--${bClass}); font-weight: 700;">${option.source.toUpperCase()}</span><span style="font-weight: 700; color: var(--primary); border-left: 1px solid #444; padding-left: 3px; margin-left: 3px;">${option.quality}</span><span style="margin-left: 3px;">${ratingStars}</span></div></div>`;
             };
 
             listDiv.innerHTML = finalOptions.map(renderOptionItem).join('');

@@ -2935,16 +2935,22 @@ const EVENTS_URL_BACKUP = 'https://eventos-eight-dun.vercel.app/';
             const isLiveClass = channel.isLive ? 'tv-card-live' : '';
             let bgColor = '#2d2d2d';
             let nameStyle = 'white';
-            let backgroundStyle = '';
-
-            // 1. Asignar color de fondo por marca (simplificado para texto)
+            let backgroundStyle = '';            // 1. Asignar color de fondo por marca (simplificado para texto)
+            const isDaznBaloncesto = channel.name.toUpperCase().includes('DAZN BALONCESTO');
             if (channel.name.includes('DAZN') && !channel.name.includes('F1')) bgColor = '#2d2d2d';
             else if (channel.name.includes('DAZN F1')) bgColor = '#2d2d2d';
             else if (channel.name.includes('M+')) bgColor = '#2d2d2d';
-            else if (channel.name.includes('EUROSPORT')) bgColor = '#2d2d2d'; // 2. Aplicar el logo si está disponible
+            else if (channel.name.includes('EUROSPORT')) bgColor = '#2d2d2d'; 
+            
+            // 2. Aplicar el logo si está disponible
             if (logoUrl) {
-                // Si hay logo, el fondo es el logo y el color de marca.
-                backgroundStyle = `background: ${bgColor} url('${logoUrl}') center center / contain no-repeat; background-origin: content-box;`;
+                if (isDaznBaloncesto) {
+                    // Capa 1: Logotipo (Superior) | Capa 2: Círculo Naranja (Intermedia) | background-color: Fondo oscuro (Inferior)
+                    // Usamos radial-gradient para el círculo y ajustamos el tamaño (45%x80%) para que sea perfectamente redondo
+                    backgroundStyle = `background-image: url('${logoUrl}'), radial-gradient(circle, #ff9800 100%, transparent 100%); background-position: center center, 92% center; background-size: contain, 45% 80%; background-repeat: no-repeat, no-repeat; background-origin: content-box, content-box; background-color: ${bgColor};`;
+                } else {
+                    backgroundStyle = `background: ${bgColor} url('${logoUrl}') center center / contain no-repeat; background-origin: content-box;`;
+                }
             } else {
                 // Si no hay logo, el fondo es solo el color de marca
                 backgroundStyle = `background: ${bgColor};`;

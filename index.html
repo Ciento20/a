@@ -2400,9 +2400,39 @@ const EVENTS_URL_BACKUP = 'https://eventos-eight-dun.vercel.app/';
             let currentSportFilter = state.tvSportFilter;
 
             if (currentFilter === 'search' || searchTerm !== '') {
+                const term = normalizeText(searchTerm);
+                
+                // Mapeo inteligente de términos a Emojis de deporte
+                const searchToEmoji = {
+                    'futbol': '⚽', 'soccer': '⚽', 'balompie': '⚽',
+                    'baloncesto': '🏀', 'basket': '🏀', 'nba': '🏀',
+                    'tenis': '🎾', 'tennis': '🎾',
+                    'f1': '🏎️', 'formula 1': '🏎️', 'motor': '🏎️',
+                    'moto': '🏍️', 'motogp': '🏍️',
+                    'ciclismo': '🚴', 'bici': '🚴',
+                    'golf': '⛳',
+                    'boxeo': '🥊', 'ufc': '🥊', 'mma': '🥊',
+                    'nfl': '🏈', 'futbol americano': '🏈',
+                    'rugby': '🏉',
+                    'beisbol': '⚾', 'baseball': '⚾',
+                    'balonmano': '🤾', 'handball': '🤾',
+                    'voley': '🏐', 'voleibol': '🏐',
+                    'hockey': '🏒',
+                    'dardos': '🎯',
+                    'snooker': '🎱', 'billar': '🎱',
+                    'vela': '⛵'
+                };
+                
+                const targetEmoji = searchToEmoji[term];
+
                 filteredChannels = filteredChannels.filter(channel => {
                     if (searchTerm === '') return true;
-                    const term = normalizeText(searchTerm);
+
+                    // Si el término coincide con un deporte, buscamos por el emoji del evento
+                    if (targetEmoji && channel.event && channel.event.sportEmoji === targetEmoji) {
+                        return true;
+                    }
+
                     const nameMatch = normalizeText(channel.name).includes(term);
                     let eventMatch = false;
                     if (channel.event) {

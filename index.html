@@ -2422,24 +2422,39 @@ const EVENTS_URL_BACKUP = 'https://eventos-eight-dun.vercel.app/';
                     'dardos': '🎯',
                     'snooker': '🎱', 'billar': '🎱',
                     'vela': '⛵'
-                };
-                
-                const targetEmoji = searchToEmoji[term];
+                };                // Mapeo dinámico para reconocer términos parciales como 'fut', 'bas', etc.
+                let targetEmoji = null;
+                for (const [key, emoji] of Object.entries(searchToEmoji)) {
+                    if (key.startsWith(term) || term.startsWith(key)) {
+                        targetEmoji = emoji;
+                        break;
+                    }
+                }
 
                 filteredChannels = filteredChannels.filter(channel => {
                     if (searchTerm === '') return true;
 
-                    // Si el término coincide con un deporte, buscamos por el emoji del evento
-                    if (targetEmoji && channel.event && channel.event.sportEmoji === targetEmoji) {
-                        return true;
+                    const normalizedName = normalizeText(channel.name);
+                    const normalizedId = channel.id ? channel.id.toLowerCase() : '';
+
+                    // 1. Coincidencia por texto (Nombre e ID)
+                    // Para términos muy cortos como 'F1', buscamos coincidencia más precisa
+                    const nameMatch = term.length <= 2 ? 
+                        normalizedName.split(' ').some(word => word === term) || normalizedName.includes(term) :
+                        normalizedName.includes(term);
+                    
+                    const idMatch = normalizedId.includes(term);
+                    
+                    let eventTextMatch = false;
+                    if (channel.event) {
+                        eventTextMatch = normalizeText(channel.event.competition || '').includes(term) || 
+                                         normalizeText(channel.event.match || '').includes(term);
                     }
 
-                    const nameMatch = normalizeText(channel.name).includes(term);
-                    let eventMatch = false;
-                    if (channel.event) {
-                        eventMatch = Object.values(channel.event).some(v => typeof v === 'string' && normalizeText(v).includes(term));
-                    }
-                    return nameMatch || eventMatch || (channel.id && channel.id.toLowerCase().includes(term));
+                    // 2. Coincidencia por deporte (Emoji)
+                    const sportMatch = targetEmoji && channel.event && channel.event.sportEmoji === targetEmoji;
+                    
+                    return nameMatch || idMatch || eventTextMatch || sportMatch;
                 });
             } else if (currentFilter === 'events_only') {
                 // FILTRADO POR EVENTO (No por fuente)

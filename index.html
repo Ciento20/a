@@ -1546,77 +1546,58 @@
         }
         async function loadInitialChannels() {
             document.body.classList.remove('loading-finished');
-            const tvChannelsGrid = document.getElementById("tvChannelsGrid");
             document.getElementById('tvStatusMessageContainer').innerHTML = '';
-
-            await loadChannelLogos();
-            const isShowingBackup = loadAndRenderBackupChannels();
             
-            // Precarga de todas las fuentes de eventos en paralelo
-            const eventPromises = [
-                fetchAndProcessSource('events', EVENTS_SOURCES.ipfs, processEventsData, BACKUP_KEYS.events).then(r => state.eventsCache.ipfs = r.channels || []),
-                fetchProxyContentAndProcess('events', EVENTS_SOURCES.ciriaco, processCiriacoData, BACKUP_KEYS.events).then(r => state.eventsCache.ciriaco = r.channels || []),
-                fetchProxyContentAndProcess('events', EVENTS_SOURCES.ftv, processFutbolEnLaTvData, BACKUP_KEYS.events).then(r => state.eventsCache.ftv = r.channels || [])
-            ];
+            await loadChannelLogos();
+            
+            // Carga inicial de backups para mostrar algo de inmediato
+            loadAndRenderBackupChannels();
 
-            const results = await Promise.allSettled([
-                ...eventPromises,
-                fetchAndProcessSource('era', ERA_URL, processEraData, BACKUP_KEYS.era),
-                fetchProxyContentAndProcess('shickat', SHICKAT_URL, processShickatData, BACKUP_KEYS.shickat),
-                fetchProxyContentAndProcess('elcano', ELCANO_URL, processElcanoDataFromHtml, BACKUP_KEYS.elcano)
-            ]);
-
-            let allChannels = [];
-            let hasFallback = false;
-            let hasOnlineSuccess = false;
-
-            // Añadir canales base (era, shickat, elcano)
-            results.slice(3).forEach(result => {
-                if (result.status === 'fulfilled' && result.value.channels) {
-                    allChannels = allChannels.concat(result.value.channels);
-                    if (!result.value.message.includes('historial')) hasOnlineSuccess = true;
-                }
-            });
-
-            // Inyectar la fuente seleccionada del caché
-            allChannels = allChannels.concat(state.eventsCache[state.tvEventSource] || []);
-
-            const statusElement = document.querySelector("#tvStatusMessageContainer .status-message");
-
-            if (allChannels.length > 0) {
-                const newChannels = mergeChannels(allChannels);
-                state.channelsData = newChannels;
+            const updateStateAndRender = (newChannels) => {
+                if (!newChannels || newChannels.length === 0) return;
+                // Combinar con lo que ya tenemos, priorizando lo nuevo
+                const combined = state.channelsData.concat(newChannels);
+                state.channelsData = mergeChannels(combined);
                 processChannelNames();
                 renderTVChannels();
-                cleanObsoleteRatings();
-                if (statusElement) statusElement.remove();
-                if (hasOnlineSuccess) {
-                    if (hasFallback) {
-                        showStatusMessage("Canales actualizados (algunos con historial).", "warning");
-                    } else {
-                        showStatusMessage("Canales actualizados correctamente.", "success");
-                    }
-                } else if (isShowingBackup) {
-                    if (statusElement) statusElement.remove();
-                    showStatusMessage("Fallo al actualizar canales. Se sigue mostrando el historial.", "error");
-                } else {
-                    tvChannelsGrid.innerHTML = ` <div class="no-results"><div class="no-results-icon">📡</div><div class="no-results-text">Error al cargar los canales.</div><div class="no-results-hint">No se han conseguido cargar los canales (modo offline/sin historial).</div><button class="retry-button" onclick="loadInitialChannels()">Reintentar</button></div> `;
-                    showStatusMessage("Error al cargar canales. Sin historial disponible.", "error");
-            }
-            setTimeout(() => {
-                document.body.classList.add('loading-finished');
-            }, 800);
-        } else if (isShowingBackup) {
-                if (statusElement) statusElement.remove();
-                showStatusMessage("Fallo al actualizar canales. Se sigue mostrando el historial.", "error");
-            } else {
-                if (statusElement) statusElement.remove();
-                tvChannelsGrid.innerHTML = ` <div class="no-results-container"><div class="no-results"><div class=\"no-results-icon\">📡</div><div class=\"no-results-text\">Error al cargar los canales.</div><div class=\"no-results-hint\">No se han conseguido cargar los canales (modo offline/sin historial).</div><button class=\"retry-button\" onclick=\"loadInitialChannels()\">Reintentar</button></div></div> `;
-                showStatusMessage("Error al cargar canales. Sin historial disponible.", "error");
-            }
-            setTimeout(() => {
-                document.body.classList.add('loading-finished');
-            }, 800);
+            };
+
+            // Lanzamos todas las peticiones en paralelo y cada una actualiza según llega
+            const sources = [
+                { name: 'era', url: ERA_URL, proc: processEraData, key: BACKUP_KEYS.era, type: 'direct' },
+                { name: 'shickat', url: SHICKAT_URL, proc: processShickatData, key: BACKUP_KEYS.shickat, type: 'proxy' },
+                { name: 'elcano', url: ELCANO_URL, proc: processElcanoDataFromHtml, key: BACKUP_KEYS.elcano, type: 'proxy' },
+                { name: 'events_ipfs', url: EVENTS_SOURCES.ipfs, proc: processEventsData, key: BACKUP_KEYS.events, type: 'direct', isEvent: true },
+                { name: 'events_ciriaco', url: EVENTS_SOURCES.ciriaco, proc: processCiriacoData, key: BACKUP_KEYS.events, type: 'proxy', isEvent: true },
+                { name: 'events_ftv', url: EVENTS_SOURCES.ftv, proc: processFutbolEnLaTvData, key: BACKUP_KEYS.events, type: 'proxy', isEvent: true }
+            ];
+
+            let finishedCount = 0;
+            sources.forEach(source => {
+                const fetchMethod = source.type === 'direct' ? fetchAndProcessSource : fetchProxyContentAndProcess;
+                
+                fetchMethod(source.name, source.url, source.proc, source.key)
+                    .then(result => {
+                        if (result && result.channels) {
+                            // Si es fuente de eventos, guardamos en cache
+                            if (source.isEvent) {
+                                const cleanName = source.name.replace('events_', '');
+                                state.eventsCache[cleanName] = result.channels;
+                                // Solo renderizamos si es la fuente activa de eventos
+                                if (cleanName === state.tvEventSource) updateStateAndRender(result.channels);
+                            } else {
+                                updateStateAndRender(result.channels);
+                            }
+                        }
+                    })
+                    .finally(() => {
+                        finishedCount++;
+                        if (finishedCount === sources.length) {
+                            document.body.classList.add('loading-finished');
+                            cleanObsoleteRatings();
+                        }
+                    });
+            });
         }
 
         // NUEVA FUNCIÓN CENTRAL DE LIMPIEZA

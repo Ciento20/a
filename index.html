@@ -978,6 +978,17 @@
                     </div><label class="settings-switch"><input type="checkbox" id="hideNoLinksCheckbox"><span
                             class="settings-slider"></span></label>
                 </div>
+                <div class="settings-item">
+                    <div class="settings-item__info"><span class="settings-icon">📡</span>
+                        <div><span class="settings-label">Motor de Eventos</span><span class="settings-description">Fuente de la agenda deportiva.</span></div>
+                    </div>
+                    <select id="eventSourceSelect" onchange="setEventSource(this.value)" style="background:#333; color:white; border:1px solid #555; font-size:0.45rem; border-radius:4px;">
+                        <option value="ipfs">IPFS (Directo)</option>
+                        
+                        <option value="ciriaco">Ciriaco (Tabla)</option>
+                        <option value="ftv">Fútbol en la TV (FTV)</option>
+                    </select>
+                </div>
             </div>
             <div class="settings-section">
                 <h4 class="settings-section__title">🎨 Apariencia</h4>
@@ -1061,6 +1072,8 @@
             hideEventDetails: localStorage.getItem('hideEventDetails') === 'true',
             tvCurrentFilter: localStorage.getItem('tvCurrentFilter') || 'all',
             tvSportFilter: localStorage.getItem('tvSportFilter') || 'all',
+            tvEventSource: localStorage.getItem('tvEventSource') || 'ipfs',
+            eventsCache: { ipfs: [], ciriaco: [], ftv: [] },
             tvSearchTerm: '',
             tvFocusManager: null,
             playerActive: false,
@@ -1102,8 +1115,12 @@
         ];
         const GIST_URL = "https://gist.githubusercontent.com/Ciento20/f7847e86d06e5011706fa76f2dab90be/raw";
         const ELCANO_URL = 'https://acestream-ids.vercel.app/';
-        const EVENTS_URL = 'https://ipfs.io/ipns/k2k4r8oqlcjxsritt5mczkcn4mmvcmymbqw7113fz2flkrerfwfps004/';
-const EVENTS_URL_BACKUP = 'https://eventos-eight-dun.vercel.app/';
+        const EVENTS_SOURCES = {
+            
+            ciriaco: 'https://ciriaco.netlify.app/',
+            ipfs: 'https://ipfs.io/ipns/k2k4r8oqlcjxsritt5mczkcn4mmvcmymbqw7113fz2flkrerfwfps004/',
+            ftv: 'https://www.futbolenlatv.es/deporte'
+        };
         const SHICKAT_URL = 'https://shickat.me/';
         const BACKUP_KEYS = {
             
@@ -1190,6 +1207,19 @@ const EVENTS_URL_BACKUP = 'https://eventos-eight-dun.vercel.app/';
             localStorage.setItem('hideNoLinks', state.hideNoLinks);
             document.getElementById('hideNoLinksCheckbox').checked = state.hideNoLinks;
             renderTVChannels();
+        }
+
+        function setEventSource(source) {
+            state.tvEventSource = source;
+            localStorage.setItem('tvEventSource', source);
+            
+            // Recargar datos desde el caché local sin fetch
+            const baseChannels = state.channelsData.filter(c => c.source !== 'events');
+            state.channelsData = baseChannels.concat(state.eventsCache[source] || []);
+            
+            processChannelNames();
+            renderTVChannels();
+            showStatusMessage(`Motor de eventos cambiado a: ${source.toUpperCase()}`, "success");
         }
 
         function requestFullScreen() {
@@ -1520,12 +1550,17 @@ const EVENTS_URL_BACKUP = 'https://eventos-eight-dun.vercel.app/';
             document.getElementById('tvStatusMessageContainer').innerHTML = '';
 
             await loadChannelLogos();
-
             const isShowingBackup = loadAndRenderBackupChannels();
-            showStatusMessage("Cargando agenda deportiva...", "info");
+            
+            // Precarga de todas las fuentes de eventos en paralelo
+            const eventPromises = [
+                fetchAndProcessSource('events', EVENTS_SOURCES.ipfs, processEventsData, BACKUP_KEYS.events).then(r => state.eventsCache.ipfs = r.channels || []),
+                fetchProxyContentAndProcess('events', EVENTS_SOURCES.ciriaco, processCiriacoData, BACKUP_KEYS.events).then(r => state.eventsCache.ciriaco = r.channels || []),
+                fetchProxyContentAndProcess('events', EVENTS_SOURCES.ftv, processFutbolEnLaTvData, BACKUP_KEYS.events).then(r => state.eventsCache.ftv = r.channels || [])
+            ];
 
             const results = await Promise.allSettled([
-                fetchAndProcessSource('events', EVENTS_URL, processEventsData, BACKUP_KEYS.events),
+                ...eventPromises,
                 fetchAndProcessSource('era', ERA_URL, processEraData, BACKUP_KEYS.era),
                 fetchProxyContentAndProcess('shickat', SHICKAT_URL, processShickatData, BACKUP_KEYS.shickat),
                 fetchProxyContentAndProcess('elcano', ELCANO_URL, processElcanoDataFromHtml, BACKUP_KEYS.elcano)
@@ -1535,17 +1570,16 @@ const EVENTS_URL_BACKUP = 'https://eventos-eight-dun.vercel.app/';
             let hasFallback = false;
             let hasOnlineSuccess = false;
 
-            results.forEach(result => {
+            // Añadir canales base (era, shickat, elcano)
+            results.slice(3).forEach(result => {
                 if (result.status === 'fulfilled' && result.value.channels) {
-                    if (result.value.message.includes('historial')) {
-                        hasFallback = true;
-                        allChannels = allChannels.concat(result.value.channels);
-                    } else {
-                        allChannels = allChannels.concat(result.value.channels);
-                        hasOnlineSuccess = true;
-                    }
+                    allChannels = allChannels.concat(result.value.channels);
+                    if (!result.value.message.includes('historial')) hasOnlineSuccess = true;
                 }
             });
+
+            // Inyectar la fuente seleccionada del caché
+            allChannels = allChannels.concat(state.eventsCache[state.tvEventSource] || []);
 
             const statusElement = document.querySelector("#tvStatusMessageContainer .status-message");
 
@@ -1921,6 +1955,92 @@ const EVENTS_URL_BACKUP = 'https://eventos-eight-dun.vercel.app/';
             return 105;
         }
 
+        
+
+        async function processCiriacoData(html) {
+    const numberedChannels = [];
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    const rows = doc.querySelectorAll('table.tabla-eventos tbody tr');
+    const fechaActual = doc.querySelector('.fecha')?.innerText.trim() || 'Hoy';
+    
+    const channelMappings = {
+        'LA LIGA 1': 'La Liga', 'MOVISTAR': 'M+', 'EUROSPORT': '★EUROSPORT',
+        'La Liga TV La Liga Hypermotion': 'La Liga Hypermotion', 'ACCION': 'Acción',
+        'CLASICOS': 'Clásicos', 'Plus\\:': 'Plus', 'GOLF': 'Golf', 'VAMOS': 'Vamos',
+        'BALONCESTO 1': 'Baloncesto', 'M. DEPORTES ES': 'M+ Deportes',
+        'LALIGA': 'La Liga', 'LA LIGA': 'La Liga', 'EUROSPORT 4K': 'EUROSPORT 1'
+    };
+
+    rows.forEach(row => {
+        const cells = row.querySelectorAll('td');
+        if (cells.length < 5) return;
+
+        const hora = cells[0].innerText.trim();
+        const comp = cells[2].innerText.trim();
+        const match = cells[3].innerText.trim();
+        const t1 = cells[3].querySelectorAll('img')[0]?.src || '';
+        const t2 = cells[3].querySelectorAll('img')[1]?.src || '';
+
+        // Sistema de emojis idéntico a IPFS
+        const emojiMap = {
+            '🎾': ['Open Australia', 'Roland Garros', 'Wimbledon', 'US Open', 'ATP', 'WTA', 'Davis Cup', 'Tenis'],
+            '⚽': ['Premier League', 'La Liga', 'Champions League', 'Europa League', 'Serie A', 'Bundesliga', 'Fútbol', 'Futbol', 'Copa del Rey'],
+            '🏀': ['Liga Endesa', 'NBA', 'Liga ACB', 'Euroliga', 'Baloncesto'],
+            '🏎️': ['F1', 'Formula 1', 'IndyCar', 'Carrera', 'GP'],
+            '🏍️': ['MotoGP', 'Moto'],
+            '🚴': ['Ciclismo', 'Tour', 'Giro', 'Vuelta'],
+            '⛳': ['Golf', 'Masters', 'PGA', 'LIV Golf']
+        };
+
+        let detectedEmoji = '🏆';
+        for (const [emoji, keywords] of Object.entries(emojiMap)) {
+            if (keywords.some(key => comp.includes(key) || match.includes(key))) {
+                detectedEmoji = emoji;
+                break;
+            }
+        }
+
+        const eventInfo = {
+            time: hora,
+            competition: comp,
+            match: match,
+            date: fechaActual,
+            sportEmoji: detectedEmoji,
+            imga: t1,
+            imgb: t2,
+            startTime: getEventTime(fechaActual, hora).getTime(),
+            endTime: getEventTime(fechaActual, hora).getTime() + (120 * 60000)
+        };
+
+        row.querySelectorAll('a[href^="acestream://"]').forEach(link => {
+            const id = link.href.split('://')[1];
+            let rawName = link.innerText.trim();
+            if (!rawName || rawName.includes('---')) return;
+
+            // Aplicar mapeos específicos
+            for (const key in channelMappings) {
+                rawName = rawName.replace(new RegExp(key, 'gi'), channelMappings[key]);
+            }
+
+            // Limpieza de calidad y normalización (Paso idéntico a IPFS)
+            const { name, quality, multiAudio } = cleanNameAndExtractQuality(rawName);
+            
+            // Generar ID único para evitar colisiones en el merge
+            const uniqueEventId = `event-ciriaco-${name}-${fechaActual}-${hora}`.replace(/\s+/g, '_');
+
+            numberedChannels.push({
+                id: uniqueEventId,
+                name: name,
+                quality: 'EVENTO',
+                source: 'events',
+                event: eventInfo
+            });
+        });
+    });
+    return numberedChannels;
+}
+
         function getEventTime(dateString, timeString) {
             const now = new Date();
             const date = parseDateString(dateString, now);
@@ -1938,7 +2058,64 @@ const EVENTS_URL_BACKUP = 'https://eventos-eight-dun.vercel.app/';
                 return eventTime;
             }
             return eventTime;
-        }        function processEventsData(htmlContent) {
+        }        async function processFutbolEnLaTvData(htmlContent) {
+    const numberedChannels = [];
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(htmlContent, 'text/html');
+
+    const cabeceraTexto = doc.querySelector('.cabeceraTabla td')?.textContent || "";
+    const fechaMatch = cabeceraTexto.match(/(\d{2}\/\d{2}\/\d{4})/);
+    const fechaEvento = fechaMatch ? fechaMatch[1] : "Hoy";
+
+    const filas = doc.querySelectorAll('.tablaPrincipal tr:not(.cabeceraTabla)');
+
+    filas.forEach(fila => {
+        const horaElement = fila.querySelector('.hora');
+        if (!horaElement) return;
+
+        const hora = horaElement.textContent.trim();
+        const comp = fila.querySelector('.detalles label')?.title || "Competición";
+        const local = fila.querySelector('.local span')?.title || "Local";
+        const visitante = fila.querySelector('.visitante span')?.title || "Visitante";
+        const imga = fila.querySelector('.local img')?.src || "";
+        const imgb = fila.querySelector('.visitante img')?.src || "";
+
+        const canales = fila.querySelectorAll('.listaCanales li');
+        canales.forEach(canal => {
+            // Limpieza específica para FTV: Eliminar '(Ver en directo)' y códigos tipo '(M182 O434)'
+            let rawName = canal.textContent
+                .replace(/\(Ver en directo\)/gi, '')
+                .replace(/\([A-Z0-9\s]+\)/gi, '')
+                .trim();
+
+            // Aplicar el limpiador unificado cleanNameAndExtractQuality
+            const { name, quality } = cleanNameAndExtractQuality(rawName);
+
+            const startTime = new Date(`${fechaEvento.split('/').reverse().join('-')}T${hora}:00`).getTime() || Date.now();
+
+            numberedChannels.push({
+                id: `ev-${name.replace(/\s+/g, '')}-${hora.replace(':', '')}`,
+                name: name,
+                quality: "EVENTO",
+                source: 'events',
+                event: {
+                    time: hora,
+                    competition: comp,
+                    match: `${local} vs ${visitante}`,
+                    date: fechaEvento,
+                    sportEmoji: "⚽",
+                    imga: imga,
+                    imgb: imgb,
+                    startTime: startTime,
+                    endTime: startTime + (105 * 60 * 1000)
+                }
+            });
+        });
+    });
+    return numberedChannels;
+}
+
+        function processEventsData(htmlContent) {
     const numberedChannels = [];
     const parser = new DOMParser();
     const doc = parser.parseFromString(htmlContent, 'text/html');
@@ -3455,6 +3632,7 @@ const EVENTS_URL_BACKUP = 'https://eventos-eight-dun.vercel.app/';
             document.getElementById('fullScreenOnClickCheckbox').checked = state.fullScreenOnClick;
             document.getElementById('hideOptionsButtonCheckbox').checked = state.hideOptionsButton;            document.getElementById('copyLinkModeCheckbox').checked = state.copyLinkMode;
             document.getElementById('hideNoLinksCheckbox').checked = state.hideNoLinks;
+            document.getElementById('eventSourceSelect').value = state.tvEventSource;
             document.body.classList.toggle('hide-options-button-active', state.hideOptionsButton);
 
             // Asignar eventos a los ajustes

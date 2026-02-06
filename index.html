@@ -3141,8 +3141,7 @@
                     if (aHasLive && !bHasLive) return -1;
                     if (!aHasLive && bHasLive) return 1;
                     return a.localeCompare(b);
-                });
-
+                });                const renderedNamesInGroup = new Set();
                 sortedSubGroupNames.forEach(subGroupName => {
                     let channels = subGroups[subGroupName];
                     if (state.hideNoLinks) {
@@ -3151,15 +3150,19 @@
                     if (channels.length === 0) return;
 
                     const bestChannel = getBestChannelInSubgroup(channels);
-                    if (!bestChannel) return;                    // Buscamos todos los links físicos que coincidan con el nombre del canal seleccionado
-                    const allPhysicalLinks = state.channelsData.filter(c => 
-                        c.source !== 'events' && 
-                        normalizeText(c.name) === normalizeText(bestChannel.name)
+                    if (!bestChannel) return;
+
+                    const normalizedBestName = normalizeText(bestChannel.name);
+                    if (renderedNamesInGroup.has(normalizedBestName)) return;
+                    renderedNamesInGroup.add(normalizedBestName);
+
+                    const allLinks = state.channelsData.filter(c => 
+                        normalizeText(c.name) === normalizedBestName
                     );
 
-                    const allOptions = allPhysicalLinks.map(c => ({
+                    const allOptions = allLinks.map(c => ({
                         id: c.id,
-                        name: c.displayableName,
+                        name: c.displayableName || c.name,
                         quality: standardizeQuality(c.quality),
                         multiAudio: c.multiAudio,
                         source: c.source,

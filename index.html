@@ -1968,11 +1968,25 @@
         row.querySelectorAll('a[href^="acestream://"]').forEach(link => {
             const id = link.href.split('://')[1];
             let rawName = link.innerText.trim();
-            if (!rawName || rawName.includes('---')) return;
-            for (const key in channelMappings) { rawName = rawName.replace(new RegExp(key, 'gi'), channelMappings[key]); }
-            const { name } = cleanNameAndExtractQuality(rawName);
-            const uniqueEventId = `event-ciriaco-${name}-${fechaActual}-${hora}`.replace(/\s+/g, '_');
-            numberedChannels.push({ id: uniqueEventId, name: name, quality: 'EVENTO', source: 'events', event: eventInfo });
+            if (!rawName || rawName.includes('---') || id.length !== 40) return;
+
+            // Normalizar nombre del canal
+            for (const key in channelMappings) { 
+                rawName = rawName.replace(new RegExp(key, 'gi'), channelMappings[key]); 
+            }
+            
+            const { name, quality, multiAudio } = cleanNameAndExtractQuality(rawName);
+            const uniqueEventId = `ev-cir-${id.substring(0,8)}-${fechaActual}-${hora}`.replace(/\s+/g, '_');
+
+            // Añadir como canal reproducible con información de evento vinculada
+            numberedChannels.push({
+                id: id,
+                name: name,
+                quality: quality || 'EVENTO',
+                multiAudio: multiAudio,
+                source: 'events',
+                event: eventInfo
+            });
         });
     });
     return numberedChannels;
@@ -3424,7 +3438,8 @@
             // FILTRO ANTIDUPLICADOS INDEPENDIENTE PARA EL MODAL (POR ID DE ACESTREAM)
             const uniqueOptionsMap = new Map();
             optionsList.forEach(opt => {
-                if (!opt.id || opt.source === 'events') return;
+                // Permitir 'events' si el ID tiene la longitud de un hash AceStream (40)
+                if (!opt.id || (opt.source === 'events' && opt.id.length !== 40)) return;
                 
                 const cleanId = opt.id.trim().toLowerCase();
                 if (!uniqueOptionsMap.has(cleanId)) {

@@ -1697,49 +1697,45 @@
         }
 
         async function fetchProxyContentAndProcess(sourceName, url, processor, backupKey) {
-            let lastError;
             let content = null;
             let finalMessage = '';
             const retryKey = `${sourceName}Retries`;
             const currentRetries = state[retryKey] !== undefined ? state[retryKey] : 0;
 
-            for (const proxy of PROXIES) {
-                try {
-                    const proxyUrl = proxy + encodeURIComponent(url);
-                    const response = await fetch(proxyUrl);
+            // Intentamos con los primeros 3 proxies en paralelo para ganar velocidad
+            const rapidProxies = PROXIES.slice(0, 3);
+            
+            try {
+                content = await Promise.any(rapidProxies.map(proxy => 
+                    fetch(proxy + encodeURIComponent(url)).then(res => {
+                        if (!res.ok) throw new Error('Fail');
+                        return res.text();
+                    })
+                ));
+            } catch (e) {
+                // Si los rápidos fallan, probamos el resto secuencialmente como fallback
+                for (const proxy of PROXIES.slice(3)) {
+                    try {
+                        const res = await fetch(proxy + encodeURIComponent(url));
+                        if (res.ok) {
+                            content = await res.text();
+                            break;
+                        }
+                    } catch (err) { continue; }
+                }
+            }
 
-                    if (!response.ok) throw new Error(`Proxy ${proxy} responded with ${response.status}`);
+            if (content) {
+                if (state[retryKey] !== undefined) state[retryKey] = 0;
+                const contentHash = await hashContent(content);
+                const backup = loadBackup(backupKey);
 
-                    content = await response.text();
-                    if (state[retryKey] !== undefined) state[retryKey] = 0;
-
-                    const contentHash = await hashContent(content);
-                    const backup = loadBackup(backupKey);
-
-                    if (backup && backup.contentHash === contentHash) {
-                        finalMessage = `Canales de ${sourceName} cargados (Sin cambios).`;
-                        console.log(`[${sourceName}] Contenido sin cambios. Usando backup local.`);
-                        return {
-                            name: sourceName,
-                            channels: backup.data,
-                            message: finalMessage
-                        };
-                    } else {
-                        const channels = await processor(content);
-                        saveBackup(channels, backupKey, contentHash);
-                        finalMessage = `Canales de ${sourceName} cargados y actualizados.`;
-                        console.log(`[${sourceName}] Contenido actualizado o nuevo. Procesado y guardado.`);
-                        return {
-                            name: sourceName,
-                            channels,
-                            message: finalMessage
-                        };
-                    }
-
-                } catch (error) {
-                    lastError = error;
-                    console.warn(`Proxy ${proxy} falló para ${sourceName}:`, error);
-                    continue;
+                if (backup && backup.contentHash === contentHash) {
+                    return { name: sourceName, channels: backup.data, message: `Canales de ${sourceName} cargados (Sin cambios).` };
+                } else {
+                    const channels = await processor(content);
+                    saveBackup(channels, backupKey, contentHash);
+                    return { name: sourceName, channels, message: `Canales de ${sourceName} cargados y actualizados.` };
                 }
             }
 

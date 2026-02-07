@@ -1061,7 +1061,8 @@
         </div>
     </div>
     <script>
-        const state = {
+        let worker;
+const state = {
             channelsData: [],
             channelHistory: JSON.parse(localStorage.getItem('channelHistory')) || {},
             currentChannel: null,
@@ -1555,11 +1556,9 @@
 
             const updateStateAndRender = (newChannels) => {
                 if (!newChannels || newChannels.length === 0) return;
-                // Combinar con lo que ya tenemos, priorizando lo nuevo
                 const combined = state.channelsData.concat(newChannels);
-                state.channelsData = mergeChannels(combined);
-                processChannelNames();
-                renderTVChannels();
+                const merged = mergeChannels(combined);
+                worker.postMessage({ task: 'processChannels', data: merged });
             };
 
             // Lanzamos todas las peticiones en paralelo y cada una actualiza según llega
@@ -3603,7 +3602,45 @@
             cleanupOldFirstSeenRecords();
         }
 
-        document.addEventListener('DOMContentLoaded', initializeTVMode);
+        // Lógica del Web Worker para procesamiento en segundo plano
+const workerCode = `
+    self.onmessage = function(e) {
+        const { task, data, extra } = e.data;
+        if (task === 'processChannels') {
+            const processed = data.map(channel => {
+                let name = channel.name.replace(/(\\(|\\)|-->.*$)/g, '').trim();
+                const quality = (q => {
+                    if (!q) return 'SD'; q = q.toLowerCase();
+                    if (q.includes('uhd') || q.includes('4k')) return '4K';
+                    if (q.includes('1080') || q.includes('fhd')) return 'FHD';
+                    if (q.includes('720') || q.includes('hd')) return 'HD';
+                    return 'SD';
+                })(name);
+                
+                name = name.replace(/1080P|1080|720P|720|UHD|FHD|HD|SD|MultiAudio|Multi Audio|Multi|multi|4K/gi, '')
+                           .replace(/\\(ES\\)|\\(Es\\)|(Estable|New Era I|New Era II|New Loop|New Era VI|Fórmula 1|BAR|eleven|eventos)/gi, '')
+                           .replace(/\\s+/g, ' ').trim();
+                
+                return { ...channel, name, quality };
+            });
+            self.postMessage({ task: 'channelsProcessed', data: processed });
+        }
+    };
+`;
+
+const blob = new Blob([workerCode], { type: 'application/javascript' });
+worker = new Worker(URL.createObjectURL(blob));
+
+worker.onmessage = function(e) {
+    if (e.data.task === 'channelsProcessed') {
+        state.channelsData = e.data.data;
+        processChannelNames();
+        renderTVChannels();
+        document.body.classList.add('loading-finished');
+    }
+};
+
+document.addEventListener('DOMContentLoaded', initializeTVMode);
     </script>
 </body>
 

@@ -1061,8 +1061,7 @@
         </div>
     </div>
     <script>
-        let worker;
-const state = {
+        const state = {
             channelsData: [],
             channelHistory: JSON.parse(localStorage.getItem('channelHistory')) || {},
             currentChannel: null,
@@ -1556,9 +1555,11 @@ const state = {
 
             const updateStateAndRender = (newChannels) => {
                 if (!newChannels || newChannels.length === 0) return;
+                // Combinar con lo que ya tenemos, priorizando lo nuevo
                 const combined = state.channelsData.concat(newChannels);
-                const merged = mergeChannels(combined);
-                worker.postMessage({ task: 'processChannels', data: merged });
+                state.channelsData = mergeChannels(combined);
+                processChannelNames();
+                renderTVChannels();
             };
 
             // Lanzamos todas las peticiones en paralelo y cada una actualiza según llega
@@ -2607,30 +2608,37 @@ const state = {
         function getChannelNumberFromName(name) {
             const match = name.match(/\d+/);
             return match ? parseInt(match[0], 10) : 1;
-        }        function formatEventDate(dateString) {
-            // Eliminamos solo lo que esté entre paréntesis (la redundancia de la fuente)
-            dateString = dateString.replace(/\s*\(.*?\)/g, '').trim();
-            
+        }
+
+        function formatEventDate(dateString) {
             const normalizedDate = dateString.toLowerCase();
             const today = new Date();
-            const weekdays = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 
-            // 1. Manejar "Hoy", "Mañana", "Ayer"
-            if (normalizedDate === 'hoy' || normalizedDate === 'mañana') {
-                return normalizedDate.charAt(0).toUpperCase() + normalizedDate.slice(1);
-            }
-            
-            const date = parseDateString(dateString, today);
-            if (normalizedDate === 'ayer') {
+            // 1. Manejar "Hoy", "Mañana", "Ayer" (Devolver solo el día)
+            if (normalizedDate === 'hoy' || normalizedDate === 'mañana' || normalizedDate === 'ayer') {
+                const date = parseDateString(dateString, today);
+                const weekdays = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+
+                // Si es "Hoy" o "Mañana", devolvemos la palabra en español para la conjugación correcta (Eventos de Hoy)
+                if (normalizedDate === 'hoy' || normalizedDate === 'mañana') {
+                    return normalizedDate.charAt(0).toUpperCase() + normalizedDate.slice(1);
+                }
+
+                // Si es "Ayer", devolvemos el día de la semana para una mejor UX
                 return weekdays[date.getDay()];
             }
 
-            // 2. Manejar formato de fecha numérico (Mantiene el nombre del día generado por el código)
+            // 2. Manejar formato de fecha DD/MM/YY o DD/MM/YYYY (Devolver "el [Día] [fecha]")
             const parts = dateString.split('/');
             if (parts.length >= 2 && parts.length <= 3) {
-                return `${weekdays[date.getDay()]} ${dateString}`;
+                const date = parseDateString(dateString, today);
+                const weekdays = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+
+                // Devuelve el día y la fecha original (ej: "el Sábado 13/7/25")
+                return `el ${weekdays[date.getDay()]} ${dateString}`;
             }
 
+            // 3. Fallback: Devolver la cadena original
             return dateString;
         }
 
@@ -3189,15 +3197,14 @@ const state = {
                             if (firstWord === 'el') {
                                 const dayOfWeek = parts[1];
                                 const datePart = parts.slice(2).join(' ');
-                                coloredDateHtml = `<span style="color: var(--primary);">el ${dayOfWeek} ${datePart}</span>`;
+                                coloredDateHtml = `el <span style="color: var(--primary);">${dayOfWeek} ${datePart}</span>`;
                             } else {
                                 coloredDateHtml = `<span style="color: var(--primary);">${formattedDate}</span>`;
                             }
                         } else {
                             coloredDateHtml = `<span style="color: var(--primary);">${formattedDate}</span>`;
                         }
-                        const finalTitle = (prefix === 'Eventos de ' && formattedDate.toLowerCase().startsWith('el')) ? `Eventos ${formattedDate}` : `${prefix}${formattedDate}`;
-                        html += `<h2 class="tv-date-header">${finalTitle}</h2>`;
+                        html += `<h2 class="tv-date-header">${prefix}${formattedDate}</h2>`;
                         lastDateRendered = formattedDate;
                     }
                 } else {
@@ -3596,45 +3603,7 @@ const state = {
             cleanupOldFirstSeenRecords();
         }
 
-        // Lógica del Web Worker para procesamiento en segundo plano
-const workerCode = `
-    self.onmessage = function(e) {
-        const { task, data, extra } = e.data;
-        if (task === 'processChannels') {
-            const processed = data.map(channel => {
-                let name = channel.name.replace(/(\\(|\\)|-->.*$)/g, '').trim();
-                const quality = (q => {
-                    if (!q) return 'SD'; q = q.toLowerCase();
-                    if (q.includes('uhd') || q.includes('4k')) return '4K';
-                    if (q.includes('1080') || q.includes('fhd')) return 'FHD';
-                    if (q.includes('720') || q.includes('hd')) return 'HD';
-                    return 'SD';
-                })(name);
-                
-                name = name.replace(/1080P|1080|720P|720|UHD|FHD|HD|SD|MultiAudio|Multi Audio|Multi|multi|4K/gi, '')
-                           .replace(/\\(ES\\)|\\(Es\\)|(Estable|New Era I|New Era II|New Loop|New Era VI|Fórmula 1|BAR|eleven|eventos)/gi, '')
-                           .replace(/\\s+/g, ' ').trim();
-                
-                return { ...channel, name, quality };
-            });
-            self.postMessage({ task: 'channelsProcessed', data: processed });
-        }
-    };
-`;
-
-const blob = new Blob([workerCode], { type: 'application/javascript' });
-worker = new Worker(URL.createObjectURL(blob));
-
-worker.onmessage = function(e) {
-    if (e.data.task === 'channelsProcessed') {
-        state.channelsData = e.data.data;
-        processChannelNames();
-        renderTVChannels();
-        document.body.classList.add('loading-finished');
-    }
-};
-
-document.addEventListener('DOMContentLoaded', initializeTVMode);
+        document.addEventListener('DOMContentLoaded', initializeTVMode);
     </script>
 </body>
 

@@ -1374,20 +1374,22 @@ const state = {
             const allChannels = channelsArray;
             const eventChannels = allChannels.filter(channel => channel.source === 'events');
             const otherChannels = allChannels.filter(channel => channel.source !== 'events');
-            const eventIds = new Set(eventChannels.map(channel => channel.id));
+            
+            // Unificamos las bibliotecas de enlaces manteniendo su prioridad
+            // Eliminamos el filtro de 'eventIds' para que las fuentes no desaparezcan al haber eventos activos
             const uniqueOtherChannelsMap = new Map();
             const orderedOtherSources = ['elcano', 'shickat', 'era', 'gist'];
+            
             orderedOtherSources.forEach(source => {
                 otherChannels.forEach(channel => {
                     if (channel.source === source) {
-                        if (!eventIds.has(channel.id)) {
-                            if (!uniqueOtherChannelsMap.has(channel.id)) {
-                                uniqueOtherChannelsMap.set(channel.id, channel);
-                            }
+                        if (!uniqueOtherChannelsMap.has(channel.id)) {
+                            uniqueOtherChannelsMap.set(channel.id, channel);
                         }
                     }
                 });
             });
+            
             const mergedOtherChannels = Array.from(uniqueOtherChannelsMap.values());
             return eventChannels.concat(mergedOtherChannels);
         }

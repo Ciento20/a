@@ -1940,13 +1940,18 @@ const state = {
     const parser = new DOMParser();
     const doc = parser.parseFromString(html, 'text/html');
     const rows = doc.querySelectorAll('table.tabla-eventos tbody tr');
-    const fechaActual = doc.querySelector('.fecha')?.innerText.trim() || 'Hoy';
+    let fechaActual = doc.querySelector('.fecha')?.innerText.trim() || 'Hoy';
     
     const channelMappings = { 'LA LIGA 1': 'La Liga', 'MOVISTAR': 'M+', 'Premier': 'Premier League', 'EUROSPORT': '★EUROSPORT', 'La Liga TV La Liga Hypermotion': 'La Liga Hypermotion', 'ACCION': 'Acción', 'CLASICOS': 'Clásicos', 'Plus\\+': 'Plus', 'GOLF': 'Golf', 'VAMOS': 'Vamos', 'BALONCESTO 1': 'Baloncesto', 'M. DEPORTES ES': 'M+ Deportes', 'LALIGA': 'La Liga', 'LA LIGA': 'La Liga', 'EUROSPORT 4K': 'EUROSPORT 1' };
 
     const emojiMap = { '🎾': ['Open Australia', 'Roland Garros', 'Wimbledon', 'US Open', 'ATP', 'WTA', 'Hexagon Cup', 'Grand Slam', 'Davis Cup', 'United Cup', 'Copa Davis', 'Tenis'], '⚽': ['Primera Federación Femenina', 'FA Women\'s Super League', 'Liga F', 'Champions Femenina', 'Premier League', 'La Liga EA Sports', 'Primera Federación', 'Serie A Italiana', 'Saudi Pro League', 'Bundesliga', 'Ligue 1', 'Eredivisie', 'Copa del Rey', 'Champions League', 'Europa League', 'Conference League', 'MLS', 'Eurocopa', 'Coppa Italia', 'Primera División Argentina', 'Serie A Brasil', 'Copa Libertadores', 'Concacaf', 'FA Cup', 'Carabao Cup', 'Copa Alemania', 'Copa Francia', 'Fútbol', 'Futbol'], '🏀': ['Liga Endesa', 'NBA', 'Liga ACB', 'Euroliga', 'Eurocup', 'NCAA Basketball', 'FIBA', 'Copa del Rey Baloncesto', 'Baloncesto'], '🏈': ['NFL', 'NCAA Football', 'Super Bowl'], '🏉': ['Rugby', 'Gallagher Premiership', 'Six Nations', 'Super Rugby', 'Top 14'], '⚾': ['LVBP', 'MLB', 'World Baseball Classic'], '🏍️': ['Moto', 'MotoGP', 'WorldSBK', 'Motocross', 'MXGP', 'Supercross'], '🏎️': ['F1', 'Formula 1', 'IndyCar', 'Nascar', 'Rally', 'WRC', 'Dakar', 'Extreme E', 'GP', 'Carrera'], '🥊': ['UFC', 'Boxeo', 'PFL', 'Bellator', 'MMA', 'K-1', 'Bare Knuckle'], '🚴': ['Ciclismo', 'Tour de Francia', 'Giro de Italia', 'Vuelta a España', 'AlUla Tour', 'Paris-Roubaix', 'Challenge Mallorca', 'Volta a Catalunya'], '⛳': ['Golf', 'Masters', 'PGA', 'Bahrain Championship', 'Ryder Cup', 'US Open Golf', 'The Open', 'LIV Golf'], '🤾': ['EHF Europeo', 'Champions League Handball', 'Asobal', 'Liga Guerreras'], '🏐': ['Voleibol', 'Superliga', 'VNL', 'Voley'], '🏒': ['NHL', 'Hockey'], '🎯': ['Darts', 'Dardos'], '🎱': ['Snooker', 'Billar'], '⛵': ['America\'s Cup', 'Vela', 'SailGP'] };
 
     rows.forEach(row => {
+        // Actualizar fecha si la fila es un separador de día
+        if (row.classList.contains('fecha')) {
+            fechaActual = row.innerText.trim();
+            return;
+        }
         const cells = row.querySelectorAll('td');
         if (cells.length < 5) return;
         const hora = cells[0].innerText.trim();
@@ -2010,15 +2015,18 @@ const state = {
     const numberedChannels = [];
     const parser = new DOMParser();
     const doc = parser.parseFromString(htmlContent, 'text/html');
-    const cabeceraTexto = doc.querySelector('.cabeceraTabla td')?.textContent || "";
-    const fechaMatch = cabeceraTexto.match(/(\d{2}\/\d{2}\/\d{4})/);
-    const fechaEvento = fechaMatch ? fechaMatch[1] : "Hoy";
+    let fechaEvento = "Hoy";
     
     const channelMappings = { 'LA LIGA 1': 'La Liga', 'MOVISTAR': 'M+', 'Premier': 'Premier League', 'EUROSPORT': '★EUROSPORT', 'La Liga TV La Liga Hypermotion': 'La Liga Hypermotion', 'ACCION': 'Acción', 'CLASICOS': 'Clásicos', 'Plus\\+': 'Plus', 'GOLF': 'Golf', 'VAMOS': 'Vamos', 'BALONCESTO 1': 'Baloncesto', 'M. DEPORTES ES': 'M+ Deportes', 'LALIGA': 'La Liga', 'LA LIGA': 'La Liga', 'EUROSPORT 4K': 'EUROSPORT 1' };
     const emojiMap = { '🎾': ['Open Australia', 'Roland Garros', 'Wimbledon', 'US Open', 'ATP', 'WTA', 'Hexagon Cup', 'Grand Slam', 'Davis Cup', 'United Cup', 'Copa Davis', 'Tenis'], '⚽': ['Premier League', 'La Liga', 'Champions League', 'Europa League', 'Serie A', 'Bundesliga', 'Fútbol', 'Futbol', 'Copa del Rey'], '🏀': ['Liga Endesa', 'NBA', 'Liga ACB', 'Euroliga', 'Eurocup', 'NCAA Basketball', 'FIBA', 'Copa del Rey Baloncesto', 'Baloncesto'], '🏎️': ['F1', 'Formula 1', 'GP', 'Carrera'], '🏍️': ['MotoGP', 'Moto'], '🚴': ['Ciclismo', 'Tour de Francia', 'Giro', 'Vuelta'] };
 
-    const filas = doc.querySelectorAll('.tablaPrincipal tr:not(.cabeceraTabla)');
+    const filas = doc.querySelectorAll('.tablaPrincipal tr');
     filas.forEach(fila => {
+        if (fila.classList.contains('cabeceraTabla')) {
+            const fechaMatch = fila.textContent.match(/(\d{2}\/\d{2}\/\d{4})/);
+            if (fechaMatch) fechaEvento = fechaMatch[1];
+            return;
+        }
         const horaElement = fila.querySelector('.hora');
         if (!horaElement) return;
         const hora = horaElement.textContent.trim();

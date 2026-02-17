@@ -1871,7 +1871,7 @@ const state = {
                     const acestreamId = link.url.split('://')[1];
 
                     // 1. Aplicar mapeo de nombre específico de Elcano
-                    let simplifiedName = link.name.replace(/\s+/g, ' ').trim();
+                    let simplifiedName = link.name.replace(/\s+/g, ' ').replace(/\*/g, '').trim();
                     const normalizedForMap = simplifiedName.toUpperCase();
                     for (const key in nameMap) {
                         const upperKey = key.toUpperCase();

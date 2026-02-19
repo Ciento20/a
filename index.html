@@ -400,14 +400,14 @@
                 }
 
                 input.focus();
-                input.setSelectionRange(selectionStart, selectionEnd);
-
-                const getPriority = (name) => {
+                input.setSelectionRange(selectionStart, selectionEnd);                const getPriority = (name) => {
                     const n = name.toUpperCase();
+                    if (n.includes('ELEVEN')) return 4.1;
                     if (n.includes('DAZN')) return 1;
-                    if (n.includes('M+') || n.includes('MOVISTAR')) return 2;
-                    if (n.includes('EUROSPORT')) return 3;
-                    return 4;
+                    // Agrupación unificada para Movistar y Liga de Campeones
+                    if (n.includes('M+') || n.includes('MOVISTAR') || n.includes('LIGA DE CAMPEONES')) return 2.1;
+                    if (n.includes('EUROSPORT')) return 3.1;
+                    return 4.1;
                 };
 
                 const sortedChannels = Array.from(uniqueMap.values()).sort((a, b) => {
@@ -422,7 +422,15 @@
                 wrapper.style.width = "100%";
                 wrapper.style.boxSizing = "border-box";
                 
+                let lastP = 0;
                 sortedChannels.forEach(channelName => {
+                    const currentP = Math.floor(getPriority(channelName));
+                    if (lastP !== 0 && currentP !== lastP) {
+                        const hr = document.createElement('div');
+                        hr.style.cssText = 'grid-column: 1 / -1; height: 10px;';
+                        wrapper.appendChild(hr);
+                    }
+                    lastP = currentP;
                     const temp = document.createElement('div');
                     temp.innerHTML = this.getChannelHtml(channelName);
                     wrapper.appendChild(temp.firstElementChild);

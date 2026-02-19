@@ -325,16 +325,24 @@
                 
                 if (currentTab === 'home') this.renderEvents(processed);
                 else this.renderUniqueChannels(processed);
-            },
-
-            renderEvents(data) {
+            },            renderEvents(data) {
                 this.container.innerHTML = "";
                 let lastDate = "";
                 
                 data.forEach(item => {
-                    const availableChannels = item.canales.filter(c => 
-                        aceStreamMap.some(a => ComparisonEngine.isMatch(c, a.name))
-                    );
+                    // Filtrar canales con IDs y fusionar duplicados (BAR, etc.) usando el nombre limpio
+                    const availableChannels = [];
+                    const seen = new Set();
+                    
+                    item.canales.forEach(c => {
+                        if (aceStreamMap.some(a => ComparisonEngine.isMatch(c, a.name))) {
+                            const clean = cleanChannelName(c);
+                            if (!seen.has(clean)) {
+                                seen.add(clean);
+                                availableChannels.push(c);
+                            }
+                        }
+                    });
 
                     if (availableChannels.length === 0) return;
 
@@ -439,19 +447,30 @@
                     wrapper.appendChild(temp.firstElementChild);
                 });
                 this.container.appendChild(wrapper);
-            },
-
-            getChannelHtml(name) {
+            },            getChannelHtml(name) {
                 const clean = cleanChannelName(name);
                 const logoUrl = channelLogosMap[clean];
                 const matching = aceStreamMap.filter(a => ComparisonEngine.isMatch(name, a.name));
                 const bestIdObj = matching.sort((a, b) => RatingEngine.getScore(b.id) - RatingEngine.getScore(a.id))[0];
                 const score = bestIdObj ? RatingEngine.getScore(bestIdObj.id) : null;
                 const safeName = name.replace(/'/g, "\\'");
+                
+                let extraStyle = '';
+                let badgeHtml = '';
+                const upperName = name.toUpperCase();
+
+                if (upperName.includes('BALONCESTO') && upperName.includes('DAZN')) {
+                    extraStyle = 'background-image: radial-gradient(circle, #ff5500 90%, transparent 10%); background-position: 70% center; background-size: 30% 55%; background-repeat: no-repeat;';
+                }
+
+                if (upperName.includes('VAMOS 2')) {
+                    badgeHtml = '<div style="position: absolute; left: 28px; bottom: 12px; color: #1ec33c; font-weight: 900; font-size: 1.5rem; z-index: 2;">2</div>';
+                }
 
                 return `
-                    <div class="channel-button" onclick="UIManager.playBestOrNext('${safeName}')">
+                    <div class="channel-button" style="${extraStyle}" onclick="UIManager.playBestOrNext('${safeName}')">
                         ${score ? `<div class="rating-badge">★ ${score.toFixed(1)}</div>` : ''}
+                        ${badgeHtml}
                         ${logoUrl ? `<img src="${logoUrl}" class="channel-logo" onerror="this.outerHTML='<span>${clean}</span>'">` : `<span>${clean}</span>`}
                         ${bestIdObj ? `<div class="btn-plus" onclick="UIManager.openIdsModal(event, '${safeName}')">+</div>` : ''}
                     </div>`;

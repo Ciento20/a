@@ -430,16 +430,14 @@
 
                 const durationMs = Date.now() - session.start;
                 const min = durationMs / 60000;
-                const sec = durationMs / 1000;
-
-                let delta = 0;
-                if (sec < 10) delta = -2.0;       
-                else if (min < 5) delta = -1.5;   
-                else if (min < 15) delta = -1.0;  
+                const sec = durationMs / 1000;                let delta = 0;
+                // Si la sesión es extremadamente corta (zapping/error), tratamos como neutro (0.0)
+                // En lugar de penalizar con -2.0 o -1.5
+                if (sec < 30) delta = 0.0;
+                else if (min < 5) delta = -0.5;   // Penalización leve por abandono temprano
+                else if (min < 15) delta = 0.0;   // Neutro: el usuario vio un rato y cambió
                 else if (min < 30) delta = 0.5;   
-                else if (min >= 30) delta = 1.5;  
-
-                if (delta !== 0) {
+                else if (min >= 30) delta = 1.5;  if (delta !== 0) {
                     this.saveScore(session.id, delta);
                 }
                 localStorage.removeItem(this.SESSION_KEY);

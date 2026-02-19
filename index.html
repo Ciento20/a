@@ -402,11 +402,14 @@
                 input.focus();
                 input.setSelectionRange(selectionStart, selectionEnd);                const getPriority = (name) => {
                     const n = name.toUpperCase();
-                    if (n.includes('ELEVEN')) return 4.1;
+                    // Excluir canales internacionales de la prioridad alta
+                    const isForeign = n.includes('(PL)') || n.includes('(DE)') || n.includes('(RU)');
+
+                    if (n.includes('ELEVEN') || isForeign) return 4.1;
                     if (n.includes('DAZN')) return 1;
-                    // Agrupación unificada para Movistar y Liga de Campeones
                     if (n.includes('M+') || n.includes('MOVISTAR') || n.includes('LIGA DE CAMPEONES')) return 2.1;
                     if (n.includes('EUROSPORT')) return 3.1;
+                    
                     return 4.1;
                 };
 
@@ -489,7 +492,10 @@
                     const currentRating = RatingEngine.getScore(item.id);
                     const btn = document.createElement('div');
                     btn.className = 'id-item';                    btn.innerHTML = `
-                        <span style="flex: 1; text-align: center;"><small style="opacity:0.6">[${item.source || 'ID'}]</small> ${item.id.substring(0, 10).toUpperCase()}</span>
+                        <span style="display: flex; align-items: center; gap: 8px; flex: 1;">
+                            <small style="background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 4px; font-size: 0.55rem; font-weight: 700; color: var(--accent-blue); border: 1px solid rgba(68, 138, 255, 0.3); min-width: 32px; text-align: center;">${item.source || 'ID'}</small>
+                            <span style="font-family: monospace; opacity: 0.9;">${item.id.substring(0, 10).toUpperCase()}</span>
+                        </span>
                         <span class="id-rating">★ ${currentRating.toFixed(1)}</span>
                     `;
                     btn.onclick = () => {

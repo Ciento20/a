@@ -368,8 +368,18 @@
             container: document.getElementById('events-container'),
             status: document.getElementById('status'),
             modal: document.getElementById('ids-modal'),
+            lastClickTime: 0,
 
             switchTab(tab) {
+                if (tab === 'home') {
+                    const now = Date.now();
+                    if (now - this.lastClickTime < 1000) {
+                        this.setRandomColor();
+                        this.lastClickTime = 0;
+                        return;
+                    }
+                    this.lastClickTime = now;
+                }
                 currentTab = tab;
                 const searchContainer = document.getElementById('searchContainer');
                 
@@ -591,12 +601,16 @@
                     list.appendChild(btn);
                 });
                 this.modal.style.display = 'flex';
-            },
+            },            closeModal() { this.modal.style.display = 'none'; },
 
-            closeModal() { this.modal.style.display = 'none'; }
-        };
-
-        async function init() {
+            setRandomColor() {
+                const randomColor = '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
+                document.documentElement.style.setProperty('--accent-blue', randomColor);
+                localStorage.setItem('custom_accent_color', randomColor);
+            }
+        };        async function init() {
+            const savedColor = localStorage.getItem('custom_accent_color');
+            if (savedColor) document.documentElement.style.setProperty('--accent-blue', savedColor);
             window.addEventListener('focus', () => RatingEngine.checkPreviousSession());
 
             try {

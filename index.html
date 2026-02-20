@@ -1,4 +1,5 @@
-<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>JSON Extractor Pro - Autorating Edition</title><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"><style>
+<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>TV</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.8em%22 font-size=%2285%22>📺</text></svg>"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"><style>
         /* Estilos para la Loader Bar */
         #loader-container {
             position: fixed;
@@ -27,7 +28,7 @@
         .loading-finished #loader-container {
             opacity: 0;
             pointer-events: none;
-        }:root{--bg-color:#121212;--card-bg:#1e1e1e;--accent-blue:#448aff;--text-main:#ffffff;--text-muted:#888888;--channel-bg:#2a2a2a;--border-color:#333333;--nav-bg:#1a1a1a;--success:#06d6a0;--warning:#ffd700}body{background-color:var(--bg-color);color:var(--text-main);font-family:Inter,sans-serif;margin:0;padding:6px;padding-bottom:52px;display:flex;flex-direction:column;align-items:center}@keyframes blink-blue{0%{opacity:1;color:var(--accent-blue)}50%{opacity:.3;color:#fff}100%{opacity:1;color:var(--accent-blue)}}.is-live .time{animation:blink-blue 1s infinite;font-weight:800}.date-header{width:100%;text-align:center;margin:20px 0;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#efefef;left:0;right:0}.date-header::after,.date-header::before{content:"";flex:1;height:1px;background:var(--border-color);margin:0 10px}#events-container{width:95%;max-width:500px;display:flex;flex-direction:column;gap:18px;transition:max-width .3s ease}@media (min-width:768px){#events-container{max-width:600px}.date-header{max-width:100%}}@media (min-width:1200px){#events-container{max-width:800px;display:flex;flex-direction:column;gap:18px}.date-header{max-width:100%;margin:30px 0 10px 0}.event-card{border-bottom:1px solid #222;padding:10px 0}}.event-card{display:flex;flex-direction:column;gap:8px;padding-bottom:8px;width:100%;border-bottom:1px solid #222}.competicion-title{color:var(--accent-blue);font-size:.65rem;font-weight:600;display:flex;align-items:center;gap:4px}.competicion-title::before{content:"🏆";font-size:.55rem}.event-info{display:flex;align-items:center;font-size:.75rem;font-weight:500;margin-bottom:2px}.time{font-size:.6rem;color:#fff;margin-right:5px;white-space:nowrap}.time-separator{color:var(--accent-blue);margin-right:6px;font-weight:700}.vs-container{display:flex;align-items:center;gap:6px;flex-wrap:wrap}.vs-text{color:var(--accent-blue);font-size:.55rem;font-weight:800;margin:0 1px}.team-logo{width:18px;height:18px;border-radius:50%;object-fit:contain;background:#fff;padding:1px}.channels-wrapper{display:flex;flex-direction:row;overflow-x:auto;gap:12px;margin-top:6px;padding:4px 2px 12px 2px;scrollbar-width:none;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch}.channels-wrapper::-webkit-scrollbar{display:none}.channels-wrapper::-webkit-scrollbar{height:4px}.channels-wrapper::-webkit-scrollbar-thumb{background:var(--accent-blue);border-radius:10px}.channel-button{position:relative;background:var(--channel-bg);color:var(--text-main);border-radius:10px;text-align:center;font-size:.65rem;font-weight:600;border:1px solid var(--border-color);display:flex;align-items:center;justify-content:center;flex:0 0 140px;height:78.75px;scroll-snap-align:start;overflow:hidden;padding:8px;cursor:pointer;transition:all .2s cubic-bezier(.4,0,.2,1);box-shadow:0 4px 6px rgba(0,0,0,.3)}.channel-button:active{transform:scale(.95)}.channel-logo{width:80%;height:80%;object-fit:contain}.rating-badge{position:absolute;top:4px;left:4px;font-size:.5rem;color:var(--warning);background:rgba(0,0,0,.6);padding:1px 4px;border-radius:4px;z-index:5}.btn-plus{position:absolute;bottom:5px;right:5px;width:16px;height:16px;background:var(--accent-blue);color:#fff;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;z-index:10}.modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.85);display:none;justify-content:center;align-items:center;z-index:2000}.modal-content{background:var(--card-bg);width:85%;max-width:280px;max-height:80vh;overflow-y:auto;border-radius:12px;padding:15px;border:1px solid var(--border-color)}.modal-title{margin-bottom:12px;font-size:.8rem;font-weight:700;text-align:center;color:var(--accent-blue)}.id-item{background:var(--channel-bg);padding:10px;margin-bottom:8px;border-radius:8px;font-size:.7rem;text-align:center;border:1px solid var(--border-color);cursor:pointer;display:flex;justify-content:space-between;align-items:center}.id-rating{color:var(--warning);font-weight:700}.bottom-nav{position:fixed;bottom:0;left:0;right:0;height:48px;background:var(--nav-bg);border-top:1px solid var(--border-color);display:flex;justify-content:space-around;align-items:center;z-index:1000}.nav-item{display:flex;flex-direction:column;align-items:center;color:var(--text-muted);text-decoration:none;font-size:.55rem;font-weight:600;gap:2px;flex:1;cursor:pointer}        .nav-item.active{color:var(--accent-blue)}.nav-icon{font-size:1rem}#status{position:fixed;bottom:60px;left:50%;transform:translateX(-50%);font-size:.55rem;color:var(--accent-blue);background:rgba(0,0,0,.8);padding:4px 10px;border-radius:12px;z-index:100}
+        }:root{--bg-color:#121212;--card-bg:#1e1e1e;--accent-blue:#448aff;--text-main:#ffffff;--text-muted:#888888;--channel-bg:#2a2a2a;--border-color:#333333;--nav-bg:#1a1a1a;--success:#06d6a0;--warning:#ffd700}body{background-color:var(--bg-color);color:var(--text-main);font-family:Inter,sans-serif;margin:0;padding:6px;padding-bottom:52px;display:flex;flex-direction:column;align-items:center}@keyframes blink-blue{0%{opacity:1;color:var(--accent-blue)}50%{opacity:.3;color:#fff}100%{opacity:1;color:var(--accent-blue)}}.is-live .time{animation:blink-blue 1s infinite;font-weight:800}.date-header{width:100%;text-align:center;margin:20px 0;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#efefef;left:0;right:0}.date-header::after,.date-header::before{content:"";flex:1;height:1px;background:var(--border-color);margin:0 10px}#events-container{width:95%;max-width:500px;display:flex;flex-direction:column;gap:18px;transition:max-width .3s ease}@media (min-width:768px){#events-container{max-width:600px}.date-header{max-width:100%}}@media (min-width:1200px){#events-container{max-width:800px;display:flex;flex-direction:column;gap:18px}.date-header{max-width:100%;margin:30px 0 10px 0}.event-card{border-bottom:1px solid #222;padding:10px 0}}.event-card{display:flex;flex-direction:column;gap:8px;padding-bottom:8px;width:100%;border-bottom:1px solid #222}.competicion-title{color:var(--accent-blue);font-size:.65rem;font-weight:600;display:flex;align-items:center;gap:4px}.competicion-title::before{content: "";font-size:.55rem}.event-info{display:flex;align-items:center;font-size:.75rem;font-weight:500;margin-bottom:2px}.time{font-size:.6rem;color:#fff;margin-right:5px;white-space:nowrap}.time-separator{color:var(--accent-blue);margin-right:6px;font-weight:700}.vs-container{display:flex;align-items:center;gap:6px;flex-wrap:wrap}.vs-text{color:var(--accent-blue);font-size:.55rem;font-weight:800;margin:0 1px}.team-logo{width:18px;height:18px;border-radius:50%;object-fit:contain;background:#fff;padding:1px}.channels-wrapper{display:flex;flex-direction:row;overflow-x:auto;gap:12px;margin-top:6px;padding:4px 2px 12px 2px;scrollbar-width:none;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch}.channels-wrapper::-webkit-scrollbar{display:none}.channels-wrapper::-webkit-scrollbar{height:4px}.channels-wrapper::-webkit-scrollbar-thumb{background:var(--accent-blue);border-radius:10px}.channel-button{position:relative;background:var(--channel-bg);color:var(--text-main);border-radius:10px;text-align:center;font-size:.65rem;font-weight:600;border:1px solid var(--border-color);display:flex;align-items:center;justify-content:center;flex:0 0 140px;height:78.75px;scroll-snap-align:start;overflow:hidden;padding:8px;cursor:pointer;transition:all .2s cubic-bezier(.4,0,.2,1);box-shadow:0 4px 6px rgba(0,0,0,.3)}.channel-button:active{transform:scale(.95)}.channel-logo{width:80%;height:80%;object-fit:contain}.rating-badge{position:absolute;top:4px;left:4px;font-size:.5rem;color:var(--warning);background:rgba(0,0,0,.6);padding:1px 4px;border-radius:4px;z-index:5}.btn-plus{position:absolute;bottom:0;right:0;width:40px;height:40px;background:transparent;color:transparent;display:flex;align-items:center;justify-content:center;z-index:10;cursor:pointer}.modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.85);display:none;justify-content:center;align-items:center;z-index:2000}.modal-content{background:var(--card-bg);width:85%;max-width:280px;max-height:80vh;overflow-y:auto;border-radius:12px;padding:15px;border:1px solid var(--border-color)}.modal-title{margin-bottom:12px;font-size:.8rem;font-weight:700;text-align:center;color:var(--accent-blue)}.id-item{background:var(--channel-bg);padding:10px;margin-bottom:8px;border-radius:8px;font-size:.7rem;text-align:center;border:1px solid var(--border-color);cursor:pointer;display:flex;justify-content:space-between;align-items:center}.id-rating{color:var(--warning);font-weight:700}.bottom-nav{position:fixed;bottom:0;left:0;right:0;height:48px;background:var(--nav-bg);border-top:1px solid var(--border-color);display:flex;justify-content:space-around;align-items:center;z-index:1000}.nav-item{display:flex;flex-direction:column;align-items:center;color:var(--text-muted);text-decoration:none;font-size:.55rem;font-weight:600;gap:2px;flex:1;cursor:pointer}        .nav-item.active{color:var(--accent-blue)}.nav-icon{font-size:1rem}#status{position:fixed;bottom:60px;left:50%;transform:translateX(-50%);font-size:.55rem;color:var(--accent-blue);background:rgba(0,0,0,.8);padding:4px 10px;border-radius:12px;z-index:100}
         /* Fuerza el ancho total en modo búsqueda */        #events-container.search-mode-active {
             display: flex !important;
             flex-direction: row !important;
@@ -50,7 +51,14 @@
         </style></head><body>
     <div id="loader-container">
         <div class="loader-bar"></div>
-    </div><div id="status">Iniciando motor...</div><div id="searchContainer" style="display:none;width:95%;max-width:500px;margin:10px auto;gap:8px;align-items:center"><input type="text" id="globalSearchInput" placeholder="Buscar canal, equipo o competición..." style="flex:1;padding:12px 16px;border-radius:12px;border:1px solid var(--border-color);background:var(--card-bg);color:#fff;font-size:.9rem;outline:0"></div><div id="events-container"></div><div id="ids-modal" class="modal-overlay" onclick="UIManager.closeModal(event)"><div class="modal-content" onclick="event.stopPropagation()"><div id="modal-title" class="modal-title">Canales</div><div id="ids-list" class="ids-list"></div></div></div><nav class="bottom-nav"><div class="nav-item active" id="nav-home" onclick='UIManager.switchTab("home")'><span class="nav-icon">🗓️</span><span>EVENTOS</span></div><div class="nav-item" id="nav-channels" onclick='UIManager.switchTab("channels")'><span class="nav-icon">🔍</span><span>BUSCAR</span></div></nav><script>const CONFIG = {
+    </div><div id="status">Iniciando motor...</div><div id="searchContainer" style="display:none;width:95%;max-width:500px;margin:10px auto;gap:8px;align-items:center"><input type="text" id="globalSearchInput" placeholder="Buscar canal, equipo o competición..." style="flex:1;padding:12px 16px;border-radius:12px;border:1px solid var(--border-color);background:var(--card-bg);color:#fff;font-size:.9rem;outline:0"></div><div id="events-container"></div>
+<div id="noResultsContainer" class="no-results-container" style="display: none; text-align: center; padding: 40px; color: var(--text-muted);">
+    <div class="no-results">
+        <div class="no-results-icon" style="font-size: 3rem; margin-bottom: 10px;">📡</div>
+        <div class="no-results-text" style="font-weight: 700; font-size: 1.1rem; color: var(--text-main);">No se encontraron canales</div>
+        <div class="no-results-hint" style="font-size: 0.85rem; margin-top: 5px; opacity: 0.8;">Prueba con otros filtros o términos de búsqueda</div>
+    </div>
+</div><div id="ids-modal" class="modal-overlay" onclick="UIManager.closeModal(event)"><div class="modal-content" onclick="event.stopPropagation()"><div id="modal-title" class="modal-title">Canales</div><div id="ids-list" class="ids-list"></div></div></div><nav class="bottom-nav"><div class="nav-item active" id="nav-home" onclick='UIManager.switchTab("home")'><span class="nav-icon">🗓️</span><span>EVENTOS</span></div><div class="nav-item" id="nav-channels" onclick='UIManager.switchTab("channels")'><span class="nav-icon">🔍</span><span>BUSCAR</span></div></nav><script>const CONFIG = {
             BASE_URL: 'https://www.futbolenlatv.es',
             TARGET_URL: 'https://www.futbolenlatv.es/deporte',
             GIST_LOGOS: 'https://gist.githubusercontent.com/Ciento20/f7847e86d06e5011706fa76f2dab90be/raw/',
@@ -184,33 +192,58 @@
             SOURCES: [
                 { id: 'ERA', url: 'https://ipfs.io/ipns/k2k4r8oqlcjxsritt5mczkcn4mmvcmymbqw7113fz2flkrerfwfps004/data/listas/listaplana.txt', parser: 'parseEra' },
                 { id: 'ELCANO', url: 'https://acestream-ids.vercel.app/', parser: 'parseElcano' }
-            ],            async init() {
+            ],            // Función simple de hashing para strings
+            generateHash(str) {
+                let hash = 5381, i = str.length;
+                while(i) hash = (hash * 33) ^ str.charCodeAt(--i);
+                return (hash >>> 0).toString(16);
+            },
+
+            async init() {
                 let masterMap = new Map();
-                // Procesamos en orden: ERA primero, luego ELCANO para que este último sobrescriba duplicados
+                const cache = JSON.parse(localStorage.getItem(STORAGE_CONFIG.CACHE_KEY)) || { hashes: {}, data: [] };
+                const currentHashes = cache.hashes || {};
+                let hasChanges = false;
+
+                // Mapear datos previos para acceso rápido
+                cache.data.forEach(item => masterMap.set(item.id, item));
+
                 for (const src of this.SOURCES) {
                     try {
                         const raw = await NetworkService.fetchHtml(src.url);
+                        const newHash = this.generateHash(raw);
+
+                        if (currentHashes[src.id] === newHash) {
+                            console.log(`[Hash] Fuente ${src.id} sin cambios. Saltando parseo.`);
+                            continue;
+                        }
+
+                        console.log(`[Hash] Fuente ${src.id} ha cambiado. Procesando...`);
+                        hasChanges = true;
+                        currentHashes[src.id] = newHash;
+                        
                         const parsed = src.parser === 'parseEra' ? this.parseEra(raw) : this.parseElcano(raw);
                         parsed.forEach(item => {
-                            // Guardamos la fuente original en el objeto
                             item.source = src.id === 'ELCANO' ? 'ELC' : 'ERA';
                             masterMap.set(item.id, item);
                         });
                     } catch (e) { console.warn(`Fuente ${src.id} fallida.`); }
                 }
 
-                let master = Array.from(masterMap.values());
+                const master = Array.from(masterMap.values());
 
-                if (master.length > 0) {
-                    this.saveToCache(master);
-                } else {
-                    console.log("Usando backup local...");
-                    master = this.loadFromCache();
+                if (hasChanges && master.length > 0) {
+                    this.saveToCache(master, currentHashes);
+                } else if (master.length === 0) {
+                    return this.loadFromCache();
                 }
                 return master;
-            },
-            saveToCache(data) {
-                const cacheObj = { timestamp: Date.now(), data: data };
+            },            saveToCache(data, hashes = {}) {
+                const cacheObj = { 
+                    timestamp: Date.now(), 
+                    data: data, 
+                    hashes: hashes 
+                };
                 localStorage.setItem(STORAGE_CONFIG.CACHE_KEY, JSON.stringify(cacheObj));
             },
             loadFromCache() {
@@ -279,7 +312,29 @@
                     if (!hora) return;
 
                     const compElem = row.querySelector('.detalles .ajusteDoslineas') || row.querySelector('.detalles label');
-                    const competition = compElem?.title || compElem?.textContent || "Competición";
+                    let competition = compElem?.title || compElem?.textContent || "Competición";
+                    const sportConfig = {
+                        '⚽': ['LA LIGA', 'PREMIER', 'BUNDESLIGA', 'SERIE A', 'CHAMPIONS', 'EUROPA LEAGUE', 'FUTBOL', 'RECOPA', 'SAUDI PRO', 'LIGA F', 'FEDERACIÓN', 'SUDAMERICANA', 'FUTSAL', 'ARGENTINA', 'LALIGA'],
+                        '🏀': ['NBA', 'ENDESA', 'BASKET', 'EUROLIGA', 'BALONCESTO', 'FEB'],
+                        '🏎️': ['FÓRMULA 1', 'F1', 'MOTOR', 'INDYCAR', 'NASCAR'],
+                        '🏍️': ['MOTOGP', 'MOTO2', 'MOTO3', 'SUPERBIKE', 'SUPERSPORT', 'MOTO'],
+                        '🎾': ['TENIS', 'DOHA', 'ATP', 'WTA', 'OPEN', 'RAFA', 'RIO DE JANEIRO', 'DELRAY', 'MASTERS 1000'],
+                        '🚴': ['CICLISMO', 'VUELTA', 'GIRO', 'TOUR', 'EMIRATOS'],
+                        '⛳': ['GOLF', 'LPGA', 'HONDA', 'KENYA', 'MASTERS'],
+                        '🤾': ['ASOBAL', 'BALONMANO', 'AULA'],
+                        '🥊': ['UFC', 'MMA', 'BOXEO', 'VELADA'],
+                        '🛼': ['OK LIGA', 'HOCKEY'],
+                        '🏉': ['6 NACIONES', 'RUGBY']
+                    };
+                    const upperComp = competition.toUpperCase();
+                    let emoji = "🏆";
+                    Object.entries(sportConfig).some(([icon, keywords]) => {
+                        if (keywords.some(key => upperComp.includes(key))) {
+                            emoji = icon;
+                            return true;
+                        }
+                    });
+                    competition = emoji + " " + competition;
                     const canales = Array.from(row.querySelectorAll('.listaCanales li'))
                         .map(ch => ch.textContent.trim().split('(')[0].trim());
 
@@ -421,9 +476,12 @@
                     if (!uniqueMap.has(clean)) uniqueMap.set(clean, item.name);
                 });
 
+                const noResults = document.getElementById('noResultsContainer');
                 if (uniqueMap.size === 0 && this.container.children.length === 0) {
-                    this.container.innerHTML = `<div style="text-align:center; padding: 40px; color: var(--text-muted); grid-column: 1/-1;">🔍 No hay coincidencias</div>`;
+                    if (noResults) noResults.style.display = 'block';
                     return;
+                } else {
+                    if (noResults) noResults.style.display = 'none';
                 }
 
                 input.focus();

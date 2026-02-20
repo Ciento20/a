@@ -97,13 +97,12 @@
                 };
                 localStorage.setItem(this.SESSION_KEY, JSON.stringify(sessionData));
                 this.startRealTimeUpdate();
-            },
-
-            processFocusReturn(newChannelName) {
+            },            processFocusReturn(newChannelName) {
                 const pending = JSON.parse(localStorage.getItem(this.PENDING_KEY));
                 if (!pending) return;
 
-                const isExpired = (Date.now() - pending.timestamp) > 300000; // 5 min
+                // Penalización de -1.5 si vuelve antes de 30 min al mismo canal
+                const isExpired = (Date.now() - pending.timestamp) > 1800000; // 30 min
                 const isDifferentChannel = pending.channelName !== newChannelName;
 
                 if (isDifferentChannel || isExpired) {
@@ -128,22 +127,22 @@
                 }
                 localStorage.removeItem(this.SESSION_KEY);
                 this.stopRealTimeUpdate();
-            },
-
-            startRealTimeUpdate() {
+            },            startRealTimeUpdate() {
                 if (this.interval) clearInterval(this.interval);
                 this.interval = setInterval(() => {
                     const session = JSON.parse(localStorage.getItem(this.SESSION_KEY));
                     if (!session) return this.stopRealTimeUpdate();
                     const min = (Date.now() - session.start) / 60000;
                     let delta = 0;
-                    if (min >= 30 && session.lastProcessedMin < 30) delta = 1.0;
-                    else if (min >= 15 && session.lastProcessedMin < 15) delta = 0.5;
-                    else if (min >= 5 && session.lastProcessedMin < 5) delta = 0.5;
+
+                    // Nueva lógica de premios: Solo a partir de 30 min y cada 30 min extra
+                    if (min >= 30 && (min - session.lastProcessedMin) >= 30) {
+                        delta = 1.0;
+                    }
 
                     if (delta > 0) {
                         this.saveScore(session.id, delta);
-                        session.lastProcessedMin = min;
+                        session.lastProcessedMin = Math.floor(min / 30) * 30;
                         localStorage.setItem(this.SESSION_KEY, JSON.stringify(session));
                     }
                 }, 30000);

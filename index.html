@@ -434,8 +434,8 @@
 
                     if (n.includes('ELEVEN') || isForeign) return 4.1;
                     if (n.includes('DAZN')) return 1;
-                    if (n.includes('M+') || n.includes('MOVISTAR') || n.includes('LIGA DE CAMPEONES')) return 2.1;
-                    if (n.includes('EUROSPORT')) return 3.1;
+                    if (n.includes('M+') || n.includes('MOVISTAR') || n.includes('LIGA DE CAMPEONES')) return 2;
+                    if (n.includes('EUROSPORT')) return 3;
                     
                     return 4.1;
                 };
@@ -443,15 +443,17 @@
                 const sortedChannels = Array.from(uniqueMap.values()).sort((a, b) => {
                     const pA = getPriority(a), pB = getPriority(b);
                     return pA !== pB ? pA - pB : cleanChannelName(a).localeCompare(cleanChannelName(b));
-                });                let lastP = 0;
+                });
+
+                let lastP = Math.floor(getPriority(sortedChannels[0]));
                 sortedChannels.forEach(channelName => {
                     const currentP = Math.floor(getPriority(channelName));
-                    if (lastP !== 0 && currentP !== lastP) {
-                        const hr = document.createElement('div');
-                        hr.style.cssText = 'grid-column: 1 / -1; height: 10px;';
-                        this.container.appendChild(hr);
+                    if (currentP !== lastP) {
+                        const spacer = document.createElement('div');
+                        spacer.style.cssText = 'width: 100%; height: 20px; grid-column: 1 / -1; display: block; clear: both;';
+                        this.container.appendChild(spacer);
+                        lastP = currentP;
                     }
-                    lastP = currentP;
                     this.container.insertAdjacentHTML('beforeend', this.getChannelHtml(channelName));
                 });
             },            getChannelHtml(name) {

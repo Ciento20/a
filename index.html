@@ -145,8 +145,8 @@
             }
         };
 
-        let channelLogosMap = {};
-        let globalData = [];
+        let channelLogosMap = JSON.parse(localStorage.getItem('logo_cache')) || {};
+        let globalData = JSON.parse(localStorage.getItem('event_data_cache')) || [];
         let aceStreamMap = []; 
         let currentTab = 'home';        // Estado extendido para el buscador con mapeo de deportes
         const state = {
@@ -615,20 +615,53 @@
             if (savedColor) document.documentElement.style.setProperty('--accent-blue', savedColor);
             window.addEventListener('focus', () => RatingEngine.checkPreviousSession());
 
+            // 1. RENDERIZADO INSTANTÁNEO DESDE CACHÉ
+            // Cargamos IDs guardados para completar el mapa
+            aceStreamMap = AceStreamEngine.loadFromCache();
+            
+            // Si hay datos previos, refrescamos la UI de inmediato
+            if (globalData.length > 0 || aceStreamMap.length > 0) {
+                UIManager.refresh();
+                // Ocultamos solo el texto de estado, pero NO añadimos 'loading-finished'
+                // para que la barra de carga superior siga visible hasta que termine la red
+                UIManager.status.style.display = 'none';
+            }
+
             try {
+                // 2. CARGA DE RED EN SEGUNDO PLANO
                 const [logos, html] = await Promise.all([
                     NetworkService.fetchLogos(), 
                     NetworkService.fetchHtml(CONFIG.TARGET_URL)
                 ]);
-                channelLogosMap = logos;
-                globalData = DataParser.parse(html);
+                
+                // Actualizamos logos en memoria y caché
+                if (logos && Object.keys(logos).length > 0) {
+                    channelLogosMap = logos;
+                    localStorage.setItem('logo_cache', JSON.stringify(logos));
+                }
+
+                // Parseamos y guardamos nuevos eventos
+                const freshData = DataParser.parse(html);
+                if (freshData && freshData.length > 0) {
+                    globalData = freshData;
+                    localStorage.setItem('event_data_cache', JSON.stringify(freshData));
+                }
+
+                // Actualizamos IDs de fuentes externas
                 aceStreamMap = await AceStreamEngine.init();
+                
+                // 3. FINALIZACIÓN Y OCULTAR BARRA DE CARGA
                 UIManager.refresh();
                 setInterval(UIManager.refresh, 60000);
                 UIManager.status.style.display = 'none';
+                document.body.classList.add('loading-finished'); 
+            } catch (err) {
+                console.error("Error en carga real:", err);
                 document.body.classList.add('loading-finished');
-            } catch (err) { 
-                UIManager.status.textContent = "Error de carga. Reintente."; 
+                if (globalData.length === 0) {
+                    UIManager.status.style.display = 'block';
+                    UIManager.status.textContent = "Error de red. Usando caché.";
+                }
             }
         }
 

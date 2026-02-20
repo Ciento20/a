@@ -72,68 +72,45 @@
         const STORAGE_CONFIG = {
             CACHE_KEY: 'ace_ids_cache',
             EXPIRATION_MS: 30 * 24 * 60 * 60 * 1000 // 30 días
-        };
-
-        const RatingEngine = {
+        };        const RatingEngine = {
             DB_KEY: 'ace_autorating_v1',
             SESSION_KEY: 'ace_current_session',
+            PENDING_KEY: 'ace_pending_penalty',
             interval: null,
-            
-            getDB() {
-                return JSON.parse(localStorage.getItem(this.DB_KEY)) || {};
-            },
 
-            getScore(id) {
-                return this.getDB()[id] || 3.0;
-            },
+            getDB() { return JSON.parse(localStorage.getItem(this.DB_KEY)) || {}; },
+            getScore(id) { return this.getDB()[id] || 3.0; },
 
             saveScore(id, delta) {
                 const db = this.getDB();
-                const current = db[id] || 3.0;
-                db[id] = Math.max(1.0, Math.min(5.0, current + delta));
+                db[id] = Math.max(1.0, Math.min(5.0, (db[id] || 3.0) + delta));
                 localStorage.setItem(this.DB_KEY, JSON.stringify(db));
             },
 
             trackStart(id, channelName, index = 0) {
                 this.stopRealTimeUpdate();
-                this.checkPreviousSession();
-                
+                this.processFocusReturn(channelName); 
+
                 const sessionData = {
-                    id: id,
-                    channelName: channelName,
-                    index: index,
-                    start: Date.now(),
-                    lastProcessedMin: 0
+                    id: id, channelName: channelName, index: index,
+                    start: Date.now(), lastProcessedMin: 0
                 };
-                
                 localStorage.setItem(this.SESSION_KEY, JSON.stringify(sessionData));
                 this.startRealTimeUpdate();
             },
 
-            startRealTimeUpdate() {
-                if (this.interval) clearInterval(this.interval);
-                this.interval = setInterval(() => this.processCurrentTicks(), 30000);
-            },
+            processFocusReturn(newChannelName) {
+                const pending = JSON.parse(localStorage.getItem(this.PENDING_KEY));
+                if (!pending) return;
 
-            stopRealTimeUpdate() {
-                if (this.interval) clearInterval(this.interval);
-            },
+                const isExpired = (Date.now() - pending.timestamp) > 300000; // 5 min
+                const isDifferentChannel = pending.channelName !== newChannelName;
 
-            processCurrentTicks() {
-                const session = JSON.parse(localStorage.getItem(this.SESSION_KEY));
-                if (!session) return this.stopRealTimeUpdate();
-
-                const min = (Date.now() - session.start) / 60000;
-                let delta = 0;
-
-                if (min >= 30 && session.lastProcessedMin < 30) delta = 1.0;
-                else if (min >= 15 && session.lastProcessedMin < 15) delta = 0.5;
-                else if (min >= 5 && session.lastProcessedMin < 5) delta = 0.5;
-
-                if (delta > 0) {
-                    this.saveScore(session.id, delta);
-                    session.lastProcessedMin = min;
-                    localStorage.setItem(this.SESSION_KEY, JSON.stringify(session));
+                if (isDifferentChannel || isExpired) {
+                    localStorage.removeItem(this.PENDING_KEY);
+                } else {
+                    this.saveScore(pending.id, -1.5);
+                    localStorage.removeItem(this.PENDING_KEY);
                 }
             },
 
@@ -141,14 +118,38 @@
                 const session = JSON.parse(localStorage.getItem(this.SESSION_KEY));
                 if (!session) return;
 
-                const durationMs = Date.now() - session.start;
-                const sec = durationMs / 1000;
-                
-                if (sec < 30) {
-                    this.saveScore(session.id, -1.5);
+                const durationSec = (Date.now() - session.start) / 1000;
+                if (durationSec < 45) {
+                    localStorage.setItem(this.PENDING_KEY, JSON.stringify({
+                        id: session.id, 
+                        channelName: session.channelName, 
+                        timestamp: Date.now()
+                    }));
                 }
                 localStorage.removeItem(this.SESSION_KEY);
-            }
+                this.stopRealTimeUpdate();
+            },
+
+            startRealTimeUpdate() {
+                if (this.interval) clearInterval(this.interval);
+                this.interval = setInterval(() => {
+                    const session = JSON.parse(localStorage.getItem(this.SESSION_KEY));
+                    if (!session) return this.stopRealTimeUpdate();
+                    const min = (Date.now() - session.start) / 60000;
+                    let delta = 0;
+                    if (min >= 30 && session.lastProcessedMin < 30) delta = 1.0;
+                    else if (min >= 15 && session.lastProcessedMin < 15) delta = 0.5;
+                    else if (min >= 5 && session.lastProcessedMin < 5) delta = 0.5;
+
+                    if (delta > 0) {
+                        this.saveScore(session.id, delta);
+                        session.lastProcessedMin = min;
+                        localStorage.setItem(this.SESSION_KEY, JSON.stringify(session));
+                    }
+                }, 30000);
+            },
+
+            stopRealTimeUpdate() { if (this.interval) clearInterval(this.interval); }
         };
 
         const cleanChannelName = (name) => {
@@ -558,8 +559,14 @@
                 const clean = cleanChannelName(name);
                 const logoUrl = channelLogosMap[clean];
                 const matching = aceStreamMap.filter(a => ComparisonEngine.isMatch(name, a.name));
-                const bestIdObj = matching.sort((a, b) => RatingEngine.getScore(b.id) - RatingEngine.getScore(a.id))[0];
-                const score = bestIdObj ? RatingEngine.getScore(bestIdObj.id) : null;
+                const pending = JSON.parse(localStorage.getItem(RatingEngine.PENDING_KEY));
+                const getEffectiveScore = (id) => {
+                    let s = RatingEngine.getScore(id);
+                    if (pending && pending.id === id) s = Math.max(1.0, s - 1.5);
+                    return s;
+                };
+                const bestIdObj = matching.sort((a, b) => getEffectiveScore(b.id) - getEffectiveScore(a.id))[0];
+                const score = bestIdObj ? getEffectiveScore(bestIdObj.id) : null;
                 const safeName = name.replace(/'/g, "\\'");
                 
                 let extraStyle = '';
@@ -615,9 +622,14 @@
                 list.innerHTML = "";
                 
                 matching.forEach((item, i) => {
-                    const currentRating = RatingEngine.getScore(item.id);
+                    let currentRating = RatingEngine.getScore(item.id);
+                    const pending = JSON.parse(localStorage.getItem(RatingEngine.PENDING_KEY));
+                    if (pending && pending.id === item.id) {
+                        currentRating = Math.max(1.0, currentRating - 1.5);
+                    }
                     const btn = document.createElement('div');
-                    btn.className = 'id-item';                    btn.innerHTML = `
+                    btn.className = 'id-item';
+                    btn.innerHTML = `
                         <span style="display: flex; align-items: center; gap: 8px; flex: 1;">
                             <small style="background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 4px; font-size: 0.55rem; font-weight: 700; color: var(--accent-blue); border: 1px solid rgba(68, 138, 255, 0.3); min-width: 32px; text-align: center;">${item.source || 'ID'}</small>
                             <span style="font-family: monospace; opacity: 0.9;">${item.id.substring(0, 10).toUpperCase()}</span>

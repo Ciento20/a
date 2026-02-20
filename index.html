@@ -400,17 +400,23 @@
 
                 this.refresh();
                 window.scrollTo(0,0);
-            },
-
+            },            lastEventsHTML: '',
             refresh() {
                 RatingEngine.checkPreviousSession(); 
                 globalData.forEach(item => { item.isLive = LiveEngine.checkLive(item); });
                 const processed = [...globalData].sort((a, b) => (a.isLive === b.isLive) ? 0 : a.isLive ? -1 : 1);
                 
-                if (currentTab === 'home') this.renderEvents(processed);
-                else this.renderUniqueChannels(processed);
+                if (currentTab === 'home') {
+                    if (this.lastEventsHTML && state.tvSearchTerm === '') {
+                        this.container.innerHTML = this.lastEventsHTML;
+                    } else {
+                        this.renderEvents(processed);
+                    }
+                } else {
+                    this.renderUniqueChannels(processed);
+                }
             },            renderEvents(data) {
-                this.container.innerHTML = "";
+                let htmlBuffer = "";
                 let lastDate = "";
                 
                 data.forEach(item => {
@@ -428,25 +434,21 @@
                         }
                     });
 
-                    if (availableChannels.length === 0) return;
-
-                    if (item.fecha !== lastDate) {
-                        const dateDiv = document.createElement('div');
-                        dateDiv.className = 'date-header';
-                        dateDiv.textContent = item.fecha;
-                        this.container.appendChild(dateDiv);
+                    if (availableChannels.length === 0) return;                    if (item.fecha !== lastDate) {
+                        htmlBuffer += `<div class="date-header">${item.fecha}</div>`;
                         lastDate = item.fecha;
                     }
 
-                    const card = document.createElement('div');
-                    card.className = `event-card ${item.isLive ? 'is-live' : ''}`;
-                    card.innerHTML = `
-                        <div class="competicion-title">${item.competition}</div>
-                        <div class="event-info"><span class="time">${item.hora}</span><span class="time-separator">|</span>${item.infoHtml}</div>
-                        <div class="channels-wrapper">${availableChannels.map(c => this.getChannelHtml(c)).join('')}</div>
+                    htmlBuffer += `
+                        <div class="event-card ${item.isLive ? 'is-live' : ''}">
+                            <div class="competicion-title">${item.competition}</div>
+                            <div class="event-info"><span class="time">${item.hora}</span><span class="time-separator">|</span>${item.infoHtml}</div>
+                            <div class="channels-wrapper">${availableChannels.map(c => this.getChannelHtml(c)).join('')}</div>
+                        </div>
                     `;
-                    this.container.appendChild(card);
                 });
+                this.container.innerHTML = htmlBuffer;
+                if (state.tvSearchTerm === '') this.lastEventsHTML = htmlBuffer;
             },            renderUniqueChannels(data) {
                 const input = document.getElementById('globalSearchInput');
                 const selectionStart = input.selectionStart;

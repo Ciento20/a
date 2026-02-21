@@ -342,7 +342,7 @@
 
                 rows.forEach(row => {
                     if (row.classList.contains('cabeceraTabla')) {
-                        currentFecha = row.textContent.trim();
+                        currentFecha = row.textContent.trim().replace(/PARTIDOS/gi, 'EVENTOS');
                         return;
                     }
                     const hora = row.querySelector('.hora')?.textContent.trim();
@@ -424,10 +424,16 @@
                 document.getElementById(`nav-${tab}`).classList.add('active');                if (tab === 'channels') {
                     searchContainer.style.display = 'flex';
                     this.container.classList.add('search-mode-active');
-                    const input = document.getElementById('globalSearchInput');
+                    const input = document.getElementById('globalSearchInput');                    let searchTimeout;
                     input.addEventListener('input', (e) => {
-                        state.tvSearchTerm = ComparisonEngine.normalizeText(e.target.value);
-                        this.refresh();
+                        clearTimeout(searchTimeout);
+                        searchTimeout = setTimeout(() => {
+                            const newTerm = ComparisonEngine.normalizeText(e.target.value);
+                            if (state.tvSearchTerm !== newTerm) {
+                                state.tvSearchTerm = newTerm;
+                                this.refresh();
+                            }
+                        }, 150);
                     });
                     input.focus();                } else {
                     searchContainer.style.display = 'none';
@@ -437,15 +443,16 @@
 
                 this.refresh();
                 window.scrollTo(0,0);
-            },            lastEventsHTML: '',
-            refresh() {
-                RatingEngine.checkPreviousSession(); 
+            },            lastEventsHTML: '',            refresh() {
+                RatingEngine.checkPreviousSession();
                 globalData.forEach(item => { item.isLive = LiveEngine.checkLive(item); });
                 const processed = [...globalData].sort((a, b) => (a.isLive === b.isLive) ? 0 : a.isLive ? -1 : 1);
                 
                 if (currentTab === 'home') {
-                    if (this.lastEventsHTML && state.tvSearchTerm === '') {
-                        this.container.innerHTML = this.lastEventsHTML;
+                    if (state.tvSearchTerm === '' && this.lastEventsHTML) {
+                        if (this.container.innerHTML !== this.lastEventsHTML) {
+                            this.container.innerHTML = this.lastEventsHTML;
+                        }
                     } else {
                         this.renderEvents(processed);
                     }

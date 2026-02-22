@@ -299,6 +299,7 @@
                         'HOCKEY': '🏒',
                         'RUGBY U': '🏉'
                     };
+                    window.GLOBAL_EMOJI_MAP = emojiMap;
 
                     let emoji = "🏆";
                     for (const [key, icon] of Object.entries(emojiMap)) {
@@ -365,6 +366,9 @@
                     searchContainer.style.display = 'none';
                     this.container.classList.remove('search-mode-active');
                     state.tvSearchTerm = '';
+                    document.getElementById('globalSearchInput').value = '';
+                    const noResults = document.getElementById('noResultsContainer');
+                    if (noResults) noResults.style.display = 'none';
                 }
 
                 this.refresh();
@@ -385,6 +389,8 @@
                     this.renderUniqueChannels(processed);
                 }
             },            renderEvents(data) {
+                const noResults = document.getElementById('noResultsContainer');
+                if (noResults) noResults.style.display = 'none';
                 let htmlBuffer = "";
                 let lastDate = "";
                 
@@ -427,7 +433,9 @@
 
                 if (searchTerm) {
                     const matchedEvents = data.filter(event => {
-                        const textToSearch = ComparisonEngine.normalizeText(event.competition + event.infoHtml);
+                        const sportNames = window.GLOBAL_EMOJI_MAP ? Object.keys(window.GLOBAL_EMOJI_MAP).join(' ') : '';
+                    const eventSport = window.GLOBAL_EMOJI_MAP ? (Object.keys(window.GLOBAL_EMOJI_MAP).find(s => event.competition.includes(window.GLOBAL_EMOJI_MAP[s])) || '') : '';
+                    const textToSearch = ComparisonEngine.normalizeText(event.competition + event.infoHtml + ' ' + eventSport);
                         return textToSearch.includes(searchTerm);
                     });
 
@@ -614,19 +622,23 @@
                 }
             };
 
-            container.addEventListener('touchstart', e => {
+            const handleTouchStart = e => {
                 const wrapper = e.target.closest('.channels-wrapper');
-                // SOLO bloqueamos si el contenedor existe Y tiene contenido que desborda (scroll real)
                 isScrollActive = wrapper && (wrapper.scrollWidth > wrapper.clientWidth);
-                
                 touchstartX = e.changedTouches[0].screenX;
                 startY = e.changedTouches[0].screenY;
-            }, {passive: true});
+            };
 
-            container.addEventListener('touchend', e => {
+            container.addEventListener('touchstart', handleTouchStart, {passive: true});
+            document.getElementById('noResultsContainer').addEventListener('touchstart', handleTouchStart, {passive: true});
+
+            const handleTouchEnd = e => {
                 touchendX = e.changedTouches[0].screenX;
                 handleGesture(e);
-            }, {passive: true});
+            };
+
+            container.addEventListener('touchend', handleTouchEnd, {passive: true});
+            document.getElementById('noResultsContainer').addEventListener('touchend', handleTouchEnd, {passive: true});
 
             window.addEventListener('focus', () => RatingEngine.checkPreviousSession());
             RatingEngine.checkPreviousSession();

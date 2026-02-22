@@ -1,35 +1,5 @@
 <!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>TV</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.8em%22 font-size=%2285%22>📺</text></svg>"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"><style>
-        /* Estilos para la Loader Bar */
-        #loader-container {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 3px;
-            background: transparent;
-            z-index: 10001;
-            transition: opacity 0.4s ease;
-        }
-
-        .loader-bar {
-            height: 100%;
-            width: 30%;
-            background: var(--accent-blue);
-            box-shadow: 0 0 10px var(--accent-blue);
-            animation: loading-slide 2s infinite ease-in-out;
-        }
-
-        @keyframes loading-slide {
-            0% { transform: translateX(-100%); }
-            100% { transform: translateX(400%); }
-        }
-
-        .loading-finished #loader-container {
-            opacity: 0;
-            pointer-events: none;
-        }:root{--bg-color:#121212;--card-bg:#1e1e1e;--accent-blue:#448aff;--text-main:#ffffff;--text-muted:#888888;--channel-bg:#2a2a2a;--border-color:#333333;--nav-bg:#1a1a1a;--success:#06d6a0;--warning:var(--accent-blue)}body{background-color:var(--bg-color);color:var(--text-main);font-family:Inter,sans-serif;margin:0;padding:6px;padding-bottom:52px;display:flex;flex-direction:column;align-items:center}@keyframes blink-blue{0%{opacity:1;color:var(--accent-blue)}50%{opacity:.3;color:#fff}100%{opacity:1;color:var(--accent-blue)}}.is-live .time{animation:blink-blue 1s infinite;font-weight:800}.date-header{width:100%;text-align:center;margin:20px 0;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#efefef;left:0;right:0}.date-header::after,.date-header::before{content:"";flex:1;height:1px;background:var(--border-color);margin:0 10px}#events-container{width:95%;max-width:500px;display:flex;flex-direction:column;gap:18px;transition:max-width .3s ease}@media (min-width:768px){#events-container{max-width:600px}.date-header{max-width:100%}}@media (min-width:1200px){#events-container{max-width:800px;display:flex;flex-direction:column;gap:18px}.date-header{max-width:100%;margin:30px 0 10px 0}.event-card{border-bottom:1px solid #222;padding:10px 0}.event-card:last-child, .event-card:has(+ .date-header){border-bottom:none}}.event-card{display:flex;flex-direction:column;gap:8px;padding-bottom:8px;width:100%;border-bottom:1px solid #222}.event-card:last-child, .event-card:has(+ .date-header){border-bottom:none}.competicion-title{color:var(--accent-blue);font-size:.65rem;font-weight:600;display:flex;align-items:center;gap:4px}.competicion-title::before{content: "";font-size:.55rem}.event-info{display:flex;align-items:center;font-size:.75rem;font-weight:500;margin-bottom:2px}.time{font-size:.6rem;color:#fff;margin-right:5px;white-space:nowrap}.time-separator{color:var(--accent-blue);margin-right:6px;font-weight:700}.vs-container{display:flex;align-items:center;gap:6px;flex-wrap:wrap}.vs-text{color:var(--accent-blue);font-size:.55rem;font-weight:800;margin:0 1px}.team-logo{width:18px;height:18px;object-fit:contain;}.channels-wrapper{display:flex;flex-direction:row;overflow-x:auto;gap:12px;margin-top:6px;padding:4px 2px 12px 2px;scrollbar-width:none;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch}.channels-wrapper::-webkit-scrollbar{display:none}.channels-wrapper::-webkit-scrollbar{height:4px}.channels-wrapper::-webkit-scrollbar-thumb{background:var(--accent-blue);border-radius:10px}.channel-button{position:relative;background:var(--channel-bg);color:var(--text-main);border-radius:10px;text-align:center;font-size:.65rem;font-weight:600;border:1px solid var(--border-color);display:flex;align-items:center;justify-content:center;flex:0 0 140px;height:78.75px;scroll-snap-align:start;overflow:hidden;padding:8px;cursor:pointer;transition:all .2s cubic-bezier(.4,0,.2,1);box-shadow:0 4px 6px rgba(0,0,0,.3)}.channel-button:active{transform:scale(.95)}.channel-logo{width:80%;height:80%;object-fit:contain}.rating-badge{position:absolute;top:4px;left:4px;font-size:.5rem;color:var(--accent-blue);background:rgba(0,0,0,.6);padding:1px 4px;border-radius:4px;z-index:5}.btn-plus{position:absolute;bottom:0;right:0;width:40px;height:40px;background:transparent;color:transparent;display:flex;align-items:center;justify-content:center;z-index:10;cursor:pointer}.modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.85);display:none;justify-content:center;align-items:center;z-index:2000}.modal-content{background:var(--card-bg);width:85%;max-width:280px;max-height:80vh;overflow-y:auto;border-radius:12px;padding:15px;border:1px solid var(--border-color)}.modal-title{margin-bottom:12px;font-size:.8rem;font-weight:700;text-align:center;color:var(--accent-blue)}.id-item{background:var(--channel-bg);padding:10px;margin-bottom:8px;border-radius:8px;font-size:.7rem;text-align:center;border:1px solid var(--border-color);cursor:pointer;display:flex;justify-content:space-between;align-items:center}.id-rating{color:var(--accent-blue);font-weight:700}.bottom-nav{position:fixed;bottom:0;left:0;right:0;height:48px;background:var(--nav-bg);border-top:1px solid var(--border-color);display:flex;justify-content:space-around;align-items:center;z-index:1000}.nav-item{display:flex;flex-direction:column;align-items:center;color:var(--text-muted);text-decoration:none;font-size:.55rem;font-weight:600;gap:2px;flex:1;cursor:pointer}        .nav-item.active{color:var(--accent-blue)}.nav-icon{font-size:1rem}#status{position:fixed;bottom:60px;left:50%;transform:translateX(-50%);font-size:.55rem;color:var(--accent-blue);background:rgba(0,0,0,.8);padding:4px 10px;border-radius:12px;z-index:100}
-        /* Fuerza el ancho total en modo búsqueda */        #events-container.search-mode-active {
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.8em%22 font-size=%2285%22>📺</text></svg>"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"><style>#loader-container{position:fixed;top:0;left:0;width:100%;height:3px;background:transparent;z-index:10001;transition:opacity .4s ease}.loader-bar{height:100%;width:30%;background:var(--accent-blue);box-shadow:0 0 10px var(--accent-blue);animation:loading-slide 2s infinite ease-in-out}@keyframes loading-slide{0%{transform:translateX(-100%)}100%{transform:translateX(400%)}}.loading-finished #loader-container{opacity:0;pointer-events:none}:root{--bg-color:#121212;--card-bg:#1e1e1e;--accent-blue:#448aff;--text-main:#ffffff;--text-muted:#888888;--channel-bg:#2a2a2a;--border-color:#333333;--nav-bg:#1a1a1a;--success:#06d6a0;--warning:var(--accent-blue)}body{background-color:var(--bg-color);color:var(--text-main);font-family:Inter,sans-serif;margin:0;padding:6px;padding-bottom:52px;display:flex;flex-direction:column;align-items:center}@keyframes blink-blue{0%{opacity:1;color:var(--accent-blue)}50%{opacity:.3;color:#fff}100%{opacity:1;color:var(--accent-blue)}}.is-live .time{animation:blink-blue 1s infinite;font-weight:800}.date-header{width:100%;text-align:center;margin:20px 0;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--accent-blue);left:0;right:0}.date-number{color:var(--text-main);font-weight:400;}.date-header::after,.date-header::before{content:"";flex:1;height:1px;background:var(--border-color);margin:0 10px}#events-container{width:95%;max-width:500px;display:flex;flex-direction:column;gap:18px;transition:max-width .3s ease}@media (min-width:768px){#events-container{max-width:600px}.date-header{max-width:100%}}@media (min-width:1200px){#events-container{max-width:800px;display:flex;flex-direction:column;gap:18px}.date-header{max-width:100%;margin:30px 0 10px 0}.event-card{border-bottom:1px solid #222;padding:10px 0}.event-card:last-child, .event-card:has(+ .date-header){border-bottom:none}}.event-card{display:flex;flex-direction:column;gap:8px;padding-bottom:8px;width:100%;border-bottom:1px solid #222}.event-card:last-child, .event-card:has(+ .date-header){border-bottom:none}.competicion-title{color:var(--accent-blue);font-size:.65rem;font-weight:600;display:flex;align-items:center;gap:4px}.competicion-title::before{content: "";font-size:.55rem}.event-info{display:flex;align-items:center;font-size:.75rem;font-weight:500;margin-bottom:2px}.time{font-size:.6rem;color:#fff;margin-right:5px;white-space:nowrap}.time-separator{color:var(--accent-blue);margin-right:6px;font-weight:700}.vs-container{display:flex;align-items:center;gap:6px;flex-wrap:wrap}.vs-text{color:var(--accent-blue);font-size:.55rem;font-weight:800;margin:0 1px}.team-logo{width:18px;height:18px;object-fit:contain;}.channels-wrapper{display:flex;flex-direction:row;overflow-x:auto;gap:12px;margin-top:6px;padding:4px 2px 12px 2px;scrollbar-width:none;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch}.channels-wrapper::-webkit-scrollbar{display:none}.channels-wrapper::-webkit-scrollbar{height:4px}.channels-wrapper::-webkit-scrollbar-thumb{background:var(--accent-blue);border-radius:10px}.channel-button{position:relative;background:var(--channel-bg);color:var(--text-main);border-radius:10px;text-align:center;font-size:.65rem;font-weight:600;border:1px solid var(--border-color);display:flex;align-items:center;justify-content:center;flex:0 0 140px;height:78.75px;scroll-snap-align:start;overflow:hidden;padding:8px;cursor:pointer;transition:all .2s cubic-bezier(.4,0,.2,1);box-shadow:0 4px 6px rgba(0,0,0,.3)}.channel-button:active{transform:scale(.95)}.channel-logo{width:80%;height:80%;object-fit:contain}.rating-badge{position:absolute;top:4px;left:4px;font-size:.5rem;color:var(--accent-blue);background:rgba(0,0,0,.6);padding:1px 4px;border-radius:4px;z-index:5}.btn-plus{position:absolute;bottom:0;right:0;width:40px;height:40px;background:transparent;color:transparent;display:flex;align-items:center;justify-content:center;z-index:10;cursor:pointer}.modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.85);display:none;justify-content:center;align-items:center;z-index:2000}.modal-content{background:var(--card-bg);width:85%;max-width:280px;max-height:80vh;overflow-y:auto;border-radius:12px;padding:15px;border:1px solid var(--border-color)}.modal-title{margin-bottom:12px;font-size:.8rem;font-weight:700;text-align:center;color:var(--accent-blue)}.id-item{background:var(--channel-bg);padding:10px;margin-bottom:8px;border-radius:8px;font-size:.7rem;text-align:center;border:1px solid var(--border-color);cursor:pointer;display:flex;justify-content:space-between;align-items:center}.id-rating{color:var(--accent-blue);font-weight:700}.bottom-nav{position:fixed;bottom:0;left:0;right:0;height:48px;background:var(--nav-bg);border-top:1px solid var(--border-color);display:flex;justify-content:space-around;align-items:center;z-index:1000}.nav-item{display:flex;flex-direction:column;align-items:center;color:var(--text-muted);text-decoration:none;font-size:.55rem;font-weight:600;gap:2px;flex:1;cursor:pointer}        .nav-item.active{color:var(--accent-blue)}.nav-icon{font-size:1rem}#status{position:fixed;bottom:60px;left:50%;transform:translateX(-50%);font-size:.55rem;color:var(--accent-blue);background:rgba(0,0,0,.8);padding:4px 10px;border-radius:12px;z-index:100}#events-container.search-mode-active {
             display: flex !important;
             flex-direction: row !important;
             flex-wrap: wrap !important;
@@ -99,10 +69,7 @@
                 this.startRealTimeUpdate();
             },            processFocusReturn(newChannelName) {
                 const pending = JSON.parse(localStorage.getItem(this.PENDING_KEY));
-                if (!pending) return;
-
-                // Penalización de -1.5 si vuelve antes de 30 min al mismo canal
-                const isExpired = (Date.now() - pending.timestamp) > 1800000; // 30 min
+                if (!pending) return;const isExpired = (Date.now() - pending.timestamp) > 1800000;
                 const isDifferentChannel = pending.channelName !== newChannelName;
 
                 if (isDifferentChannel || isExpired) {
@@ -134,8 +101,6 @@
                     if (!session) return this.stopRealTimeUpdate();
                     const min = (Date.now() - session.start) / 60000;
                     let delta = 0;
-
-                    // Nueva lógica de premios: Solo a partir de 30 min y cada 30 min extra
                     if (min >= 30 && (min - session.lastProcessedMin) >= 30) {
                         delta = 1.0;
                     }
@@ -185,19 +150,7 @@
         let channelLogosMap = JSON.parse(localStorage.getItem('logo_cache')) || {};
         let globalData = JSON.parse(localStorage.getItem('event_data_cache')) || [];
         let aceStreamMap = []; 
-        let currentTab = 'home';        // Estado extendido para el buscador con mapeo de deportes
-        const state = {
-            tvCurrentFilter: 'all',
-            tvSearchTerm: '',
-            searchToEmoji: {
-                'f1': '🏎️', 'formula 1': '🏎️', 'moto': '🏍️', 'motogp': '🏍️', 'motor': '🏎️',
-                'futbol': '⚽', 'soccer': '⚽', 'balonpie': '⚽',
-                'tenis': '🎾', 'tennis': '🎾', 'rafa': '🎾',
-                'basket': '🏀', 'baloncesto': '🏀', 'nba': '🏀',
-                'ufc': '🥊', 'mma': '🥊', 'boxeo': '🥊',
-                'ciclismo': '🚴', 'tour': '🚴', 'giro': '🚴'
-            }
-        };
+        let currentTab = 'home';const state = { tvSearchTerm: '' };
 
         const NetworkService = {
             async fetchHtml(targetUrl) {
@@ -229,33 +182,18 @@
             SOURCES: [
                 { id: 'ERA', url: 'https://ipfs.io/ipns/k2k4r8oqlcjxsritt5mczkcn4mmvcmymbqw7113fz2flkrerfwfps004/data/listas/listaplana.txt', parser: 'parseEra' },
                 { id: 'ELCANO', url: 'https://acestream-ids.vercel.app/', parser: 'parseElcano' }
-            ],            // Función simple de hashing para strings
-            generateHash(str) {
-                let hash = 5381, i = str.length;
-                while(i) hash = (hash * 33) ^ str.charCodeAt(--i);
-                return (hash >>> 0).toString(16);
-            },
+            ],generateHash(str){let hash=5381,i=str.length;while(i)hash=(hash*33)^str.charCodeAt(--i);return(hash>>>0).toString(16)},
 
             async init() {
                 let masterMap = new Map();
                 const cache = JSON.parse(localStorage.getItem(STORAGE_CONFIG.CACHE_KEY)) || { hashes: {}, data: [] };
                 const currentHashes = cache.hashes || {};
-                let hasChanges = false;
-
-                // Mapear datos previos para acceso rápido
-                cache.data.forEach(item => masterMap.set(item.id, item));
+                let hasChanges = false;cache.data.forEach(item => masterMap.set(item.id, item));
 
                 for (const src of this.SOURCES) {
                     try {
                         const raw = await NetworkService.fetchHtml(src.url);
-                        const newHash = this.generateHash(raw);
-
-                        if (currentHashes[src.id] === newHash) {
-                            console.log(`[Hash] Fuente ${src.id} sin cambios. Saltando parseo.`);
-                            continue;
-                        }
-
-                        console.log(`[Hash] Fuente ${src.id} ha cambiado. Procesando...`);
+                        const newHash = this.generateHash(raw);if (currentHashes[src.id] === newHash) continue;
                         hasChanges = true;
                         currentHashes[src.id] = newHash;
                         
@@ -263,8 +201,7 @@
                         parsed.forEach(item => {
                             item.source = src.id === 'ELCANO' ? 'ELC' : 'ERA';
                             masterMap.set(item.id, item);
-                        });
-                    } catch (e) { console.warn(`Fuente ${src.id} fallida.`); }
+                        });} catch (e) {}
                 }
 
                 const master = Array.from(masterMap.values());
@@ -289,7 +226,6 @@
                 try {
                     const cacheObj = JSON.parse(cached);
                     const isExpired = (Date.now() - cacheObj.timestamp) > STORAGE_CONFIG.EXPIRATION_MS;
-                    if (isExpired) console.warn("Caché expirada, pero se usa por falta de red.");
                     return cacheObj.data || [];
                 } catch (e) { return []; }
             },
@@ -342,7 +278,10 @@
 
                 rows.forEach(row => {
                     if (row.classList.contains('cabeceraTabla')) {
-                        currentFecha = row.textContent.trim().replace(/PARTIDOS/gi, 'EVENTOS');
+                        const rawFecha = row.textContent.trim().toUpperCase().replace(/PARTIDOS/gi, 'EVENTOS');
+                    currentFecha = rawFecha.replace(/(\d+)/g, '<span class="date-number">$1</span>')
+                                           .replace(/\b(EVENTOS|DE|HOY|MAÑANA)\b/g, '<span style="color:var(--text-main); margin-right: 4px;">$1</span>')
+                                           .replace(/<\/span>\s+<span/g, '</span>&nbsp;<span');
                         return;
                     }
                     const hora = row.querySelector('.hora')?.textContent.trim();
@@ -354,16 +293,16 @@
                     const sportName = (sportImg?.getAttribute('alt') || sportImg?.getAttribute('title') || '').toUpperCase();
                     
                     const emojiMap = {
-                        'FÚTBOL': '⚽', 'FUTBOL': '⚽', 
+                        'FÚTBOL': '⚽', 'FÚTBOL SALA': '🌕', 
                         'BALONCESTO': '🏀', 'BASKETBALL': '🏀', 
                         'TENIS': '🎾', 'TENNIS': '🎾',
-                        'MOTOR': '🏎️', 'FÓRMULA 1': '🏎️', 'FORMULA 1': '🏎️', 'MOTOGP': '🏍️',
+                        'AUTOMOVILISMO': '🏁', 'FÓRMULA 1': '🏎️', 'FORMULA 1': '🏎️', 'MOTOCICLISMO': '🏍️',
                         'CICLISMO': '🚴', 
                         'GOLF': '⛳', 
                         'BALONMANO': '🤾', 
-                        'UFC': '🥊', 'BOXEO': '🥊', 'MMA': '🥊',
-                        'HOCKEY': '🛼',
-                        'RUGBY': '🏉'
+                        'UFC': '👊', 'BOXEO': '🥊', 'MMA': '👊',
+                        'HOCKEY': '🏒',
+                        'RUGBY U': '🏉'
                     };
 
                     let emoji = "🏆";
@@ -505,10 +444,7 @@
                 if (searchTerm) {
                     const matchedEvents = data.filter(event => {
                         const textToSearch = ComparisonEngine.normalizeText(event.competition + event.infoHtml);
-                        const hasEmojiMatch = Object.entries(state.searchToEmoji).some(([key, emoji]) => 
-                            searchTerm.includes(key) && (event.competition.includes(emoji) || textToSearch.includes(key))
-                        );
-                        return textToSearch.includes(searchTerm) || hasEmojiMatch;
+                        return textToSearch.includes(searchTerm);
                     });
 
                     if (matchedEvents.length > 0) {
@@ -522,11 +458,7 @@
                 const uniqueMap = new Map();
                 const filteredAceStreams = aceStreamMap.filter(ace => {
                     if (!searchTerm) return true;
-                    const normalizedName = ComparisonEngine.normalizeText(ace.name);
-                    const hasEmojiMatch = Object.entries(state.searchToEmoji).some(([key, emoji]) => 
-                        searchTerm.includes(key) && (ace.name.includes(emoji) || normalizedName.includes(key))
-                    );
-                    return normalizedName.includes(searchTerm) || hasEmojiMatch;
+                    return ComparisonEngine.normalizeText(ace.name).includes(searchTerm);
                 });
 
                 filteredAceStreams.forEach(item => {
@@ -581,12 +513,8 @@
                     let s = RatingEngine.getScore(id);
                     if (pending && pending.id === id) s = Math.max(1.0, s - 1.5);
                     return s;
-                };
-                const bestIdObj = matching.sort((a, b) => getEffectiveScore(b.id) - getEffectiveScore(a.id))[0];
-                const score = bestIdObj ? getEffectiveScore(bestIdObj.id) : null;
+                };const bestIdObj = matching.sort((a, b) => getEffectiveScore(b.id) - getEffectiveScore(a.id))[0];
                 const safeName = name.replace(/'/g, "\\'");
-                
-                let extraStyle = '';
                 let badgeHtml = '';
                 const upperName = name.toUpperCase();
 
@@ -598,8 +526,7 @@
                     badgeHtml = '<div style="position: absolute; left: 28px; bottom: 12px; color: #1ec33c; font-weight: 900; font-size: 1.5rem; z-index: 2;">2</div>';
                 }
 
-                return `
-                    <div class="channel-button" style="${extraStyle}" onclick="UIManager.playBestOrNext('${safeName}')">
+                return `<div class="channel-button" onclick="UIManager.playBestOrNext('${safeName}')">
                         
                         ${badgeHtml}
                         ${logoUrl ? `<img src="${logoUrl}" class="channel-logo" style="position:relative; z-index:2;" onerror="this.outerHTML='<span>${clean}</span>'">` : `<span style="position:relative; z-index:2;">${clean}</span>`}
@@ -613,11 +540,8 @@
                 if (matching.length === 0) return;
 
                 const session = JSON.parse(localStorage.getItem(RatingEngine.SESSION_KEY));
-                let nextIndex = 0;
-
-                // Si re-clickea el mismo canal en menos de 30 segundos, penalizamos el anterior y saltamos al siguiente
-                if (session && session.channelName === channelName && (Date.now() - session.start) < 30000) {
-                    RatingEngine.saveScore(session.id, -2.0); // Penalización extra por fallo inmediato
+                let nextIndex = 0;if (session && session.channelName === channelName && (Date.now() - session.start) < 30000) {
+                    RatingEngine.saveScore(session.id, -2.0);
                     nextIndex = (session.index + 1) % matching.length;
                 }
 
@@ -670,50 +594,30 @@
         };        async function init() {
             const savedColor = localStorage.getItem('custom_accent_color');
             if (savedColor) document.documentElement.style.setProperty('--accent-blue', savedColor);
-            window.addEventListener('focus', () => RatingEngine.checkPreviousSession());
-
-            // 1. RENDERIZADO INSTANTÁNEO DESDE CACHÉ
-            // Cargamos IDs guardados para completar el mapa
-            aceStreamMap = AceStreamEngine.loadFromCache();
-            
-            // Si hay datos previos, refrescamos la UI de inmediato
+            window.addEventListener('focus', () => RatingEngine.checkPreviousSession());aceStreamMap = AceStreamEngine.loadFromCache();
             if (globalData.length > 0 || aceStreamMap.length > 0) {
                 UIManager.refresh();
-                // Ocultamos solo el texto de estado, pero NO añadimos 'loading-finished'
-                // para que la barra de carga superior siga visible hasta que termine la red
                 UIManager.status.style.display = 'none';
             }
-
             try {
-                // 2. CARGA DE RED EN SEGUNDO PLANO
                 const [logos, html] = await Promise.all([
                     NetworkService.fetchLogos(), 
                     NetworkService.fetchHtml(CONFIG.TARGET_URL)
                 ]);
-                
-                // Actualizamos logos en memoria y caché
                 if (logos && Object.keys(logos).length > 0) {
                     channelLogosMap = logos;
                     localStorage.setItem('logo_cache', JSON.stringify(logos));
                 }
-
-                // Parseamos y guardamos nuevos eventos
                 const freshData = DataParser.parse(html);
                 if (freshData && freshData.length > 0) {
                     globalData = freshData;
                     localStorage.setItem('event_data_cache', JSON.stringify(freshData));
                 }
-
-                // Actualizamos IDs de fuentes externas
                 aceStreamMap = await AceStreamEngine.init();
-                
-                // 3. FINALIZACIÓN Y OCULTAR BARRA DE CARGA
                 UIManager.refresh();
                 setInterval(UIManager.refresh, 60000);
                 UIManager.status.style.display = 'none';
-                document.body.classList.add('loading-finished'); 
-            } catch (err) {
-                console.error("Error en carga real:", err);
+                document.body.classList.add('loading-finished');} catch (err) {
                 document.body.classList.add('loading-finished');
                 if (globalData.length === 0) {
                     UIManager.status.style.display = 'block';

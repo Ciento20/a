@@ -563,13 +563,10 @@
                         currentRating = Math.max(1.0, currentRating - 1.5);
                     }
                     const btn = document.createElement('div');
-                    btn.className = 'id-item';
-                    btn.innerHTML = `
-                        <span style="display: flex; align-items: center; gap: 8px; flex: 1;">
-                            <small style="background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 4px; font-size: 0.55rem; font-weight: 700; color: var(--accent-blue); border: 1px solid rgba(68, 138, 255, 0.3); min-width: 32px; text-align: center;">${item.source || 'ID'}</small>
-                            <span style="font-family: monospace; opacity: 0.9;">${item.id.substring(0, 10).toUpperCase()}</span>
-                        </span>
-                        <span class="id-rating">★ ${currentRating.toFixed(1)}</span>
+                    btn.className = 'id-item';                    btn.innerHTML = `
+                        <small style="flex: 1; text-align: left; color: var(--text-muted); font-size: 0.6rem; font-weight: 700; opacity: 0.6; letter-spacing: 0.5px;">${item.source || 'ID'}</small>
+                        <span style="flex: 2; text-align: center; font-family: monospace; opacity: 0.9;">${item.id.substring(0, 10).toUpperCase()}</span>
+                        <span class="id-rating" style="flex: 1; text-align: right;">★ ${currentRating.toFixed(1)}</span>
                     `;
                     btn.onclick = () => {
                         RatingEngine.trackStart(item.id, channelName, i);

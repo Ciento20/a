@@ -503,21 +503,21 @@
     let contentHtml = '';
     if (title === 'OTROS CANALES') {
         const regions = [
-            { key: '[US]', flag: '🇺🇸', id: 'us' },
-            { key: '[UK]', flag: '🇬🇧', id: 'uk' },
-            { key: '[BE]', flag: '🇧🇪', id: 'be' },
-            { key: '[DE]', flag: '🇩🇪', id: 'de' },
-            { key: '(TR)', flag: '🇹🇷', id: 'tr' },
-            { key: '(PL)', flag: '🇵🇱', id: 'pl' },
-            { key: '(RU)', flag: '🇷🇺', id: 'ru' }
+            { keys: ['[US]', '(US)'], flag: '🇺🇸', id: 'us' },
+            { keys: ['[UK]', '(UK)'], flag: '🇬🇧', id: 'uk' },
+            { keys: ['[BE]', '(BE)'], flag: '🇧🇪', id: 'be' },
+            { keys: ['[DE]', '(DE)'], flag: '🇩🇪', id: 'de' },
+            { keys: ['[TR]', '(TR)'], flag: '🇹🇷', id: 'tr' },
+            { keys: ['[PL]', '(PL)'], flag: '🇵🇱', id: 'pl' },
+            { keys: ['[RU]', '(RU)'], flag: '🇷🇺', id: 'ru' }
         ];
 
-        let mainChannels = channels.filter(c => !regions.some(r => c.toUpperCase().includes(r.key)));
+        let mainChannels = channels.filter(c => !regions.some(r => r.keys.some(k => c.toUpperCase().includes(k))));
         let regionHtml = '';        contentHtml = `<div style="display:flex; flex-wrap:wrap; gap:10px; justify-content:center;">`;
         contentHtml += mainChannels.map(c => this.getChannelHtml(c)).join('');
 
         regions.forEach(reg => {
-            const regChannels = channels.filter(c => c.toUpperCase().includes(reg.key));
+            const regChannels = channels.filter(c => reg.keys.some(k => c.toUpperCase().includes(k)));
             if (regChannels.length > 0) {
                 const containerId = `group-${reg.id}`;
                 contentHtml += `

@@ -108,6 +108,9 @@
 
         const cleanChannelName = (name) => {
             if (!name) return "";
+            let rawUpper = name.toUpperCase();
+            if (rawUpper.includes("ACB EVENTO 01")) name = "DAZN BALONCESTO";
+            if (rawUpper.includes("ACB EVENTO 02")) name = "DAZN BALONCESTO 2";
             let cleaned = name.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
             if (cleaned.includes("LIGA DE CAMPEONES") && !cleaned.includes("M+")) {
                 cleaned = cleaned.replace("LIGA DE CAMPEONES", "M+ LIGA DE CAMPEONES");
@@ -471,7 +474,7 @@
 
                 input.focus();
                 input.setSelectionRange(selectionStart, selectionEnd);                const getPriority = (name) => {
-                    const n = name.toUpperCase();
+                    const n = cleanChannelName(name).toUpperCase();
                     // Excluir canales internacionales de la prioridad alta
                     const isForeign = n.includes('(PL)') || n.includes('(DE)') || n.includes('(RU)');
 
@@ -571,10 +574,10 @@
                 }).sort((a, b) => b.effectiveScore - a.effectiveScore)[0];
                 const safeName = name.replace(/'/g, "\\'");
                 let badgeHtml = '';
-                const upperName = name.toUpperCase();
+                const upperName = clean.toUpperCase();
 
-                if (upperName.includes('BALONCESTO') && upperName.includes('DAZN')) {
-                    badgeHtml = '<div style="position: absolute; right: 13%; top: 50%; transform: translateY(-50%); font-size: 40px; line-height: 1; z-index: 0; opacity: 1;">🏀</div>';
+                if (upperName.includes('BALONCESTO')) {
+                    badgeHtml = '<div style="position: absolute; right: 14.35%; top: 50.85%; transform: translateY(-50%); font-size: 40px; line-height: 1; z-index: 0; opacity: 1;">🏀</div>';
                 }
 
                 if (upperName.includes('VAMOS 2')) {

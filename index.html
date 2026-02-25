@@ -851,33 +851,19 @@
                         }, 300);
                     }
                 }
-            };            let startTouchY = 0;
-            const handleTouchStart = e => {
+            };            const handleTouchStart = e => {
                 const wrapper = e.target.closest('.channels-wrapper');
                 isScrollActive = wrapper && (wrapper.scrollWidth > wrapper.clientWidth);
                 touchstartX = e.changedTouches[0].screenX;
                 startY = e.changedTouches[0].screenY;
-                startTouchY = e.touches[0].clientY;
             };
 
             container.addEventListener('touchstart', handleTouchStart, {passive: true});
             document.getElementById('noResultsContainer').addEventListener('touchstart', handleTouchStart, {passive: true});            const handleTouchEnd = e => {
                 touchendX = e.changedTouches[0].screenX;
-                const endTouchY = e.changedTouches[0].clientY;
-                const diffY = endTouchY - startTouchY;
-                
-                // Lógica de Refresco (Pull-to-Refresh)
-                if (container.scrollTop <= 0 && diffY > 150) {
-                    const loader = document.getElementById('loader-container');
-                    if (loader) loader.style.opacity = '1';
-                    setTimeout(() => location.reload(), 300);
-                    return;
-                }
                 
                 handleGesture(e);
-            };
-
-            container.addEventListener('touchend', handleTouchEnd, {passive: true});
+            };            container.addEventListener('touchend', handleTouchEnd, {passive: true});
             document.getElementById('noResultsContainer').addEventListener('touchend', handleTouchEnd, {passive: true});
 
             window.addEventListener('focus', () => RatingEngine.checkPreviousSession());

@@ -41,9 +41,13 @@
             },
 
             trackStart(id, channelName, index = 0) {
+                const pending = JSON.parse(localStorage.getItem(this.PENDING_KEY));
+                // Si pulsamos un canal distinto al que causó la pre-nota, confirmamos el fallo
+                if (pending && pending.id !== id) {
+                    this.saveScore(pending.id, -1.0);
+                    localStorage.removeItem(this.PENDING_KEY);
+                }
                 this.stopRealTimeUpdate();
-                this.processFocusReturn(channelName); 
-
                 const sessionData = {
                     id: id, channelName: channelName, index: index,
                     start: Date.now(), lastProcessedMin: 0
@@ -66,17 +70,17 @@
             checkPreviousSession() {
                 const session = JSON.parse(localStorage.getItem(this.SESSION_KEY));
                 if (!session) return;
-
                 const durationSec = (Date.now() - session.start) / 1000;
-                if (durationSec < 45) {
+                if (durationSec < 60) {
                     localStorage.setItem(this.PENDING_KEY, JSON.stringify({
-                        id: session.id, 
-                        channelName: session.channelName, 
+                        id: session.id,
+                        channelName: session.channelName,
                         timestamp: Date.now()
                     }));
+                } else {
+                    localStorage.removeItem(this.PENDING_KEY);
                 }
-                localStorage.removeItem(this.SESSION_KEY);
-                this.stopRealTimeUpdate();
+                // NOTA: No eliminamos SESSION_KEY ni paramos el update para que el tiempo siga sumando
             },            startRealTimeUpdate() {
                 if (this.interval) clearInterval(this.interval);
                 this.interval = setInterval(() => {
@@ -867,7 +871,6 @@
             document.getElementById('noResultsContainer').addEventListener('touchend', handleTouchEnd, {passive: true});
 
             window.addEventListener('focus', () => RatingEngine.checkPreviousSession());
-            RatingEngine.checkPreviousSession();
             aceStreamMap = AceStreamEngine.loadFromCache();
             if (globalData.length > 0 || aceStreamMap.length > 0) {
                 UIManager.refresh();

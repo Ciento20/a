@@ -491,17 +491,19 @@
                     if (n.includes('EUROSPORT')) return 3;
                     
                     return 4.1;
-                };                const sortedChannels = Array.from(uniqueMap.values()).sort((a, b) => {
+                };                const gistOrder = Object.keys(channelLogosMap);
+                const sortedChannels = Array.from(uniqueMap.values()).sort((a, b) => {
                     const pA = getPriority(a), pB = getPriority(b);
                     if (pA !== pB) return pA - pB;
                     
-                    const nameA = cleanChannelName(a).toUpperCase();
-                    const nameB = cleanChannelName(b).toUpperCase();
-                    const isGolfA = nameA.includes('GOLF');
-                    const isGolfB = nameB.includes('GOLF');
+                    const indexA = gistOrder.indexOf(cleanChannelName(a));
+                    const indexB = gistOrder.indexOf(cleanChannelName(b));
                     
-                    if (isGolfA !== isGolfB) return isGolfA ? 1 : -1;
-                    return nameA.localeCompare(nameB);
+                    if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+                    if (indexA !== -1) return -1;
+                    if (indexB !== -1) return 1;
+                    
+                    return cleanChannelName(a).localeCompare(cleanChannelName(b));
                 });
 
                 const groups = { DAZN: [], MOVISTAR: [], EUROSPORT: [], OTROS: [] };

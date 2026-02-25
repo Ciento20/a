@@ -28,7 +28,7 @@
         };        const RatingEngine = {
             DB_KEY: 'ace_autorating_v1',
             SESSION_KEY: 'ace_current_session',
-            PENDING_KEY: 'ace_pending_penalty',
+            PENDING_KEY: 'ace_pending_penalties_list', // Cambiado a lista para múltiples fallos
             interval: null,
 
             getDB() { return JSON.parse(localStorage.getItem(this.DB_KEY)) || {}; },
@@ -41,20 +41,23 @@
             },
 
             trackStart(id, channelName, index = 0) {
-                const pending = JSON.parse(localStorage.getItem(this.PENDING_KEY));
-                // Si pulsamos un canal distinto al que causó la pre-nota, confirmamos el fallo
-                if (pending && pending.id === id) {
-                    // SOLO penaliza si pulsas el MISMO canal que falló (reintento)
-                    this.saveScore(pending.id, -1.0);
-                    localStorage.removeItem(this.PENDING_KEY);
-                } else if (pending && pending.id !== id) {
-                    // Si es un canal distinto, es ZAPPING: no penalizamos y borramos la pre-nota
-                    localStorage.removeItem(this.PENDING_KEY);
-                }
+                let penalties = JSON.parse(localStorage.getItem(this.PENDING_KEY)) || [];
+                const now = Date.now();
+
+                // 1. Procesamos TODAS las penalizaciones pendientes de otros canales (confirmación por abandono)
+                penalties.forEach(p => {
+                    if (p.id === id || (now - p.timestamp) < 120000) {
+                        this.saveScore(p.id, -1.0);
+                    }
+                });
+                
+                // 2. Limpiamos la lista después de aplicar los castigos
+                localStorage.removeItem(this.PENDING_KEY);
+
                 this.stopRealTimeUpdate();
                 const sessionData = {
                     id: id, channelName: channelName, index: index,
-                    start: Date.now(), lastProcessedMin: 0
+                    start: now, lastProcessedMin: 0
                 };
                 localStorage.setItem(this.SESSION_KEY, JSON.stringify(sessionData));
                 this.startRealTimeUpdate();
@@ -75,16 +78,19 @@
                 const session = JSON.parse(localStorage.getItem(this.SESSION_KEY));
                 if (!session) return;
                 const durationSec = (Date.now() - session.start) / 1000;
-                if (durationSec < 60) {
-                    localStorage.setItem(this.PENDING_KEY, JSON.stringify({
-                        id: session.id,
-                        channelName: session.channelName,
-                        timestamp: Date.now()
-                    }));
-                } else {
-                    localStorage.removeItem(this.PENDING_KEY);
+                
+                if (durationSec < 90) {
+                    // Agregamos el fallo a una lista de pendientes en lugar de un solo objeto
+                    let penalties = JSON.parse(localStorage.getItem(this.PENDING_KEY)) || [];
+                    // Evitamos duplicados del mismo ID en la lista de espera
+                    if (!penalties.find(p => p.id === session.id)) {
+                        penalties.push({
+                            id: session.id,
+                            timestamp: Date.now()
+                        });
+                        localStorage.setItem(this.PENDING_KEY, JSON.stringify(penalties));
+                    }
                 }
-                // NOTA: No eliminamos SESSION_KEY ni paramos el update para que el tiempo siga sumando
             },            startRealTimeUpdate() {
                 if (this.interval) clearInterval(this.interval);
                 this.interval = setInterval(() => {

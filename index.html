@@ -250,17 +250,81 @@
                         }));
                 } catch (e) { return []; }
             }
-        };
-
-        const LiveEngine = {
+        };        const LiveEngine = {
             checkLive(event) {
                 const fechaLimpia = event.fecha.toLowerCase();
                 if (!fechaLimpia.includes("hoy") && !fechaLimpia.includes("directo")) return false;
+                
                 const now = new Date();
                 const [hrs, mins] = event.hora.split(':').map(Number);
                 const startTime = new Date();
                 startTime.setHours(hrs, mins, 0, 0);
-                const endTime = new Date(startTime.getTime() + 120 * 60000);
+
+                // Extraemos todo el texto (competición + detalles del evento como "Libres" o "Carrera")
+                const searchPool = (event.competition + ' ' + event.infoHtml.replace(/<[^>]*>?/gm, '')).toUpperCase();
+
+                // JERARQUÍA DE TIEMPOS CONCRETOS
+                const specificDurations = [
+                    // FÓRMULA 1
+                    { key: 'FÓRMULA 1', sub: 'LIBRES', duration: 75 },
+                    { key: 'FÓRMULA 1', sub: 'CLASIFICACIÓN', duration: 85 },
+                    { key: 'FÓRMULA 1', sub: 'SPRINT', duration: 65 },
+                    { key: 'FÓRMULA 1', sub: 'CARRERA', duration: 145 },
+                    { key: 'FÓRMULA 1', duration: 130 }, // Genérico F1
+
+                    // MOTOGP
+                    { key: 'MOTOGP', sub: 'LIBRES', duration: 65 },
+                    { key: 'MOTOGP', sub: 'CLASIFICACIÓN', duration: 70 },
+                    { key: 'MOTOGP', sub: 'SPRINT', duration: 55 },
+                    { key: 'MOTOGP', sub: 'CARRERA', duration: 85 },
+                    { key: 'MOTOGP', duration: 80 },
+
+                    // FÚTBOL (Ligas y Copas)
+                    { key: 'CHAMPIONS LEAGUE', duration: 140 },
+                    { key: 'EUROPA LEAGUE', duration: 140 },
+                    { key: 'COPA DEL REY', duration: 155 },
+                    { key: 'LALIGA', duration: 115 },
+                    { key: 'PREMIER LEAGUE', duration: 115 },
+                    
+                    // BALONCESTO
+                    { key: 'NBA', duration: 165 },
+                    { key: 'EUROLIGA', duration: 135 },
+                    { key: 'ACB', duration: 130 },
+
+                    // TENIS
+                    { key: 'WIMBLEDON', duration: 260 },
+                    { key: 'ROLAND GARROS', duration: 260 },
+                    { key: 'ATP 1000', duration: 165 },
+                    { key: 'ATP', duration: 145 },
+
+                    // OTROS
+                    { key: 'UFC', duration: 240 },
+                    { key: 'NFL', duration: 210 }
+                ];
+
+                // Tiempos por defecto según el icono si no hay coincidencia específica
+                const sportDefaults = {
+                    '⚽': 115, '🏀': 130, '🎾': 150, '🏎️': 120, 
+                    '🏍️': 70, '🚴': 240, '👊': 180, '🤾': 95
+                };
+
+                let duration = 120;
+
+                // Lógica de detección: busca primero la combinación (F1 + Libres) 
+                const match = specificDurations.find(d => {
+                    const hasKey = searchPool.includes(d.key);
+                    const hasSub = !d.sub || searchPool.includes(d.sub);
+                    return hasKey && hasSub;
+                });
+
+                if (match) {
+                    duration = match.duration;
+                } else {
+                    const emoji = event.competition.split(' ')[0];
+                    duration = sportDefaults[emoji] || 120;
+                }
+
+                const endTime = new Date(startTime.getTime() + duration * 60000);
                 return now >= startTime && now <= endTime;
             }
         };

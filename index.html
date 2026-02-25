@@ -43,8 +43,12 @@
             trackStart(id, channelName, index = 0) {
                 const pending = JSON.parse(localStorage.getItem(this.PENDING_KEY));
                 // Si pulsamos un canal distinto al que causó la pre-nota, confirmamos el fallo
-                if (pending && pending.id !== id) {
+                if (pending && pending.id === id) {
+                    // SOLO penaliza si pulsas el MISMO canal que falló (reintento)
                     this.saveScore(pending.id, -1.0);
+                    localStorage.removeItem(this.PENDING_KEY);
+                } else if (pending && pending.id !== id) {
+                    // Si es un canal distinto, es ZAPPING: no penalizamos y borramos la pre-nota
                     localStorage.removeItem(this.PENDING_KEY);
                 }
                 this.stopRealTimeUpdate();

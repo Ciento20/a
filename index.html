@@ -718,18 +718,27 @@
 
                 if (matching.length === 0) return;
 
-                // Usamos una clave persistente solo para el índice para que no dependa de sesiones
-                const lastIdxKey = 'last_idx_' + ComparisonEngine.normalizeText(channelName);
-                let lastIndex = parseInt(localStorage.getItem(lastIdxKey)) || 0;
+                const normName = ComparisonEngine.normalizeText(channelName);
+                const lastIdxKey = 'last_idx_' + normName;
+                const lastTimeKey = 'last_ts_' + normName;
                 
-                // Forzamos el salto al siguiente ID de la lista disponible
-                let nextIndex = (lastIndex + 1) % matching.length;
+                const lastIndex = parseInt(localStorage.getItem(lastIdxKey)) || 0;
+                const lastTimestamp = parseInt(localStorage.getItem(lastTimeKey)) || 0;
+                const now = Date.now();
+
+                let nextIndex;
+                // Si han pasado más de 15 minutos (900.000 ms), reseteamos al mejor (índice 0)
+                if (now - lastTimestamp > 900000) {
+                    nextIndex = 0;
+                } else {
+                    // Si es un clic rápido (reintento), pasamos al siguiente
+                    nextIndex = (lastIndex + 1) % matching.length;
+                }
                 
-                // Guardamos el nuevo índice ANTES de abrir el enlace
                 localStorage.setItem(lastIdxKey, nextIndex);
+                localStorage.setItem(lastTimeKey, now);
                 RatingEngine.trackStart(matching[nextIndex].id, channelName, nextIndex);
 
-                // Ejecución inmediata
                 location.href = 'acestream://' + matching[nextIndex].id;
             },
 

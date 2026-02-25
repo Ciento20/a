@@ -593,13 +593,45 @@
                     badgeHtml = '<div style="position: absolute; left: 28px; bottom: 12px; color: #1ec33c; font-weight: 900; font-size: 1.5rem; z-index: 2;">2</div>';
                 }
 
-                return `<div class="channel-button" onclick="UIManager.playBestOrNext('${safeName}')">
-                        
+                return `<div class="channel-button" 
+                             onclick="UIManager.handleChannelClick(event, '${safeName}')"
+                             onmousedown="UIManager.startLongPress(event, '${safeName}')" 
+                             onmouseup="UIManager.clearLongPress()" 
+                             onmouseleave="UIManager.clearLongPress()"
+                             ontouchstart="UIManager.startLongPress(event, '${safeName}')" 
+                             ontouchmove="const moveY = Math.abs(event.touches[0].clientY - UIManager.touchStartY); if(moveY > 10) UIManager.clearLongPress();"
+                             ontouchend="UIManager.clearLongPress()">
                         ${badgeHtml}
-                        ${logoUrl ? `<img src="${logoUrl}" class="channel-logo" style="position:relative; z-index:2;" onerror="this.outerHTML='<span>${clean}</span>'">` : `<span style="position:relative; z-index:2;">${clean}</span>`}
-                        ${bestIdObj ? `<div class="btn-plus" onclick="UIManager.openIdsModal(event, '${safeName}')">+</div>` : ''}
+                        ${logoUrl ? `<img src="${logoUrl}" class="channel-logo" style="position:relative; z-index:2; pointer-events:none;" onerror="this.outerHTML='<span>${clean}</span>'">` : `<span style="position:relative; z-index:2; pointer-events:none;">${clean}</span>`}
                     </div>`;
-            },            playBestOrNext(channelName) {
+            },            longPressTimer: null,
+            isLongPress: false,
+            touchStartY: 0,
+
+            startLongPress(event, channelName) {
+                this.isLongPress = false;
+                // Guardamos la posición inicial para detectar scroll
+                this.touchStartY = event.touches ? event.touches[0].clientY : event.clientY;
+                
+                this.longPressTimer = setTimeout(() => {
+                    this.isLongPress = true;
+                    this.openIdsModal(event, channelName);
+                    if (navigator.vibrate) navigator.vibrate(50);
+                }, 650);
+            },
+
+            clearLongPress() {
+                clearTimeout(this.longPressTimer);
+            },
+
+            handleChannelClick(event, channelName) {
+                if (!this.isLongPress) {
+                    this.playBestOrNext(channelName);
+                }
+                this.isLongPress = false;
+            },
+
+            playBestOrNext(channelName) {
                 const matching = aceStreamMap
                     .filter(a => ComparisonEngine.isMatch(channelName, a.name))
                     .sort((a, b) => RatingEngine.getScore(b.id) - RatingEngine.getScore(a.id));

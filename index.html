@@ -942,14 +942,24 @@
         // Lógica de autorefresco a las 00:00:03
         const scheduleMidnightRefresh = () => {
             const now = new Date();
-            const midnight = new Date(now);
-            midnight.setHours(24, 20, 3, 0); // Programar para las 00:00:03 de mañana
-            
+            const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 5);
             const msUntilRefresh = midnight.getTime() - now.getTime();
             
             setTimeout(() => {
+                localStorage.removeItem('event_data_cache');
                 location.reload();
             }, msUntilRefresh);
         };
+        
+        const checkDateChange = () => {
+            const today = new Date().toDateString();
+            const lastDate = localStorage.getItem('last_visit_date');
+            if (lastDate && lastDate !== today) {
+                localStorage.removeItem('event_data_cache');
+            }
+            localStorage.setItem('last_visit_date', today);
+        };
+
+        checkDateChange();
         scheduleMidnightRefresh();
         </script></body></html>

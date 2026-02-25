@@ -943,7 +943,7 @@
         const scheduleMidnightRefresh = () => {
             const now = new Date();
             const midnight = new Date(now);
-            midnight.setHours(24, 0, 3, 0); // Programar para las 00:00:03 de mañana
+            midnight.setHours(24, 20, 3, 0); // Programar para las 00:00:03 de mañana
             
             const msUntilRefresh = midnight.getTime() - now.getTime();
             

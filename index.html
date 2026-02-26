@@ -40,18 +40,20 @@
             },
 
             trackStart(id, channelName, index = 0) {
-                let penalties = JSON.parse(localStorage.getItem(this.PENDING_KEY)) || [];
-                const now = Date.now();                // 1. Limpieza de pendientes sin aplicar penalización (Zapping libre)
-                localStorage.removeItem(this.PENDING_KEY);
+                // 1. Antes de iniciar, comprobamos si la sesión anterior fue un 'fracaso' (zapping)
+                this.checkPreviousSession();
                 
-                // 2. Limpiamos la lista después de aplicar los castigos
-                localStorage.removeItem(this.PENDING_KEY);
-
+                const now = Date.now();
                 this.stopRealTimeUpdate();
+                
                 const sessionData = {
-                    id: id, channelName: channelName, index: index,
-                    start: now, lastProcessedMin: 0
+                    id: id, 
+                    channelName: channelName, 
+                    index: index,
+                    start: now, 
+                    lastProcessedMin: 0
                 };
+                
                 localStorage.setItem(this.SESSION_KEY, JSON.stringify(sessionData));
                 this.startRealTimeUpdate();
             },            processFocusReturn(newChannelName) {
@@ -61,19 +63,24 @@
             checkPreviousSession() {
                 const session = JSON.parse(localStorage.getItem(this.SESSION_KEY));
                 if (!session) return;
+                
                 const durationSec = (Date.now() - session.start) / 1000;
                 
+                // Si el canal duró menos de 90 segundos, es un fallo de estabilidad/zapping
                 if (durationSec < 90) {
-                    // Agregamos el fallo a una lista de pendientes en lugar de un solo objeto
-                    let penalties = JSON.parse(localStorage.getItem(this.PENDING_KEY)) || [];
-                    // Evitamos duplicados del mismo ID en la lista de espera
-                    if (!penalties.find(p => p.id === session.id)) {
-                        penalties.push({
-                            id: session.id,
-                            timestamp: Date.now()
-                        });
-                        localStorage.setItem(this.PENDING_KEY, JSON.stringify(penalties));
-                    }
+                    const db = this.getDB();
+                    // Penalizamos directamente el ID que acaba de fallar
+                    db[session.id] = Math.max(1.0, (db[session.id] || 3.0) - 0.5);
+                    localStorage.setItem(this.DB_KEY, JSON.stringify(db));
+                    
+                    // Guardamos en pendientes para que la UI lo marque visualmente de inmediato
+                    localStorage.setItem(this.PENDING_KEY, JSON.stringify({
+                        id: session.id,
+                        timestamp: Date.now()
+                    }));
+                } else {
+                    // Si duró suficiente, limpiamos marcas de error previas
+                    localStorage.removeItem(this.PENDING_KEY);
                 }
             },            startRealTimeUpdate() {
                 if (this.interval) clearInterval(this.interval);

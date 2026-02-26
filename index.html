@@ -32,9 +32,8 @@
             interval: null,
 
             getDB() { return JSON.parse(localStorage.getItem(this.DB_KEY)) || {}; },
-            getScore(id) { return this.getDB()[id] || 3.0; },
-
-            saveScore(id, delta) {
+            getScore(id) { return this.getDB()[id] || 3.0; },            saveScore(id, delta) {
+                if (delta < 0) return; // Ignorar penalizaciones por zapping
                 const db = this.getDB();
                 db[id] = Math.max(1.0, Math.min(5.0, (db[id] || 3.0) + delta));
                 localStorage.setItem(this.DB_KEY, JSON.stringify(db));
@@ -42,14 +41,8 @@
 
             trackStart(id, channelName, index = 0) {
                 let penalties = JSON.parse(localStorage.getItem(this.PENDING_KEY)) || [];
-                const now = Date.now();
-
-                // 1. Procesamos TODAS las penalizaciones pendientes de otros canales (confirmación por abandono)
-                penalties.forEach(p => {
-                    if (p.id === id || (now - p.timestamp) < 120000) {
-                        this.saveScore(p.id, -1.0);
-                    }
-                });
+                const now = Date.now();                // 1. Limpieza de pendientes sin aplicar penalización (Zapping libre)
+                localStorage.removeItem(this.PENDING_KEY);
                 
                 // 2. Limpiamos la lista después de aplicar los castigos
                 localStorage.removeItem(this.PENDING_KEY);
@@ -62,16 +55,7 @@
                 localStorage.setItem(this.SESSION_KEY, JSON.stringify(sessionData));
                 this.startRealTimeUpdate();
             },            processFocusReturn(newChannelName) {
-                const pending = JSON.parse(localStorage.getItem(this.PENDING_KEY));
-                if (!pending) return;const isExpired = (Date.now() - pending.timestamp) > 1800000;
-                const isDifferentChannel = pending.channelName !== newChannelName;
-
-                if (isDifferentChannel || isExpired) {
-                    localStorage.removeItem(this.PENDING_KEY);
-                } else {
-                    this.saveScore(pending.id, -1.5);
-                    localStorage.removeItem(this.PENDING_KEY);
-                }
+                localStorage.removeItem(this.PENDING_KEY); // Resetear sin penalizar al volver
             },
 
             checkPreviousSession() {

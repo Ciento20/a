@@ -678,13 +678,9 @@
                 let badgeHtml = '';
                 const upperName = clean.toUpperCase();
 
-                if (upperName.includes('BALONCESTO')) {
-                    badgeHtml = '<div style="position: absolute; right: 15.4%; top: 50.5%; transform: translateY(-50%); font-size: 36.7px; line-height: 1; z-index: 0; opacity: 0.9;">🏀</div>';
-                }
+                
 
-                if (upperName.includes('VAMOS 2')) {
-                    badgeHtml = '<div style="position: absolute; left: 28px; bottom: 12px; color: #1ec33c; font-weight: 900; font-size: 1.5rem; z-index: 2;">2</div>';
-                }
+                
 
                 return `<div class="channel-button" 
                              onclick="UIManager.handleChannelClick(event, '${safeName}')"

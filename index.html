@@ -677,10 +677,8 @@
                 const safeName = name.replace(/'/g, "\\'");
                 let badgeHtml = '';
                 const upperName = clean.toUpperCase();
-
-                
-
-                
+                const isSpecialEurosport = upperName.includes('EUROSPORT 1') || upperName.includes('EUROSPORT 2');
+                const logoStyle = isSpecialEurosport ? 'width:95%; height:95%; transform: scale(1.28); padding-left: 8px;' : 'width:80%; height:80%;';
 
                 return `<div class="channel-button" 
                              onclick="UIManager.handleChannelClick(event, '${safeName}')"
@@ -691,7 +689,7 @@
                              ontouchmove="const moveY = Math.abs(event.touches[0].clientY - UIManager.touchStartY); if(moveY > 10) UIManager.clearLongPress();"
                              ontouchend="UIManager.clearLongPress()">
                         ${badgeHtml}
-                        ${logoUrl ? `<img src="${logoUrl}" class="channel-logo" style="position:relative; z-index:2; pointer-events:none;" onerror="this.outerHTML='<span>${clean}</span>'">` : `<span style="position:relative; z-index:2; pointer-events:none;">${clean}</span>`}
+                        ${logoUrl ? `<img src="${logoUrl}" class="channel-logo" style="position:relative; z-index:2; pointer-events:none; ${logoStyle}" onerror="this.outerHTML='<span>${clean}</span>'">` : `<span style="position:relative; z-index:2; pointer-events:none;">${clean}</span>`}
                     </div>`;
             },            longPressTimer: null,
             isLongPress: false,

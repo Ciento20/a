@@ -116,7 +116,7 @@
             if (rawUpper.includes("ACB EVENTO 01")) name = "DAZN BALONCESTO";
             if (rawUpper.includes("ACB EVENTO 02")) name = "DAZN BALONCESTO 2";
             if (rawUpper.includes("M. DEPORTES")) name = "M+ DEPORTES";
-            let cleaned = name.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            let cleaned = name.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\(SOLO EVENTOS\)/gi, "").replace(/\( SOLO EVENTOS \)/gi, "");
             if (cleaned.includes("LIGA DE CAMPEONES") && !cleaned.includes("M+")) {
                 cleaned = cleaned.replace("LIGA DE CAMPEONES", "M+ LIGA DE CAMPEONES");
             }

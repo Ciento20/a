@@ -927,33 +927,31 @@
                 marker.textContent = timeStr;
             }
             return timeStr;
-        };
-
-        const startMasterClock = () => {
+        };        const startMasterClock = () => {
             const forceUpdate = () => {
-                // 1. Actualizar la lógica de datos
-                if (typeof UIManager !== 'undefined') {
-                    UIManager.lastEventsHTML = ''; // Forzar regeneración de HTML
+                // Actualizar solo el marcador de texto del reloj sin regenerar todo el DOM
+                window.syncMarker();
+                
+                // Opcional: Solo refrescar el contenido completo si no hay una búsqueda activa
+                // y para actualizar estados 'Live', pero preservando el scroll.
+                if (typeof UIManager !== 'undefined' && state.tvSearchTerm === '') {
+                    const scrollPos = window.scrollY;
                     UIManager.refresh();
+                    window.scrollTo(0, scrollPos);
                 }
-                // 2. Actualizar el reloj visual inmediatamente
-                const timeStr = window.syncMarker();
-                console.log('Update ejecutado a las: ' + timeStr);
             };
 
-            // Ejecutar cada vez que cambia el minuto exacto
             const scheduleNext = () => {
                 const now = new Date();
                 const msUntilNextMinute = (60 - now.getSeconds()) * 1000 - now.getMilliseconds();
                 
                 setTimeout(() => {
                     forceUpdate();
-                    scheduleNext(); // Re-programar para el siguiente minuto exacto
+                    scheduleNext();
                 }, msUntilNextMinute);
             };
 
             scheduleNext();
-            // Ejecución inmediata al cargar para asegurar que el reloj no espere al primer minuto
             window.syncMarker();
         };
         startMasterClock();

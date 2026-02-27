@@ -504,7 +504,7 @@
                 let lastDate = "";
                 renderedList.forEach((item, idx) => {
                     if (item.fecha !== lastDate) {
-                        htmlBuffer += `<div class="date-header">${item.fecha}</div>`;
+                        htmlBuffer += `<div class="date-header" ondblclick="document.getElementById('real-time-marker')?.scrollIntoView({behavior: 'smooth', block: 'center'})">${item.fecha}</div>`;
                         lastDate = item.fecha;
                     }
                     const isLastFinished = idx === lastFinishedIdx;
@@ -525,7 +525,7 @@
                     `;
                     if (isLastFinished) {
                         const now = new Date();
-                        const timeStr = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');                        htmlBuffer += `<div class="date-header" style="position:static; background:transparent; margin:10px 0; animation: blink-marker 2s infinite; z-index:1;"><span class="date-number" id="real-time-marker" style="margin:0">${timeStr}</span></div><style>@keyframes blink-marker{0%,100%{opacity:1}50%{opacity:0.2}}</style>`;
+                        const timeStr = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');                        htmlBuffer += `<div class="date-header" id="time-marker-container" style="position:static; background:transparent; margin:10px 0; animation: blink-marker 2s infinite; z-index:1;"><span class="date-number" id="real-time-marker" style="margin:0">${timeStr}</span></div><style>@keyframes blink-marker{0%,100%{opacity:1}50%{opacity:0.2}}</style>`;
                     }
                 });
                 this.container.innerHTML = htmlBuffer;

@@ -116,6 +116,8 @@
             if (rawUpper.includes("ACB EVENTO 01")) name = "DAZN BALONCESTO";
             if (rawUpper.includes("ACB EVENTO 02")) name = "DAZN BALONCESTO 2";
             if (rawUpper.includes("M. DEPORTES")) name = "M+ DEPORTES";
+            if (rawUpper.includes("M+ ELLAS VAMOS")) name = "M+ ELLAS";
+            if (rawUpper.includes("M+ ELLAS VAMOS")) name = "M+ ELLAS";
             let cleaned = name.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\(SOLO EVENTOS\)/gi, "").replace(/\( SOLO EVENTOS \)/gi, "");
             if (cleaned.includes("LIGA DE CAMPEONES") && !cleaned.includes("M+")) {
                 cleaned = cleaned.replace("LIGA DE CAMPEONES", "M+ LIGA DE CAMPEONES");
@@ -917,7 +919,9 @@
                 const blob = new Blob([swCode], {type: 'text/javascript'});
                 navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(() => {});
             });
-        }        window.syncMarker = () => {
+        }
+
+        window.syncMarker = () => {
             const marker = document.getElementById('real-time-marker');
             const now = new Date();
             const timeStr = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
@@ -927,13 +931,15 @@
             return timeStr;
         };        const startMasterClock = () => {
             const forceUpdate = () => {
-                // Actualización quirúrgica del texto del marcador
+                // Actualizar solo el marcador de texto del reloj sin regenerar todo el DOM
                 window.syncMarker();
                 
-                // El refresh completo solo ocurre si el marcador NO existe o si hay cambios de estado reales,
-                // pero para el cambio de minuto basta con actualizar el texto del elemento.
-                if (typeof UIManager !== 'undefined' && state.tvSearchTerm === '' && !document.getElementById('real-time-marker')) {
+                // Opcional: Solo refrescar el contenido completo si no hay una búsqueda activa
+                // y para actualizar estados 'Live', pero preservando el scroll.
+                if (typeof UIManager !== 'undefined' && state.tvSearchTerm === '') {
+                    const scrollPos = window.scrollY;
                     UIManager.refresh();
+                    window.scrollTo(0, scrollPos);
                 }
             };
 

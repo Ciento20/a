@@ -133,7 +133,7 @@
             }
             cleaned = cleaned.replace(/PLUS\+/g, "PLUS").replace(/\bMOVISTAR\b/g, "M+").replace(/\bM\./g, "M+").replace(/\(ES\)/gi, "").replace(/\bLA LIGA\b/g, "LALIGA").replace(/\bHYPERMOTION\b/g, "LALIGA TV HYPERMOTION").replace(/\bBAR\b/gi, "").replace(/\b(HD|FHD|4K|1080P|720P)\b/gi, "").replace(/\*/g, "").replace(/\s+/g, " ").trim();
             if (cleaned.includes("CALCIO EVENTOS")) { cleaned = cleaned.replace("CALCIO EVENTOS", "SKY SPORTS CALCIO EVENTOS"); }
-            if (cleaned.includes("(1RFEF)")) { cleaned = "PRIMERA FEDERACION"; }
+            if (cleaned.includes("(1RFEF)") || cleaned.includes("RFEF TV")) { cleaned = "PRIMERA FEDERACION"; }
             if (cleaned.includes("DAZN LALIGA")) {
                 cleaned = cleaned.replace(/\b1\b/g, "");
             }

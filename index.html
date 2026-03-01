@@ -34,21 +34,35 @@
         };        const RatingEngine = {
             DB_KEY: 'ace_autorating_v1',
             SESSION_KEY: 'ace_current_session',
-            PENDING_KEY: 'ace_pending_penalties_list', // Cambiado a lista para múltiples fallos
+            PENDING_KEY: 'ace_pending_penalties_list',
             interval: null,
 
             getDB() { return JSON.parse(localStorage.getItem(this.DB_KEY)) || {}; },
-            getScore(id) { return this.getDB()[id] || 3.0; },            saveScore(id, delta) {
-                if (delta < 0) return; // Ignorar penalizaciones por zapping
+            
+            getScore(id) { 
+                const entry = this.getDB()[id];
+                if (!entry) return 3.0;
+                return (typeof entry === 'object') ? (entry.score || 3.0) : entry;
+            },
+
+            saveScore(id, delta, name = "") {
                 const db = this.getDB();
-                db[id] = Math.max(1.0, Math.min(5.0, (db[id] || 3.0) + delta));
+                let entry = db[id];
+
+                // Normalizar entrada (migración de legacy a objeto)
+                if (!entry || typeof entry !== 'object') {
+                    entry = { score: entry || 3.0, name: name || "Desconocido" };
+                }
+                
+                if (name) entry.name = name;
+                entry.score = Math.max(1.0, Math.min(5.0, entry.score + delta));
+                
+                db[id] = entry;
                 localStorage.setItem(this.DB_KEY, JSON.stringify(db));
             },
 
             trackStart(id, channelName, index = 0) {
-                // 1. Antes de iniciar, comprobamos si la sesión anterior fue un 'fracaso' (zapping)
                 this.checkPreviousSession();
-                
                 const now = Date.now();
                 this.stopRealTimeUpdate();
                 
@@ -62,8 +76,10 @@
                 
                 localStorage.setItem(this.SESSION_KEY, JSON.stringify(sessionData));
                 this.startRealTimeUpdate();
-            },            processFocusReturn(newChannelName) {
-                localStorage.removeItem(this.PENDING_KEY); // Resetear sin penalizar al volver
+            },
+
+            processFocusReturn(newChannelName) {
+                localStorage.removeItem(this.PENDING_KEY);
             },
 
             checkPreviousSession() {
@@ -72,35 +88,28 @@
                 
                 const durationSec = (Date.now() - session.start) / 1000;
                 
-                // Si el canal duró menos de 90 segundos, es un fallo de estabilidad/zapping
                 if (durationSec < 90) {
-                    const db = this.getDB();
-                    // Penalizamos directamente el ID que acaba de fallar
-                    db[session.id] = Math.max(1.0, (db[session.id] || 3.0) - 0.5);
-                    localStorage.setItem(this.DB_KEY, JSON.stringify(db));
+                    // Penalización persistente con nombre
+                    this.saveScore(session.id, -0.5, session.channelName);
                     
-                    // Guardamos en pendientes para que la UI lo marque visualmente de inmediato
                     localStorage.setItem(this.PENDING_KEY, JSON.stringify({
                         id: session.id,
                         timestamp: Date.now()
                     }));
                 } else {
-                    // Si duró suficiente, limpiamos marcas de error previas
                     localStorage.removeItem(this.PENDING_KEY);
                 }
-            },            startRealTimeUpdate() {
+            },
+
+            startRealTimeUpdate() {
                 if (this.interval) clearInterval(this.interval);
                 this.interval = setInterval(() => {
                     const session = JSON.parse(localStorage.getItem(this.SESSION_KEY));
                     if (!session) return this.stopRealTimeUpdate();
                     const min = (Date.now() - session.start) / 60000;
-                    let delta = 0;
+                    
                     if (min >= 30 && (min - session.lastProcessedMin) >= 30) {
-                        delta = 1.0;
-                    }
-
-                    if (delta > 0) {
-                        this.saveScore(session.id, delta);
+                        this.saveScore(session.id, 1.0, session.channelName);
                         session.lastProcessedMin = Math.floor(min / 30) * 30;
                         localStorage.setItem(this.SESSION_KEY, JSON.stringify(session));
                     }

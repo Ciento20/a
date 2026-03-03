@@ -131,7 +131,7 @@
             if (cleaned.includes("LIGA DE CAMPEONES") && !cleaned.includes("M+")) {
                 cleaned = cleaned.replace("LIGA DE CAMPEONES", "M+ LIGA DE CAMPEONES");
             }
-            cleaned = cleaned.replace(/PLUS\+/g, "PLUS").replace(/\bMOVISTAR\b/g, "M+").replace(/\bM\./g, "M+").replace(/\(ES\)/gi, "").replace(/\bLA LIGA\b/g, "LALIGA").replace(/\bHYPERMOTION\b/g, "LALIGA TV HYPERMOTION").replace(/\bBAR\b/gi, "").replace(/\b(HD|FHD|4K|1080P|720P)\b/gi, "").replace(/\*/g, "").replace(/\s+/g, " ").trim();
+            cleaned = cleaned.replace(/PLUS\+/g, "PLUS").replace(/\bMOVISTAR\b/g, "M+").replace(/\bM\./g, "M+").replace(/\(ES\)/gi, "").replace(/\bLA LIGA\b/g, "LALIGA").replace(/\bHYPERMOTION\b/g, "LALIGA TV HYPERMOTION").replace(/\bBAR\b/gi, "").replace(/\b(HD|FHD|TVE|4K|1080P|720P)\b/gi, "").replace(/\*/g, "").replace(/\s+/g, " ").trim();
             if (cleaned.includes("CALCIO EVENTOS")) { cleaned = cleaned.replace("CALCIO EVENTOS", "SKY SPORTS CALCIO EVENTOS"); }
             if (cleaned.includes("(1RFEF)") || cleaned.includes("RFEF TV")) { cleaned = "PRIMERA FEDERACION"; }
             if (cleaned.includes("DAZN LALIGA")) {
@@ -591,7 +591,7 @@
 
                     if (n.includes('ELEVEN') || isForeign) return 4.1;
                     if (n.includes('DAZN')) return 1;
-                    if (n.includes('M+') || n.includes('MOVISTAR') || n.includes('LIGA DE CAMPEONES') || n.includes('HYPERMOTION')) return 2;
+                    if ((n.includes('M+') && !n.includes('FILM+')) || n.includes('MOVISTAR') || n.includes('LIGA DE CAMPEONES') || n.includes('HYPERMOTION')) return 2;
                     if (n.includes('EUROSPORT')) return 3;
                     
                     return 4.1;

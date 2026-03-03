@@ -458,27 +458,36 @@
                 }
                 currentTab = tab;
                 localStorage.setItem('active_tab', tab);
-                const searchContainer = document.getElementById('searchContainer');
-                
-                document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
-                document.getElementById(`nav-${tab}`).classList.add('active');                if (tab === 'channels') {
-                    searchContainer.style.display = 'flex';
-                    this.container.classList.add('search-mode-active');
-                    document.getElementById('globalSearchInput').focus();
-                } else {
-                    searchContainer.style.display = 'none';
-                    this.container.classList.remove('search-mode-active');
-                    if (tab !== 'channels') {
-                        state.tvSearchTerm = '';
-                        localStorage.removeItem('search_query');
-                        document.getElementById('globalSearchInput').value = '';
-                    }
-                    const noResults = document.getElementById('noResultsContainer');
-                    if (noResults) noResults.style.display = 'none';
-                }
 
-                this.refresh();
-                window.scrollTo(0,0);
+                // UI Update instantáneo
+                document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+                document.getElementById(`nav-${tab}`).classList.add('active');
+                
+                // Limpieza inmediata para evitar lag de memoria
+                this.container.style.opacity = '0';
+                
+                setTimeout(() => {
+                    const searchContainer = document.getElementById('searchContainer');
+                    if (tab === 'channels') {
+                        searchContainer.style.display = 'flex';
+                        this.container.classList.add('search-mode-active');
+                        document.getElementById('globalSearchInput').focus();
+                    } else {
+                        searchContainer.style.display = 'none';
+                        this.container.classList.remove('search-mode-active');
+                        if (tab !== 'channels') {
+                            state.tvSearchTerm = '';
+                            localStorage.removeItem('search_query');
+                            document.getElementById('globalSearchInput').value = '';
+                        }
+                        const noResults = document.getElementById('noResultsContainer');
+                        if (noResults) noResults.style.display = 'none';
+                    }
+
+                    this.refresh();
+                    this.container.style.opacity = '1';
+                    window.scrollTo(0,0);
+                }, 50);
             },            lastEventsHTML: '',            refresh() {
                 globalData.forEach(item => { item.isLive = LiveEngine.checkLive(item); });
                 const processed = [...globalData].sort((a, b) => (a.isLive === b.isLive) ? 0 : a.isLive ? -1 : 1);
@@ -494,7 +503,7 @@
                 } else {
                     this.renderUniqueChannels(processed);
                 }
-            },            renderEvents(data) {
+            },            renderEvents(data, returnOnly = false) {
                 const noResults = document.getElementById('noResultsContainer');
                 if (noResults) noResults.style.display = 'none';
 
@@ -553,28 +562,22 @@
                         const timeStr = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');                        htmlBuffer += `<div class="date-header" id="time-marker-container" style="position:static; background:transparent; margin:10px 0; animation: blink-marker 2s infinite; z-index:1;"><span class="date-number" id="real-time-marker" style="margin:0">${timeStr}</span></div><style>@keyframes blink-marker{0%,100%{opacity:1}50%{opacity:0.2}}</style>`;
                     }
                 });
+                if (returnOnly) return htmlBuffer;
                 this.container.innerHTML = htmlBuffer;
                 if (state.tvSearchTerm === '') this.lastEventsHTML = htmlBuffer;
             },            renderUniqueChannels(data) {
-                const input = document.getElementById('globalSearchInput');
-                const selectionStart = input.selectionStart;
-                const selectionEnd = input.selectionEnd;
                 const searchTerm = state.tvSearchTerm;
-                this.container.innerHTML = "";
+                let mainHtml = "";
 
                 if (searchTerm) {
                     const matchedEvents = data.filter(event => {
-                        const sportNames = window.GLOBAL_EMOJI_MAP ? Object.keys(window.GLOBAL_EMOJI_MAP).join(' ') : '';
-                    const eventSport = window.GLOBAL_EMOJI_MAP ? (Object.keys(window.GLOBAL_EMOJI_MAP).find(s => event.competition.includes(window.GLOBAL_EMOJI_MAP[s])) || '') : '';
-                    const textToSearch = ComparisonEngine.normalizeText(event.competition + event.infoHtml + ' ' + eventSport);
+                        const eventSport = window.GLOBAL_EMOJI_MAP ? (Object.keys(window.GLOBAL_EMOJI_MAP).find(s => event.competition.includes(window.GLOBAL_EMOJI_MAP[s])) || '') : '';
+                        const textToSearch = ComparisonEngine.normalizeText(event.competition + event.infoHtml + ' ' + eventSport);
                         return textToSearch.includes(searchTerm);
                     });
-
                     if (matchedEvents.length > 0) {
-                        this.renderEvents(matchedEvents);
-                        const divider = document.createElement('div');
-                        divider.style.cssText = "width:100%; height:1px; background:#333; margin:20px 0; grid-column: 1/-1;";
-                        this.container.appendChild(divider);
+                        mainHtml += this.renderEvents(matchedEvents, true);
+                        mainHtml += `<div style="width:100%; height:1px; background:#333; margin:20px 0; grid-column: 1/-1;"></div>`;
                     }
                 }
 
@@ -590,37 +593,31 @@
                 });
 
                 const noResults = document.getElementById('noResultsContainer');
-                if (uniqueMap.size === 0 && this.container.children.length === 0) {
+                if (uniqueMap.size === 0 && mainHtml === "") {
                     if (noResults) noResults.style.display = 'block';
+                    this.container.innerHTML = "";
                     return;
-                } else {
-                    if (noResults) noResults.style.display = 'none';
-                }
+                } else { if (noResults) noResults.style.display = 'none'; }
 
-                input.focus();
-                input.setSelectionRange(selectionStart, selectionEnd);                const getPriority = (name) => {
+                const getPriority = (name) => {
                     const n = cleanChannelName(name).toUpperCase();
-                    // Excluir canales internacionales de la prioridad alta
                     const isForeign = n.includes('(PL)') || n.includes('(DE)') || n.includes('(RU)');
-
                     if (n.includes('ELEVEN') || isForeign) return 4.1;
                     if (n.includes('DAZN')) return 1;
                     if ((n.includes('M+') && !n.includes('FILM+')) || n.includes('MOVISTAR') || n.includes('LIGA DE CAMPEONES') || n.includes('HYPERMOTION')) return 2;
                     if (n.includes('EUROSPORT')) return 3;
-                    
                     return 4.1;
-                };                const gistOrder = Object.keys(channelLogosMap);
+                };
+
+                const gistOrder = Object.keys(channelLogosMap);
                 const sortedChannels = Array.from(uniqueMap.values()).sort((a, b) => {
                     const pA = getPriority(a), pB = getPriority(b);
                     if (pA !== pB) return pA - pB;
-                    
                     const indexA = gistOrder.indexOf(cleanChannelName(a));
                     const indexB = gistOrder.indexOf(cleanChannelName(b));
-                    
                     if (indexA !== -1 && indexB !== -1) return indexA - indexB;
                     if (indexA !== -1) return -1;
                     if (indexB !== -1) return 1;
-                    
                     return cleanChannelName(a).localeCompare(cleanChannelName(b));
                 });
 
@@ -634,57 +631,31 @@
                 });
 
                 const renderGroup = (title, channels, color, logoKey, isEurosport = false) => {
-    if (channels.length === 0) return '';
-    const logoUrl = channelLogosMap[cleanChannelName(logoKey)] || '';
-    
-    let contentHtml = '';
-    if (title === 'OTROS CANALES') {
-        const regions = [
-            
-            
-            { keys: ['[BE]', '(BE)'], flag: '🇧🇪', id: 'be' },
-            { keys: ['[DE]', '(DE)'], flag: '🇩🇪', id: 'de' },
-            { keys: ['[TR]', '(TR)'], flag: '🇹🇷', id: 'tr' },
-            { keys: ['[PL]', '(PL)'], flag: '🇵🇱', id: 'pl' },
-            { keys: ['[RU]', '(RU)'], flag: '🇷🇺', id: 'ru' }
-        ];
+                    if (channels.length === 0) return '';
+                    const logoUrl = channelLogosMap[cleanChannelName(logoKey)] || '';
+                    let contentHtml = '<div style="display:flex; flex-wrap:wrap; gap:10px; justify-content:center;">';
+                    if (title === 'OTROS CANALES') {
+                        const regions = [{ keys: ['[BE]', '(BE)'], flag: '🇧🇪', id: 'be' }, { keys: ['[DE]', '(DE)'], flag: '🇩🇪', id: 'de' }, { keys: ['[TR]', '(TR)'], flag: '🇹🇷', id: 'tr' }, { keys: ['[PL]', '(PL)'], flag: '🇵🇱', id: 'pl' }, { keys: ['[RU]', '(RU)'], flag: '🇷🇺', id: 'ru' }];
+                        let mainChannels = channels.filter(c => !regions.some(r => r.keys.some(k => c.toUpperCase().includes(k))));
+                        contentHtml += mainChannels.map(c => this.getChannelHtml(c)).join('');
+                        regions.forEach(reg => {
+                            const regChannels = channels.filter(c => reg.keys.some(k => c.toUpperCase().includes(k)));
+                            if (regChannels.length > 0) {
+                                contentHtml += `<div class="channel-button" onclick="const el = document.getElementById('group-${reg.id}'); el.style.display = el.style.display === 'none' ? 'flex' : 'none'"><span style="font-size:2rem;">${reg.flag}</span></div><div id="group-${reg.id}" style="display:none; width:100%; flex-wrap:wrap; gap:10px; justify-content:center; margin:10px 0; padding:10px; background:rgba(255,255,255,0.05); border-radius:10px; border:1px dashed rgba(255,255,255,0.1);">${regChannels.map(c => this.getChannelHtml(c)).join('')}</div>`;
+                            }
+                        });
+                    } else {
+                        contentHtml += channels.map(c => this.getChannelHtml(c)).join('');
+                    }
+                    contentHtml += '</div>';
+                    return `<div style="width:100%; background:rgba(0,0,0,0.25); border:1px solid ${color}; border-radius:12px; padding:12px; margin-bottom:15px; box-sizing:border-box;"><div style="display:flex; align-items:center; gap:8px; margin-bottom:10px; padding-bottom:5px; border-bottom:1px solid ${color}33;">${logoUrl ? `<img src="${logoUrl}" style="height:${isEurosport ? '24px' : '18px'}; object-fit:contain; ${title === 'DAZN' ? 'background:white; border-radius:4px; padding:2px;' : ''}">` : ''}<span style="color:white; font-weight:700; font-size:0.75rem; text-transform:uppercase;">${title}</span></div>${contentHtml}</div>`;
+                };
 
-        let mainChannels = channels.filter(c => !regions.some(r => r.keys.some(k => c.toUpperCase().includes(k))));
-        let regionHtml = '';        contentHtml = `<div style="display:flex; flex-wrap:wrap; gap:10px; justify-content:center;">`;
-        contentHtml += mainChannels.map(c => this.getChannelHtml(c)).join('');
-
-        regions.forEach(reg => {
-            const regChannels = channels.filter(c => reg.keys.some(k => c.toUpperCase().includes(k)));
-            if (regChannels.length > 0) {
-                const containerId = `group-${reg.id}`;
-                contentHtml += `
-                    <div class="channel-button" onclick="const el = document.getElementById('${containerId}'); el.style.display = el.style.display === 'none' ? 'flex' : 'none'">
-                        <span style="font-size:2rem;">${reg.flag}</span>
-                    </div>
-                    <div id="${containerId}" style="display:none; width:100%; flex-wrap:wrap; gap:10px; justify-content:center; margin:10px 0; padding:10px; background:rgba(255,255,255,0.05); border-radius:10px; border:1px dashed rgba(255,255,255,0.1);">
-                        ${regChannels.map(c => this.getChannelHtml(c)).join('')}
-                    </div>`;
-            }
-        });
-
-        contentHtml += `</div>`;
-    } else {
-        contentHtml = `<div style="display:flex; flex-wrap:wrap; gap:10px; justify-content:center;">${channels.map(c => this.getChannelHtml(c)).join('')}</div>`;
-    }
-
-    return `<div style="width:100%; background:rgba(0,0,0,0.25); border:1px solid ${color}; border-radius:12px; padding:12px; margin-bottom:15px; box-sizing:border-box;">
-        <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px; padding-bottom:5px; border-bottom:1px solid ${color}33;">
-            ${logoUrl ? `<img src="${logoUrl}" style="height:${isEurosport ? '24px' : '18px'}; object-fit:contain; ${title === 'DAZN' ? 'background:white; border-radius:4px; padding:2px;' : ''}">` : ''}
-            <span style="color:white; font-weight:700; font-size:0.75rem; text-transform:uppercase;">${title}</span>
-        </div>
-        ${contentHtml}
-    </div>`;
-};
-
-                this.container.innerHTML += renderGroup('DAZN', groups.DAZN, '#fffc01', 'DAZN');
-                this.container.innerHTML += renderGroup('MOVISTAR+', groups.MOVISTAR, '#0165fe', 'MOVISTAR');
-                this.container.innerHTML += renderGroup('EUROSPORT', groups.EUROSPORT, '#dd0452', 'EUROS', true);
-                this.container.innerHTML += renderGroup('OTROS CANALES', groups.OTROS, '#333333', '');
+                mainHtml += renderGroup('DAZN', groups.DAZN, '#fffc01', 'DAZN');
+                mainHtml += renderGroup('MOVISTAR+', groups.MOVISTAR, '#0165fe', 'MOVISTAR');
+                mainHtml += renderGroup('EUROSPORT', groups.EUROSPORT, '#dd0452', 'EUROS', true);
+                mainHtml += renderGroup('OTROS CANALES', groups.OTROS, '#333333', '');
+                this.container.innerHTML = mainHtml;
 
                 // Canales renderizados por grupos superiores
             },            getChannelHtml(name) {

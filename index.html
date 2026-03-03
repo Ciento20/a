@@ -121,44 +121,31 @@
 
         const cleanChannelName = (name) => {
             if (!name) return "";
-            
-            // Eliminación global de tildes y normalización a mayúsculas como primer paso
-            // Esto garantiza que cualquier comparación posterior ignore los acentos automáticamente
-            let cleaned = name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
-
-            // Mapeos específicos (ahora sin riesgo de fallo por tildes en el origen)
-            if (cleaned.includes("ACB EVENTO 01")) cleaned = "DAZN BALONCESTO";
-            if (cleaned.includes("ACB EVENTO 02")) cleaned = "DAZN BALONCESTO 2";
-            if (cleaned.includes("M. DEPORTES") || cleaned.includes("M+ DEPORTES")) cleaned = "M+ DEPORTES";
-            if (cleaned.includes("M+ ELLAS VAMOS")) cleaned = "M+ ELLAS";
-            
-            cleaned = cleaned.replace(/\(SOLO EVENTOS\)/gi, "").replace(/\( SOLO EVENTOS \)/gi, "");
-
+            let rawUpper = name.toUpperCase();
+            if (rawUpper.includes("ACB EVENTO 01")) name = "DAZN BALONCESTO";
+            if (rawUpper.includes("ACB EVENTO 02")) name = "DAZN BALONCESTO 2";
+            if (rawUpper.includes("M. DEPORTES")) name = "M+ DEPORTES";
+            if (rawUpper.includes("M+ ELLAS VAMOS")) name = "M+ ELLAS";
+            if (rawUpper.includes("M+ ELLAS VAMOS")) name = "M+ ELLAS";
+            let cleaned = name.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\(SOLO EVENTOS\)/gi, "").replace(/\( SOLO EVENTOS \)/gi, "");
             if (cleaned.includes("LIGA DE CAMPEONES") && !cleaned.includes("M+")) {
                 cleaned = cleaned.replace("LIGA DE CAMPEONES", "M+ LIGA DE CAMPEONES");
             }
-
-            cleaned = cleaned.replace(/PLUS\+/g, "PLUS")
-                             .replace(/\bMOVISTAR\b/g, "M+")
-                             .replace(/\bM\./g, "M+")
-                             .replace(/\(ES\)/gi, "")
-                             .replace(/\bLA LIGA\b/g, "LALIGA")
-                             .replace(/\bHYPERMOTION\b/g, "LALIGA TV HYPERMOTION")
-                             .replace(/\bBAR\b/gi, "")
-                             .replace(/\b(HD|FHD|TVE|PLAY|4K|1080P|720P)\b/gi, "")
-                             .replace(/\*/g, "")
-                             .replace(/\s+/g, " ").trim();
-
-            if (cleaned.includes("CALCIO EVENTOS")) cleaned = "SKY SPORTS CALCIO EVENTOS";
-            if (cleaned.includes("(1RFEF)") || cleaned.includes("RFEF TV")) cleaned = "PRIMERA FEDERACION";
-            
-            if (cleaned.includes("DAZN LALIGA")) cleaned = cleaned.replace(/\b1\b/g, "");
-
-            if (cleaned.includes("HYPERMOTION 2")) cleaned = "LALIGA TV HYPERMOTION 2";
-            else if (cleaned.includes("HYPERMOTION 3")) cleaned = "LALIGA TV HYPERMOTION 3";
-            else if (cleaned.includes("HYPERMOTION 4")) cleaned = "LALIGA TV HYPERMOTION 4";
-            else if (cleaned.includes("HYPERMOTION")) cleaned = "LALIGA TV HYPERMOTION";
-
+            cleaned = cleaned.replace(/PLUS\+/g, "PLUS").replace(/\bMOVISTAR\b/g, "M+").replace(/\bM\./g, "M+").replace(/\(ES\)/gi, "").replace(/\bLA LIGA\b/g, "LALIGA").replace(/\bHYPERMOTION\b/g, "LALIGA TV HYPERMOTION").replace(/\bBAR\b/gi, "").replace(/\b(HD|FHD|4K|1080P|720P)\b/gi, "").replace(/\*/g, "").replace(/\s+/g, " ").trim();
+            if (cleaned.includes("CALCIO EVENTOS")) { cleaned = cleaned.replace("CALCIO EVENTOS", "SKY SPORTS CALCIO EVENTOS"); }
+            if (cleaned.includes("(1RFEF)") || cleaned.includes("RFEF TV")) { cleaned = "PRIMERA FEDERACION"; }
+            if (cleaned.includes("DAZN LALIGA")) {
+                cleaned = cleaned.replace(/\b1\b/g, "");
+            }
+            if (cleaned.includes("HYPERMOTION 2")) {
+                cleaned = "LALIGA TV HYPERMOTION 2";
+            } else if (cleaned.includes("HYPERMOTION 3")) {
+                cleaned = "LALIGA TV HYPERMOTION 3";
+            } else if (cleaned.includes("HYPERMOTION 4")) {
+                cleaned = "LALIGA TV HYPERMOTION 4";
+            } else if (cleaned.includes("HYPERMOTION")) {
+                cleaned = "LALIGA TV HYPERMOTION";
+            }
             return cleaned.replace(/\s+/g, " ").trim();
         };
 

@@ -117,66 +117,35 @@
             },
 
             stopRealTimeUpdate() { if (this.interval) clearInterval(this.interval); }
-        };
-
-        const cleanChannelName = (name) => {
+        };        const cleanChannelName = (name) => {
             if (!name) return "";
-            
-            // Normalización inicial: Eliminar tildes y pasar a mayúsculas inmediatamente
-            let cleaned = name.normalize("NFD")
-                              .replace(/[\u0300-\u036f]/g, "")
-                              .toUpperCase();
-
-            // Mapeos específicos de canales
-            if (cleaned.includes("ACB EVENTO 01")) cleaned = "DAZN BALONCESTO";
-            if (cleaned.includes("ACB EVENTO 02")) cleaned = "DAZN BALONCESTO 2";
-            if (cleaned.includes("M. DEPORTES")) cleaned = "M+ DEPORTES";
-            if (cleaned.includes("M+ ELLAS VAMOS")) cleaned = "M+ ELLAS";
-            
-            // Limpieza de sufijos y términos comunes
-            cleaned = cleaned.replace(/\(SOLO EVENTOS\)/g, "")
-                             .replace(/\( SOLO EVENTOS \)/g, "")
-                             .replace(/PLUS\+/g, "PLUS")
-                             .replace(/\bMOVISTAR\b/g, "M+")
-                             .replace(/\bM\./g, "M+")
-                             .replace(/\(ES\)/g, "")
-                             .replace(/\bLA LIGA\b/g, "LALIGA")
-                             .replace(/\bHYPERMOTION\b/g, "LALIGA TV HYPERMOTION")
-                             .replace(/\bBAR\b/g, "")
-                             .replace(/\b(HD|FHD|4K|1080P|720P|TVE)\b/g, "")
-                             .replace(/\*/g, "");
-
-            if (cleaned.includes("LIGA DE CAMPEONES") && !cleaned.includes("M+")) {
-                cleaned = cleaned.replace("LIGA DE CAMPEONES", "M+ LIGA DE CAMPEONES");
-            }
-            
-            if (cleaned.includes("CALCIO EVENTOS")) cleaned = "SKY SPORTS CALCIO EVENTOS";
-            if (cleaned.includes("(1RFEF)") || cleaned.includes("RFEF TV")) cleaned = "PRIMERA FEDERACION";
-            if (cleaned.includes("DAZN LALIGA")) cleaned = cleaned.replace(/\b1\b/g, "");
-
-            // Normalización de canales Hypermotion
-            if (cleaned.includes("HYPERMOTION 2")) cleaned = "LALIGA TV HYPERMOTION 2";
-            else if (cleaned.includes("HYPERMOTION 3")) cleaned = "LALIGA TV HYPERMOTION 3";
-            else if (cleaned.includes("HYPERMOTION 4")) cleaned = "LALIGA TV HYPERMOTION 4";
-            else if (cleaned.includes("HYPERMOTION")) cleaned = "LALIGA TV HYPERMOTION";
-
-            return cleaned.replace(/\s+/g, " ").trim();
+            return name.normalize("NFD")
+                       .replace(/[\u0300-\u036f]/g, "")
+                       .toUpperCase()
+                       .replace(/\b(HD|FHD|4K|1080P|720P|SD|TVE|ES|SOLO EVENTOS|PLUS|BAR)\b/g, "")
+                       .replace(/[\(\)\[\]\*]/g, " ")
+                       .replace(/\s+/g, " ")
+                       .trim();
         };
 
         const ComparisonEngine = {
             isMatch(nameA, nameB) {
-                return cleanChannelName(nameA) === cleanChannelName(nameB);
+                return getCanonicalName(nameA) === getCanonicalName(nameB);
             },
             normalizeText(text) {
                 return text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
             }
-        };
-
-        let channelLogosMap = JSON.parse(localStorage.getItem('logo_cache')) || {};
+        };        let channelLogosMap = JSON.parse(localStorage.getItem('logo_cache')) || {};
+        let channelCanonicalMap = JSON.parse(localStorage.getItem('canonical_cache')) || {};
         let globalData = JSON.parse(localStorage.getItem('event_data_cache')) || [];
         let aceStreamMap = []; 
         let currentTab = localStorage.getItem('active_tab') || 'home';
         const state = { tvSearchTerm: localStorage.getItem('search_query') || '' };
+
+        const getCanonicalName = (name) => {
+            const clean = cleanChannelName(name);
+            return channelCanonicalMap[clean] || clean;
+        };
 
         const NetworkService = {
             async fetchHtml(targetUrl) {
@@ -191,16 +160,32 @@
                 try {
                     const response = await fetch(CONFIG.GIST_LOGOS);
                     const text = await response.text();
-                    const map = {};
+                    const logoMap = {};
+                    const canonicalMap = {};
+                    let currentAliases = [];
+
                     text.split('\n').forEach(line => {
-                        if (line.includes(': http')) {
-                            const parts = line.split(': http');
-                            const rawName = parts[0].trim();
-                            map[cleanChannelName(rawName)] = 'http' + parts[1].trim();
+                        const trimmed = line.trim();
+                        if (!trimmed) return;
+
+                        if (trimmed.includes(': http')) {
+                            const parts = trimmed.split(': http');
+                            const canonicalName = cleanChannelName(parts[0]);
+                            const logoUrl = 'http' + parts[1].trim();
+                            
+                            logoMap[canonicalName] = logoUrl;
+                            canonicalMap[canonicalName] = canonicalName;
+                            
+                            currentAliases.forEach(alias => {
+                                canonicalMap[cleanChannelName(alias)] = canonicalName;
+                            });
+                            currentAliases = [];
+                        } else {
+                            currentAliases.push(trimmed);
                         }
                     });
-                    return map;
-                } catch (e) { return {}; }
+                    return { logoMap, canonicalMap };
+                } catch (e) { return null; }
             }
         };
 
@@ -509,12 +494,12 @@
 
                 const renderedList = data.map(item => {
                     const availableChannels = [];
-                    const seen = new Set();
+                    const seenCanonical = new Set();
                     item.canales.forEach(c => {
+                        const canonical = getCanonicalName(c);
                         if (aceStreamMap.some(a => ComparisonEngine.isMatch(c, a.name))) {
-                            const clean = cleanChannelName(c);
-                            if (!seen.has(clean)) {
-                                seen.add(clean);
+                            if (!seenCanonical.has(canonical)) {
+                                seenCanonical.add(canonical);
                                 availableChannels.push(c);
                             }
                         }
@@ -588,8 +573,8 @@
                 });
 
                 filteredAceStreams.forEach(item => {
-                    const clean = cleanChannelName(item.name);
-                    if (!uniqueMap.has(clean)) uniqueMap.set(clean, item.name);
+                    const canonical = getCanonicalName(item.name);
+                    if (!uniqueMap.has(canonical)) uniqueMap.set(canonical, item.name);
                 });
 
                 const noResults = document.getElementById('noResultsContainer');
@@ -597,28 +582,41 @@
                     if (noResults) noResults.style.display = 'block';
                     this.container.innerHTML = "";
                     return;
-                } else { if (noResults) noResults.style.display = 'none'; }
-
-                const getPriority = (name) => {
-                    const n = cleanChannelName(name).toUpperCase();
-                    const isForeign = n.includes('(PL)') || n.includes('(DE)') || n.includes('(RU)');
-                    if (n.includes('ELEVEN') || isForeign) return 4.1;
-                    if (n.includes('DAZN')) return 1;
-                    if ((n.includes('M+') && !n.includes('FILM+')) || n.includes('MOVISTAR') || n.includes('LIGA DE CAMPEONES') || n.includes('HYPERMOTION')) return 2;
-                    if (n.includes('EUROSPORT')) return 3;
+                } else { if (noResults) noResults.style.display = 'none'; }                const getPriority = (name) => {
+                    // Evaluamos la prioridad basada en el nombre CANÓNICO para que los alias hereden el grupo correcto
+                    const canon = getCanonicalName(name).toUpperCase();
+                    // Ampliamos la detección para capturar [PL], (PL) o simplemente PL al final
+                    const isForeign = ['PL', 'DE', 'RU'].some(t => canon.includes('('+t+')') || canon.includes('['+t+']') || canon.endsWith(' '+t));
+                    
+                    // 1. ELEVEN y cualquier canal extranjero (incluyendo Eurosport PL/DE/RU) van a OTROS
+                    if (canon.includes('ELEVEN') || isForeign) return 4.1;
+                    
+                    // 2. DAZN mantiene su prioridad 1 (Grupo DAZN)
+                    if (canon.includes('DAZN')) return 1;
+                    
+                    // 3. Movistar+ y competiciones de fútbol mantienen prioridad 2
+                    if ((canon.includes('M+') && !canon.includes('FILM+')) || canon.includes('MOVISTAR') || canon.includes('LIGA DE CAMPEONES') || canon.includes('HYPERMOTION')) return 2;
+                    
+                    // 4. Eurosport (solo si no es extranjero) mantiene prioridad 3
+                    if (canon.includes('EUROSPORT')) return 3;
+                    
                     return 4.1;
-                };
-
-                const gistOrder = Object.keys(channelLogosMap);
+                };                const gistOrder = Object.keys(channelLogosMap);
                 const sortedChannels = Array.from(uniqueMap.values()).sort((a, b) => {
                     const pA = getPriority(a), pB = getPriority(b);
                     if (pA !== pB) return pA - pB;
-                    const indexA = gistOrder.indexOf(cleanChannelName(a));
-                    const indexB = gistOrder.indexOf(cleanChannelName(b));
+
+                    // Forzamos la búsqueda por nombre canónico para que los alias hereden la posición del Gist
+                    const canonA = getCanonicalName(a);
+                    const canonB = getCanonicalName(b);
+
+                    const indexA = gistOrder.indexOf(canonA);
+                    const indexB = gistOrder.indexOf(canonB);
+
                     if (indexA !== -1 && indexB !== -1) return indexA - indexB;
                     if (indexA !== -1) return -1;
                     if (indexB !== -1) return 1;
-                    return cleanChannelName(a).localeCompare(cleanChannelName(b));
+                    return canonA.localeCompare(canonB);
                 });
 
                 const groups = { DAZN: [], MOVISTAR: [], EUROSPORT: [], OTROS: [] };
@@ -651,28 +649,21 @@
                     return `<div style="width:100%; background:rgba(0,0,0,0.25); border:1px solid ${color}; border-radius:12px; padding:12px; margin-bottom:15px; box-sizing:border-box;"><div style="display:flex; align-items:center; gap:8px; margin-bottom:10px; padding-bottom:5px; border-bottom:1px solid ${color}33;">${logoUrl ? `<img src="${logoUrl}" style="height:${isEurosport ? '24px' : '18px'}; object-fit:contain; ${title === 'DAZN' ? 'background:white; border-radius:4px; padding:2px;' : ''}">` : ''}<span style="color:white; font-weight:700; font-size:0.75rem; text-transform:uppercase;">${title}</span></div>${contentHtml}</div>`;
                 };
 
-                mainHtml += renderGroup('DAZN', groups.DAZN, '#fffc01', 'DAZN');
-                mainHtml += renderGroup('MOVISTAR+', groups.MOVISTAR, '#0165fe', 'MOVISTAR');
+                mainHtml += renderGroup('DAZN', groups.DAZN, '#fffc01', 'DAZON');
+                mainHtml += renderGroup('MOVISTAR+', groups.MOVISTAR, '#0165fe', 'MOVISTARP');
                 mainHtml += renderGroup('EUROSPORT', groups.EUROSPORT, '#dd0452', 'EUROS', true);
                 mainHtml += renderGroup('OTROS CANALES', groups.OTROS, '#333333', '');
                 this.container.innerHTML = mainHtml;
 
                 // Canales renderizados por grupos superiores
             },            getChannelHtml(name) {
-                const clean = cleanChannelName(name);
-                const logoUrl = channelLogosMap[clean];
+                const canonical = getCanonicalName(name);
+                const logoUrl = channelLogosMap[canonical];
                 const matching = aceStreamMap.filter(a => ComparisonEngine.isMatch(name, a.name));
                 if (matching.length === 0) return '';
 
-                const pending = JSON.parse(localStorage.getItem(RatingEngine.PENDING_KEY));
-                const bestIdObj = matching.map(item => {
-                    let s = RatingEngine.getScore(item.id);
-                    if (pending && pending.id === item.id) s = Math.max(1.0, s - 1.5);
-                    return { ...item, effectiveScore: s };
-                }).sort((a, b) => b.effectiveScore - a.effectiveScore)[0];
                 const safeName = name.replace(/'/g, "\\'");
-                let badgeHtml = '';
-                const upperName = clean.toUpperCase();
+                const upperName = canonical.toUpperCase();
                 const isSpecialEurosport = upperName.includes('EUROSPORT 1') || upperName.includes('EUROSPORT 2');
                 const logoStyle = isSpecialEurosport ? 'width:95%; height:95%; transform: scale(1.28); padding-left: 8px;' : 'width:80%; height:80%;';
 
@@ -684,8 +675,7 @@
                              ontouchstart="UIManager.startLongPress(event, '${safeName}')" 
                              ontouchmove="const moveY = Math.abs(event.touches[0].clientY - UIManager.touchStartY); if(moveY > 10) UIManager.clearLongPress();"
                              ontouchend="UIManager.clearLongPress()">
-                        ${badgeHtml}
-                        ${logoUrl ? `<img src="${logoUrl}" class="channel-logo" style="position:relative; z-index:2; pointer-events:none; ${logoStyle}" onerror="this.outerHTML='<span>${clean}</span>'">` : `<span style="position:relative; z-index:2; pointer-events:none;">${clean}</span>`}
+                        ${logoUrl ? `<img src="${logoUrl}" class="channel-logo" style="position:relative; z-index:2; pointer-events:none; ${logoStyle}" onerror="this.outerHTML='<span>${canonical}</span>'">` : `<span style="position:relative; z-index:2; pointer-size:0.65rem; pointer-events:none;">${canonical}</span>`}
                     </div>`;
             },            longPressTimer: null,
             isLongPress: false,
@@ -858,15 +848,16 @@
             if (globalData.length > 0 || aceStreamMap.length > 0) {
                 UIManager.refresh();
                 UIManager.status.style.display = 'none';
-            }
-            try {
-                const [logos, html] = await Promise.all([
+            }            try {
+                const [gistResult, html] = await Promise.all([
                     NetworkService.fetchLogos(), 
                     NetworkService.fetchHtml(CONFIG.TARGET_URL)
                 ]);
-                if (logos && Object.keys(logos).length > 0) {
-                    channelLogosMap = logos;
-                    localStorage.setItem('logo_cache', JSON.stringify(logos));
+                if (gistResult) {
+                    channelLogosMap = gistResult.logoMap;
+                    channelCanonicalMap = gistResult.canonicalMap;
+                    localStorage.setItem('logo_cache', JSON.stringify(gistResult.logoMap));
+                    localStorage.setItem('canonical_cache', JSON.stringify(gistResult.canonicalMap));
                 }                const freshData = DataParser.parse(html);
                 if (freshData && freshData.length > 0) {
                     globalData = []; // Limpiamos caché de eventos para evitar acumulación

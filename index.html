@@ -586,7 +586,7 @@
                     // Evaluamos la prioridad basada en el nombre CANÓNICO para que los alias hereden el grupo correcto
                     const canon = getCanonicalName(name).toUpperCase();
                     // Ampliamos la detección para capturar [PL], (PL) o simplemente PL al final
-                    const isForeign = ['PL', 'DE', 'RU'].some(t => canon.includes('('+t+')') || canon.includes('['+t+']') || canon.endsWith(' '+t));
+                    const isForeign = ['PL', 'DE', 'RU'].some(t => name.toUpperCase().includes('['+t+']') || name.toUpperCase().includes('('+t+')') || canon.endsWith(' '+t));
                     
                     // 1. ELEVEN y cualquier canal extranjero (incluyendo Eurosport PL/DE/RU) van a OTROS
                     if (canon.includes('ELEVEN') || isForeign) return 4.1;
@@ -709,7 +709,7 @@
 
                 if (matching.length === 0) return;
 
-                const normName = ComparisonEngine.normalizeText(channelName);
+                const normName = ComparisonEngine.normalizeText(getCanonicalName(channelName));
                 const lastIdxKey = 'last_idx_' + normName;
                 const lastTimeKey = 'last_ts_' + normName;
                 
@@ -728,7 +728,7 @@
                 
                 localStorage.setItem(lastIdxKey, nextIndex);
                 localStorage.setItem(lastTimeKey, now);
-                RatingEngine.trackStart(matching[nextIndex].id, channelName, nextIndex);
+                RatingEngine.trackStart(matching[nextIndex].id, getCanonicalName(channelName), nextIndex);
 
                 location.href = 'acestream://' + matching[nextIndex].id;
             },
@@ -742,7 +742,7 @@
                     .filter(a => ComparisonEngine.isMatch(channelName, a.name))
                     .sort((a, b) => RatingEngine.getScore(b.id) - RatingEngine.getScore(a.id));
 
-                title.textContent = cleanChannelName(channelName);
+                title.textContent = getCanonicalName(channelName);
                 list.innerHTML = "";
                 
                 matching.forEach((item, i) => {
@@ -758,7 +758,7 @@
                         <span class="id-rating" style="flex: 1; text-align: right;">★ ${currentRating.toFixed(1)}</span>
                     `;
                     btn.onclick = () => {
-                        RatingEngine.trackStart(item.id, channelName, i);
+                        RatingEngine.trackStart(item.id, getCanonicalName(channelName), i);
                         window.location.href = `acestream://${item.id}`;
                     };
                     list.appendChild(btn);

@@ -950,31 +950,44 @@
             }, msUntilRefresh);
         };        const checkDateChange = async () => {
             try {
-                // 1. Comprobamos la web silenciosamente en segundo plano
+                let needsRefresh = false;
+
+                // 1. Comprobar Eventos (FTV)
                 const html = await NetworkService.fetchHtml(CONFIG.TARGET_URL);
                 const freshData = DataParser.parse(html);
                 
-                // 2. Doble verificación: procedemos solo si la web devolvió datos válidos
                 if (freshData && freshData.length > 0) {
-                    // 3. Generamos el Hash real de los eventos obtenidos
                     const newHash = AceStreamEngine.generateHash(JSON.stringify(freshData));
-                    const storedHash = localStorage.getItem('current_data_hash');
-                    
-                    // 4. Si el Hash cambia, significa que FTV ha actualizado la web
-                    if (newHash !== storedHash) {
+                    if (newHash !== localStorage.getItem('current_data_hash')) {
                         localStorage.setItem('current_data_hash', newHash);
                         globalData = freshData;
                         localStorage.setItem('event_data_cache', JSON.stringify(freshData));
-                        
-                        // Actualizamos la interfaz sin que el usuario tenga que recargar
-                        if (typeof UIManager !== 'undefined' && state.tvSearchTerm === '') {
-                            UIManager.refresh();
-                        }
+                        needsRefresh = true;
                     }
                 }
+
+                // 2. Comprobar Canales (ERA y ELC)
+                // Leemos el timestamp actual de la caché de canales antes de actualizar
+                const cacheRaw = localStorage.getItem(STORAGE_CONFIG.CACHE_KEY);
+                const oldAceTimestamp = cacheRaw ? JSON.parse(cacheRaw).timestamp : 0;
+                
+                // El init() de AceStreamEngine ya comprueba sus propios Hashes internamente
+                aceStreamMap = await AceStreamEngine.init();
+                
+                // Comparamos el timestamp para saber si init() descargó e inyectó canales nuevos
+                const cacheRawNew = localStorage.getItem(STORAGE_CONFIG.CACHE_KEY);
+                const newAceTimestamp = cacheRawNew ? JSON.parse(cacheRawNew).timestamp : 0;
+
+                if (oldAceTimestamp !== newAceTimestamp) {
+                    needsRefresh = true;
+                }
+
+                // 3. Refrescar UI solo si hubo cambios reales en FTV o ERA/ELC
+                if (needsRefresh && typeof UIManager !== 'undefined' && state.tvSearchTerm === '') {
+                    UIManager.refresh();
+                }
             } catch (e) {
-                // Si no hay red o la web da error, abortamos.
-                // Mantenemos la caché antigua intacta para que NUNCA se quede en blanco.
+                // Si no hay red, ignoramos silenciosamente para no borrar la pantalla
             }
         };
 

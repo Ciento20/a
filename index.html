@@ -755,8 +755,28 @@
                         <small style="flex: 1; text-align: left; color: var(--text-muted); font-size: 0.6rem; font-weight: 700; opacity: 0.6; letter-spacing: 0.5px;">${item.source || 'ID'}</small>
                         <span style="flex: 2; text-align: center; font-family: monospace; opacity: 0.9;">${item.id.substring(0, 10).toUpperCase()}</span>
                         <span class="id-rating" style="flex: 1; text-align: right;">★ ${currentRating.toFixed(1)}</span>
-                    `;
-                    btn.onclick = () => {
+                    `;                    let isLongPress = false;
+                    let pressTimer;
+                    const startPress = () => {
+                        isLongPress = false;
+                        pressTimer = setTimeout(() => {
+                            isLongPress = true;
+                            navigator.clipboard.writeText(item.id).then(() => {
+                                const originalHtml = btn.innerHTML;
+                                btn.innerHTML = '<div style="width:100%;text-align:center;color:var(--accent-blue);font-weight:bold;">¡ID Copiado!</div>';
+                                setTimeout(() => btn.innerHTML = originalHtml, 1200);
+                            });
+                        }, 550);
+                    };
+                    const clearPress = () => clearTimeout(pressTimer);
+                    btn.addEventListener('mousedown', startPress);
+                    btn.addEventListener('touchstart', startPress, {passive: true});
+                    btn.addEventListener('mouseup', clearPress);
+                    btn.addEventListener('mouseleave', clearPress);
+                    btn.addEventListener('touchend', clearPress);
+                    btn.addEventListener('touchmove', clearPress, {passive: true});
+                    btn.onclick = (e) => {
+                        if (isLongPress) { e.preventDefault(); return; }
                         RatingEngine.trackStart(item.id, getCanonicalName(channelName), i);
                         window.location.href = `acestream://${item.id}`;
                     };

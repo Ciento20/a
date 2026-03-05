@@ -960,7 +960,17 @@
             localStorage.setItem('last_visit_date', currentHash);
         };
 
-        window.addEventListener('focus', checkDateChange);
+        window.addEventListener('focus', () => {
+            checkDateChange();
+            if (window.syncMarker) window.syncMarker();
+            if (typeof UIManager !== 'undefined' && state.tvSearchTerm === '') UIManager.refresh();
+        });
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) {
+                if (window.syncMarker) window.syncMarker();
+                if (typeof UIManager !== 'undefined' && state.tvSearchTerm === '') UIManager.refresh();
+            }
+        });
         checkDateChange();
         scheduleMidnightRefresh();
         </script></body></html>

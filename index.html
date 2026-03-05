@@ -755,28 +755,8 @@
                         <small style="flex: 1; text-align: left; color: var(--text-muted); font-size: 0.6rem; font-weight: 700; opacity: 0.6; letter-spacing: 0.5px;">${item.source || 'ID'}</small>
                         <span style="flex: 2; text-align: center; font-family: monospace; opacity: 0.9;">${item.id.substring(0, 10).toUpperCase()}</span>
                         <span class="id-rating" style="flex: 1; text-align: right;">★ ${currentRating.toFixed(1)}</span>
-                    `;                    let isLongPress = false;
-                    let pressTimer;
-                    const startPress = () => {
-                        isLongPress = false;
-                        pressTimer = setTimeout(() => {
-                            isLongPress = true;
-                            navigator.clipboard.writeText(item.id).then(() => {
-                                const originalHtml = btn.innerHTML;
-                                btn.innerHTML = '<div style="width:100%;text-align:center;color:var(--accent-blue);font-weight:bold;">¡ID Copiado!</div>';
-                                setTimeout(() => btn.innerHTML = originalHtml, 1200);
-                            });
-                        }, 550);
-                    };
-                    const clearPress = () => clearTimeout(pressTimer);
-                    btn.addEventListener('mousedown', startPress);
-                    btn.addEventListener('touchstart', startPress, {passive: true});
-                    btn.addEventListener('mouseup', clearPress);
-                    btn.addEventListener('mouseleave', clearPress);
-                    btn.addEventListener('touchend', clearPress);
-                    btn.addEventListener('touchmove', clearPress, {passive: true});
-                    btn.onclick = (e) => {
-                        if (isLongPress) { e.preventDefault(); return; }
+                    `;
+                    btn.onclick = () => {
                         RatingEngine.trackStart(item.id, getCanonicalName(channelName), i);
                         window.location.href = `acestream://${item.id}`;
                     };
@@ -969,15 +949,31 @@
                 location.reload();
             }, msUntilRefresh);
         };        const checkDateChange = () => {
-            const currentHash = localStorage.getItem('current_data_hash');
-            const lastHash = localStorage.getItem('last_visit_date');
-            if (lastHash && lastHash !== currentHash) {
-                localStorage.removeItem('event_data_cache');
-                if (typeof UIManager !== 'undefined' && UIManager.refresh) {
-                    UIManager.refresh();
+            const todayDate = new Date().toDateString();
+            const lastVisit = localStorage.getItem('last_visit_date');
+            
+            if (lastVisit && lastVisit !== todayDate) {
+                localStorage.setItem('last_visit_date', todayDate);
+                
+                // Doble verificación: comprobar si la caché contiene eventos útiles aún
+                const cache = JSON.parse(localStorage.getItem('event_data_cache')) || [];
+                const allExpired = cache.length > 0 && cache.every(event => {
+                    if (!event.fecha.toUpperCase().includes('HOY')) return false;
+                    const [h, m] = event.hora.split(':').map(Number);
+                    const evTime = new Date();
+                    evTime.setHours(h, m, 0, 0);
+                    return new Date() > evTime;
+                });
+
+                if (allExpired) {
+                    localStorage.removeItem('event_data_cache');
                 }
+                
+                // Forzar recarga para intentar obtener datos frescos de la web sin dejar la app en blanco
+                location.reload();
+            } else if (!lastVisit) {
+                localStorage.setItem('last_visit_date', todayDate);
             }
-            localStorage.setItem('last_visit_date', currentHash);
         };
 
         window.addEventListener('focus', () => {

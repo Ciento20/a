@@ -948,31 +948,33 @@
                 localStorage.removeItem('event_data_cache');
                 location.reload();
             }, msUntilRefresh);
-        };        const checkDateChange = () => {
-            const todayDate = new Date().toDateString();
-            const lastVisit = localStorage.getItem('last_visit_date');
-            
-            if (lastVisit && lastVisit !== todayDate) {
-                localStorage.setItem('last_visit_date', todayDate);
+        };        const checkDateChange = async () => {
+            try {
+                // 1. Comprobamos la web silenciosamente en segundo plano
+                const html = await NetworkService.fetchHtml(CONFIG.TARGET_URL);
+                const freshData = DataParser.parse(html);
                 
-                // Doble verificación: comprobar si la caché contiene eventos útiles aún
-                const cache = JSON.parse(localStorage.getItem('event_data_cache')) || [];
-                const allExpired = cache.length > 0 && cache.every(event => {
-                    if (!event.fecha.toUpperCase().includes('HOY')) return false;
-                    const [h, m] = event.hora.split(':').map(Number);
-                    const evTime = new Date();
-                    evTime.setHours(h, m, 0, 0);
-                    return new Date() > evTime;
-                });
-
-                if (allExpired) {
-                    localStorage.removeItem('event_data_cache');
+                // 2. Doble verificación: procedemos solo si la web devolvió datos válidos
+                if (freshData && freshData.length > 0) {
+                    // 3. Generamos el Hash real de los eventos obtenidos
+                    const newHash = AceStreamEngine.generateHash(JSON.stringify(freshData));
+                    const storedHash = localStorage.getItem('current_data_hash');
+                    
+                    // 4. Si el Hash cambia, significa que FTV ha actualizado la web
+                    if (newHash !== storedHash) {
+                        localStorage.setItem('current_data_hash', newHash);
+                        globalData = freshData;
+                        localStorage.setItem('event_data_cache', JSON.stringify(freshData));
+                        
+                        // Actualizamos la interfaz sin que el usuario tenga que recargar
+                        if (typeof UIManager !== 'undefined' && state.tvSearchTerm === '') {
+                            UIManager.refresh();
+                        }
+                    }
                 }
-                
-                // Forzar recarga para intentar obtener datos frescos de la web sin dejar la app en blanco
-                location.reload();
-            } else if (!lastVisit) {
-                localStorage.setItem('last_visit_date', todayDate);
+            } catch (e) {
+                // Si no hay red o la web da error, abortamos.
+                // Mantenemos la caché antigua intacta para que NUNCA se quede en blanco.
             }
         };
 

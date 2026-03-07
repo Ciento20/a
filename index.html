@@ -473,15 +473,21 @@
                     window.scrollTo(0,0);
                 }, 50);
             },            lastEventsHTML: '',            refresh() {
-                globalData.forEach(item => { item.isLive = LiveEngine.checkLive(item); });
+                let stateChanged = !document.getElementById('real-time-marker');
+                globalData.forEach(item => { 
+                    const newLiveState = LiveEngine.checkLive(item);
+                    if (item.isLive !== newLiveState) stateChanged = true;
+                    item.isLive = newLiveState;
+                });
                 const processed = [...globalData].sort((a, b) => (a.isLive === b.isLive) ? 0 : a.isLive ? -1 : 1);
                 
                 if (currentTab === 'home') {
-                    if (state.tvSearchTerm === '' && this.lastEventsHTML) {
+                    if (state.tvSearchTerm === '' && this.lastEventsHTML && !stateChanged) {
                         if (this.container.innerHTML !== this.lastEventsHTML) {
                             this.container.innerHTML = this.lastEventsHTML;
                         }
                     } else {
+                        this.lastEventsHTML = '';
                         this.renderEvents(processed);
                     }
                 } else {
@@ -913,12 +919,8 @@
             return timeStr;
         };        const startMasterClock = () => {
             const forceUpdate = () => {
-                // Actualización quirúrgica del texto del marcador
                 window.syncMarker();
-                
-                // El refresh completo solo ocurre si el marcador NO existe o si hay cambios de estado reales,
-                // pero para el cambio de minuto basta con actualizar el texto del elemento.
-                if (typeof UIManager !== 'undefined' && state.tvSearchTerm === '' && !document.getElementById('real-time-marker')) {
+                if (typeof UIManager !== 'undefined' && state.tvSearchTerm === '') {
                     UIManager.refresh();
                 }
             };

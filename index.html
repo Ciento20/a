@@ -55,14 +55,12 @@
                 }
                 
                 if (name) entry.name = name;
-                entry.score = Math.max(1.0, Math.min(5.0, entry.score + delta));
+                entry.score = Math.max(0.0, Math.min(5.0, entry.score + delta));
                 
                 db[id] = entry;
                 localStorage.setItem(this.DB_KEY, JSON.stringify(db));
-            },
-
-            trackStart(id, channelName, index = 0) {
-                this.checkPreviousSession();
+            },            trackStart(id, channelName, index = 0) {
+                this.checkPreviousSession(channelName);
                 const now = Date.now();
                 this.stopRealTimeUpdate();
                 
@@ -82,23 +80,44 @@
                 localStorage.removeItem(this.PENDING_KEY);
             },
 
-            checkPreviousSession() {
+            checkPreviousSession(newChannelName = null) {
                 const session = JSON.parse(localStorage.getItem(this.SESSION_KEY));
                 if (!session) return;
                 
                 const durationSec = (Date.now() - session.start) / 1000;
                 
-                if (durationSec < 90) {
-                    // Penalización persistente con nombre
-                    this.saveScore(session.id, -0.5, session.channelName);
-                    
-                    localStorage.setItem(this.PENDING_KEY, JSON.stringify({
-                        id: session.id,
-                        timestamp: Date.now()
-                    }));
-                } else {
+                if (durationSec >= 90) {
+                    localStorage.removeItem(this.SESSION_KEY);
                     localStorage.removeItem(this.PENDING_KEY);
+                    return;
                 }
+
+                // Evento focus sin pulsar nada (esperamos 4s por si es zapping)
+                if (!newChannelName) {
+                    if (this.focusTimer) return;
+                    this.focusTimer = setTimeout(() => {
+                        this.saveScore(session.id, -0.5, session.channelName);
+                        localStorage.setItem(this.PENDING_KEY, JSON.stringify({ id: session.id, timestamp: Date.now() }));
+                        localStorage.removeItem(this.SESSION_KEY);
+                        this.focusTimer = null;
+                    }, 4000);
+                    return;
+                }
+
+                // Se pulsó un canal, cancelamos el timer de focus
+                if (this.focusTimer) {
+                    clearTimeout(this.focusTimer);
+                    this.focusTimer = null;
+                }
+
+                // Reintento en el MISMO canal (falla el primer link, prueba el siguiente)
+                if (newChannelName === session.channelName) {
+                    this.saveScore(session.id, -0.5, session.channelName);
+                    localStorage.setItem(this.PENDING_KEY, JSON.stringify({ id: session.id, timestamp: Date.now() }));
+                }
+                
+                // Limpiamos sesión tanto si fue reintento como zapping
+                localStorage.removeItem(this.SESSION_KEY);
             },
 
             startRealTimeUpdate() {
@@ -754,7 +773,7 @@
                     let currentRating = RatingEngine.getScore(item.id);
                     const pending = JSON.parse(localStorage.getItem(RatingEngine.PENDING_KEY));
                     if (pending && pending.id === item.id) {
-                        currentRating = Math.max(1.0, currentRating - 1.5);
+                        currentRating = Math.max(0.0, currentRating - 1.5);
                     }
                     const btn = document.createElement('div');
                     btn.className = 'id-item';                    btn.innerHTML = `

@@ -100,7 +100,7 @@
                         localStorage.setItem(this.PENDING_KEY, JSON.stringify({ id: session.id, timestamp: Date.now() }));
                         localStorage.removeItem(this.SESSION_KEY);
                         this.focusTimer = null;
-                    }, 4000);
+                    }, 60000);
                     return;
                 }
 

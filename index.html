@@ -86,7 +86,7 @@
                 
                 const durationSec = (Date.now() - session.start) / 1000;
                 
-                if (durationSec >= 90) {
+                if (durationSec >= 2400) {
                     localStorage.removeItem(this.SESSION_KEY);
                     localStorage.removeItem(this.PENDING_KEY);
                     return;

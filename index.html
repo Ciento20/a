@@ -1009,8 +1009,7 @@
                         e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
                     });`;
                 const blob = new Blob([swCode], {type: 'text/javascript'});
-                navigator.serviceWorker.register(URL.createObjectURL(blob), { scope: './' })
-                    .then(reg => reg.update());
+                navigator.serviceWorker.register(URL.createObjectURL(blob), { scope: './' });
             });
         }
         </script></body></html>

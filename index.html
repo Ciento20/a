@@ -86,37 +86,26 @@
                 
                 const durationSec = (Date.now() - session.start) / 1000;
                 
+                // Si la sesión es mayor a 40 min, se limpia sin penalizar (visto con éxito)
                 if (durationSec >= 2400) {
                     localStorage.removeItem(this.SESSION_KEY);
                     localStorage.removeItem(this.PENDING_KEY);
                     return;
                 }
 
-                // Evento focus sin pulsar nada (esperamos 4s por si es zapping)
-                if (!newChannelName) {
-                    if (this.focusTimer) return;
-                    this.focusTimer = setTimeout(() => {
-                        this.saveScore(session.id, -0.5, session.channelName);
-                        localStorage.setItem(this.PENDING_KEY, JSON.stringify({ id: session.id, timestamp: Date.now() }));
-                        localStorage.removeItem(this.SESSION_KEY);
-                        this.focusTimer = null;
-                    }, 60000);
-                    return;
-                }
+                // Si es solo un evento de focus (sin clic), no hacemos nada para evitar penalizaciones falsas
+                if (!newChannelName) return;
 
-                // Se pulsó un canal, cancelamos el timer de focus
-                if (this.focusTimer) {
-                    clearTimeout(this.focusTimer);
-                    this.focusTimer = null;
-                }
-
-                // Reintento en el MISMO canal (falla el primer link, prueba el siguiente)
+                // Si se pulsó un canal (newChannelName existe):
                 if (newChannelName === session.channelName) {
+                    // Reintento en el MISMO canal: El ID anterior probablemente no cargó
                     this.saveScore(session.id, -0.5, session.channelName);
                     localStorage.setItem(this.PENDING_KEY, JSON.stringify({ id: session.id, timestamp: Date.now() }));
+                } else if (durationSec < 40) {
+                    // Cambio a OTRO canal en menos de 40s: Zapping por posible mala calidad
+                    this.saveScore(session.id, -0.2, session.channelName);
                 }
                 
-                // Limpiamos sesión tanto si fue reintento como zapping
                 localStorage.removeItem(this.SESSION_KEY);
             },
 

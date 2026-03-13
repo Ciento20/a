@@ -85,25 +85,29 @@
                 if (!session) return;
                 
                 const durationSec = (Date.now() - session.start) / 1000;
+                const minutesSpent = Math.floor(durationSec / 60);
+
+                // RECUPERACIÓN DE PUNTOS POSITIVOS: 
+                // Si estuviste viendo el canal y la sesión se cierra/cambia,
+                // calculamos si te correspondían puntos que el intervalo no llegó a dar.
+                const pendingPoints = Math.floor((minutesSpent - (session.lastProcessedMin || 0)) / 30);
+                if (pendingPoints > 0) {
+                    this.saveScore(session.id, pendingPoints * 1.0, session.channelName);
+                }
                 
-                // Limpiar sesiones antiguas (más de 40 min)
                 if (durationSec >= 2400) {
                     localStorage.removeItem(this.SESSION_KEY);
                     localStorage.removeItem(this.PENDING_KEY);
                     return;
                 }
 
-                // Si no hay clic en canal nuevo, ignoramos (evita errores al recuperar foco)
                 if (!newChannelName) return;
 
-                // ÚNICA PENALIZACIÓN: Reintento manual en el MISMO canal
-                // Indica que el enlace anterior no funcionó.
                 if (newChannelName === session.channelName) {
                     this.saveScore(session.id, -0.5, session.channelName);
                     localStorage.setItem(this.PENDING_KEY, JSON.stringify({ id: session.id, timestamp: Date.now() }));
                 }
                 
-                // El zapping entre canales diferentes ahora es GRATIS (0 penalización)
                 localStorage.removeItem(this.SESSION_KEY);
             },
 

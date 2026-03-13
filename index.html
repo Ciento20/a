@@ -41,17 +41,16 @@
             
             getScore(id) { 
                 const entry = this.getDB()[id];
-                if (!entry) return 3.0;
-                return (typeof entry === 'object') ? (entry.score || 3.0) : entry;
+                if (!entry) return 2.0;
+                return (typeof entry === 'object') ? (entry.score || 2.0) : entry;
             },
 
             saveScore(id, delta, name = "") {
                 const db = this.getDB();
                 let entry = db[id];
 
-                // Normalizar entrada (migración de legacy a objeto)
                 if (!entry || typeof entry !== 'object') {
-                    entry = { score: entry || 3.0, name: name || "Desconocido" };
+                    entry = { score: entry || 2.0, name: name || "Desconocido" };
                 }
                 
                 if (name) entry.name = name;
@@ -59,7 +58,9 @@
                 
                 db[id] = entry;
                 localStorage.setItem(this.DB_KEY, JSON.stringify(db));
-            },            trackStart(id, channelName, index = 0) {
+            },            
+
+            trackStart(id, channelName, index = 0) {
                 this.checkPreviousSession(channelName);
                 const now = Date.now();
                 this.stopRealTimeUpdate();
@@ -76,39 +77,36 @@
                 this.startRealTimeUpdate();
             },
 
-            processFocusReturn(newChannelName) {
-                localStorage.removeItem(this.PENDING_KEY);
-            },
-
             checkPreviousSession(newChannelName = null) {
                 const session = JSON.parse(localStorage.getItem(this.SESSION_KEY));
                 if (!session) return;
                 
-                const durationSec = (Date.now() - session.start) / 1000;
-                const minutesSpent = Math.floor(durationSec / 60);
-
-                // RECUPERACIÓN DE PUNTOS POSITIVOS: 
-                // Si estuviste viendo el canal y la sesión se cierra/cambia,
-                // calculamos si te correspondían puntos que el intervalo no llegó a dar.
-                const pendingPoints = Math.floor((minutesSpent - (session.lastProcessedMin || 0)) / 30);
-                if (pendingPoints > 0) {
-                    this.saveScore(session.id, pendingPoints * 1.0, session.channelName);
+                const minutesSpent = Math.floor((Date.now() - session.start) / 60000);
+                
+                // Cómputo justo: Si vuelve tras mucho tiempo, recuperamos hasta 1.5 puntos (90 min)
+                const recoveryPoints = Math.min(1.5, Math.floor(minutesSpent / 30) * 0.5);
+                
+                if (recoveryPoints > 0) {
+                    this.saveScore(session.id, recoveryPoints, session.channelName);
                 }
                 
-                if (durationSec >= 2400) {
+                // Si la sesión es antigua (>30min) o hay cambio de canal, cerramos para nueva sesión
+                if (minutesSpent >= 30 || (newChannelName && newChannelName !== session.channelName)) {
                     localStorage.removeItem(this.SESSION_KEY);
-                    localStorage.removeItem(this.PENDING_KEY);
-                    return;
+                    if (minutesSpent >= 30) localStorage.removeItem(this.PENDING_KEY);
                 }
 
-                if (!newChannelName) return;
+                if (newChannelName && newChannelName === session.channelName) {
+                    let penalty = 0;
+                    if (minutesSpent < 5) penalty = -1.5;
+                    else if (minutesSpent < 15) penalty = -1.0;
+                    else if (minutesSpent < 25) penalty = -0.5;
 
-                if (newChannelName === session.channelName) {
-                    this.saveScore(session.id, -0.5, session.channelName);
-                    localStorage.setItem(this.PENDING_KEY, JSON.stringify({ id: session.id, timestamp: Date.now() }));
+                    if (penalty !== 0) {
+                        this.saveScore(session.id, penalty, session.channelName);
+                        localStorage.setItem(this.PENDING_KEY, JSON.stringify({ id: session.id, timestamp: Date.now() }));
+                    }
                 }
-                
-                localStorage.removeItem(this.SESSION_KEY);
             },
 
             startRealTimeUpdate() {
@@ -119,7 +117,7 @@
                     const min = (Date.now() - session.start) / 60000;
                     
                     if (min >= 30 && (min - session.lastProcessedMin) >= 30) {
-                        this.saveScore(session.id, 1.0, session.channelName);
+                        this.saveScore(session.id, 0.5, session.channelName);
                         session.lastProcessedMin = Math.floor(min / 30) * 30;
                         localStorage.setItem(this.SESSION_KEY, JSON.stringify(session));
                     }

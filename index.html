@@ -900,15 +900,7 @@
                     UIManager.status.textContent = "Error de red. Usando caché.";
                 }
             }
-        }        init();        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                const swCode = `
-                    self.addEventListener('install', e => self.skipWaiting());
-                    self.addEventListener('fetch', e => e.respondWith(fetch(e.request).catch(() => caches.match(e.request))));`;
-                const blob = new Blob([swCode], {type: 'text/javascript'});
-                navigator.serviceWorker.register(URL.createObjectURL(blob), { scope: './' });
-            });
-        }        window.syncMarker = () => {
+        }        init();        window.syncMarker = () => {
             const marker = document.getElementById('real-time-marker');
             const now = new Date();
             const timeStr = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
@@ -1003,6 +995,22 @@
                 if (typeof UIManager !== 'undefined' && state.tvSearchTerm === '') UIManager.refresh();
             }
         });
-        checkDateChange();
-        scheduleMidnightRefresh();
+        checkDateChange();        scheduleMidnightRefresh();
+
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                const swCode = `
+                    const CACHE_NAME = 'tv-final-v1';
+                    self.addEventListener('install', e => {
+                        self.skipWaiting();
+                        e.waitUntil(caches.open(CACHE_NAME).then(c => c.addAll([location.pathname])));
+                    });
+                    self.addEventListener('fetch', e => {
+                        e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
+                    });`;
+                const blob = new Blob([swCode], {type: 'text/javascript'});
+                navigator.serviceWorker.register(URL.createObjectURL(blob), { scope: './' })
+                    .then(reg => reg.update());
+            });
+        }
         </script></body></html>

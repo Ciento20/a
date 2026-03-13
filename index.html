@@ -34,35 +34,21 @@
         };        const RatingEngine = {
             DB_KEY: 'ace_autorating_v1',
             SESSION_KEY: 'ace_current_session',
-            PENDING_KEY: 'ace_pending_penalties_list',
+            PENDING_KEY: 'ace_pending_penalties_list', // Cambiado a lista para múltiples fallos
             interval: null,
 
             getDB() { return JSON.parse(localStorage.getItem(this.DB_KEY)) || {}; },
-            
-            getScore(id) { 
-                const entry = this.getDB()[id];
-                if (!entry) return 3.0;
-                return (typeof entry === 'object') ? (entry.score || 3.0) : entry;
-            },
-
-            saveScore(id, delta, name = "") {
+            getScore(id) { return this.getDB()[id] || 3.0; },            saveScore(id, delta) {
+                if (delta < 0) return; // Ignorar penalizaciones por zapping
                 const db = this.getDB();
-                let entry = db[id];
-
-                // Normalizar entrada (migración de legacy a objeto)
-                if (!entry || typeof entry !== 'object') {
-                    entry = { score: entry || 3.0, name: name || "Desconocido" };
-                }
-                
-                if (name) entry.name = name;
-                entry.score = Math.max(1.0, Math.min(5.0, entry.score + delta));
-                
-                db[id] = entry;
+                db[id] = Math.max(1.0, Math.min(5.0, (db[id] || 3.0) + delta));
                 localStorage.setItem(this.DB_KEY, JSON.stringify(db));
             },
 
             trackStart(id, channelName, index = 0) {
+                // 1. Antes de iniciar, comprobamos si la sesión anterior fue un 'fracaso' (zapping)
                 this.checkPreviousSession();
+                
                 const now = Date.now();
                 this.stopRealTimeUpdate();
                 
@@ -76,10 +62,8 @@
                 
                 localStorage.setItem(this.SESSION_KEY, JSON.stringify(sessionData));
                 this.startRealTimeUpdate();
-            },
-
-            processFocusReturn(newChannelName) {
-                localStorage.removeItem(this.PENDING_KEY);
+            },            processFocusReturn(newChannelName) {
+                localStorage.removeItem(this.PENDING_KEY); // Resetear sin penalizar al volver
             },
 
             checkPreviousSession() {
@@ -88,28 +72,35 @@
                 
                 const durationSec = (Date.now() - session.start) / 1000;
                 
+                // Si el canal duró menos de 90 segundos, es un fallo de estabilidad/zapping
                 if (durationSec < 90) {
-                    // Penalización persistente con nombre
-                    this.saveScore(session.id, -0.5, session.channelName);
+                    const db = this.getDB();
+                    // Penalizamos directamente el ID que acaba de fallar
+                    db[session.id] = Math.max(1.0, (db[session.id] || 3.0) - 0.5);
+                    localStorage.setItem(this.DB_KEY, JSON.stringify(db));
                     
+                    // Guardamos en pendientes para que la UI lo marque visualmente de inmediato
                     localStorage.setItem(this.PENDING_KEY, JSON.stringify({
                         id: session.id,
                         timestamp: Date.now()
                     }));
                 } else {
+                    // Si duró suficiente, limpiamos marcas de error previas
                     localStorage.removeItem(this.PENDING_KEY);
                 }
-            },
-
-            startRealTimeUpdate() {
+            },            startRealTimeUpdate() {
                 if (this.interval) clearInterval(this.interval);
                 this.interval = setInterval(() => {
                     const session = JSON.parse(localStorage.getItem(this.SESSION_KEY));
                     if (!session) return this.stopRealTimeUpdate();
                     const min = (Date.now() - session.start) / 60000;
-                    
+                    let delta = 0;
                     if (min >= 30 && (min - session.lastProcessedMin) >= 30) {
-                        this.saveScore(session.id, 1.0, session.channelName);
+                        delta = 1.0;
+                    }
+
+                    if (delta > 0) {
+                        this.saveScore(session.id, delta);
                         session.lastProcessedMin = Math.floor(min / 30) * 30;
                         localStorage.setItem(this.SESSION_KEY, JSON.stringify(session));
                     }
@@ -125,15 +116,13 @@
             if (rawUpper.includes("ACB EVENTO 01")) name = "DAZN BALONCESTO";
             if (rawUpper.includes("ACB EVENTO 02")) name = "DAZN BALONCESTO 2";
             if (rawUpper.includes("M. DEPORTES")) name = "M+ DEPORTES";
-            if (rawUpper.includes("M+ ELLAS VAMOS")) name = "M+ ELLAS";
-            if (rawUpper.includes("M+ ELLAS VAMOS")) name = "M+ ELLAS";
-            let cleaned = name.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\(SOLO EVENTOS\)/gi, "").replace(/\( SOLO EVENTOS \)/gi, "");
+            let cleaned = name.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
             if (cleaned.includes("LIGA DE CAMPEONES") && !cleaned.includes("M+")) {
                 cleaned = cleaned.replace("LIGA DE CAMPEONES", "M+ LIGA DE CAMPEONES");
             }
-            cleaned = cleaned.replace(/PLUS\+/g, "PLUS").replace(/\bMOVISTAR\b/g, "M+").replace(/\bM\./g, "M+").replace(/\(ES\)/gi, "").replace(/\bLA LIGA\b/g, "LALIGA").replace(/\bHYPERMOTION\b/g, "LALIGA TV HYPERMOTION").replace(/\bBAR\b/gi, "").replace(/\b(HD|FHD|TVE|4K|1080P|720P)\b/gi, "").replace(/\*/g, "").replace(/\s+/g, " ").trim();
+            cleaned = cleaned.replace(/PLUS\+/g, "PLUS").replace(/\bMOVISTAR\b/g, "M+").replace(/\bM\./g, "M+").replace(/\(ES\)/gi, "").replace(/\bLA LIGA\b/g, "LALIGA").replace(/\bHYPERMOTION\b/g, "LALIGA TV HYPERMOTION").replace(/\bBAR\b/gi, "").replace(/\b(HD|FHD|4K|1080P|720P)\b/gi, "").replace(/\*/g, "").replace(/\s+/g, " ").trim();
             if (cleaned.includes("CALCIO EVENTOS")) { cleaned = cleaned.replace("CALCIO EVENTOS", "SKY SPORTS CALCIO EVENTOS"); }
-            if (cleaned.includes("(1RFEF)") || cleaned.includes("RFEF TV")) { cleaned = "PRIMERA FEDERACION"; }
+            if (cleaned.includes("(1RFEF) (SOLO EVENTOS)")) { cleaned = "PRIMERA FEDERACION"; }
             if (cleaned.includes("DAZN LALIGA")) {
                 cleaned = cleaned.replace(/\b1\b/g, "");
             }
@@ -515,7 +504,7 @@
                 let lastDate = "";
                 renderedList.forEach((item, idx) => {
                     if (item.fecha !== lastDate) {
-                        htmlBuffer += `<div class="date-header" ondblclick="document.getElementById('real-time-marker')?.scrollIntoView({behavior: 'smooth', block: 'center'})">${item.fecha}</div>`;
+                        htmlBuffer += `<div class="date-header">${item.fecha}</div>`;
                         lastDate = item.fecha;
                     }
                     const isLastFinished = idx === lastFinishedIdx;
@@ -536,7 +525,7 @@
                     `;
                     if (isLastFinished) {
                         const now = new Date();
-                        const timeStr = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');                        htmlBuffer += `<div class="date-header" id="time-marker-container" style="position:static; background:transparent; margin:10px 0; animation: blink-marker 2s infinite; z-index:1;"><span class="date-number" id="real-time-marker" style="margin:0">${timeStr}</span></div><style>@keyframes blink-marker{0%,100%{opacity:1}50%{opacity:0.2}}</style>`;
+                        const timeStr = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');                        htmlBuffer += `<div class="date-header" style="position:static; background:transparent; margin:10px 0; animation: blink-marker 2s infinite; z-index:1;"><span class="date-number" id="real-time-marker" style="margin:0">${timeStr}</span></div><style>@keyframes blink-marker{0%,100%{opacity:1}50%{opacity:0.2}}</style>`;
                     }
                 });
                 this.container.innerHTML = htmlBuffer;
@@ -591,7 +580,7 @@
 
                     if (n.includes('ELEVEN') || isForeign) return 4.1;
                     if (n.includes('DAZN')) return 1;
-                    if ((n.includes('M+') && !n.includes('FILM+')) || n.includes('MOVISTAR') || n.includes('LIGA DE CAMPEONES') || n.includes('HYPERMOTION')) return 2;
+                    if (n.includes('M+') || n.includes('MOVISTAR') || n.includes('LIGA DE CAMPEONES') || n.includes('HYPERMOTION')) return 2;
                     if (n.includes('EUROSPORT')) return 3;
                     
                     return 4.1;
@@ -626,8 +615,8 @@
     let contentHtml = '';
     if (title === 'OTROS CANALES') {
         const regions = [
-            
-            
+            { keys: ['[US]', '(US)'], flag: '🇺🇸', id: 'us' },
+            { keys: ['[UK]', '(UK)'], flag: '🇬🇧', id: 'uk' },
             { keys: ['[BE]', '(BE)'], flag: '🇧🇪', id: 'be' },
             { keys: ['[DE]', '(DE)'], flag: '🇩🇪', id: 'de' },
             { keys: ['[TR]', '(TR)'], flag: '🇹🇷', id: 'tr' },
@@ -688,8 +677,14 @@
                 const safeName = name.replace(/'/g, "\\'");
                 let badgeHtml = '';
                 const upperName = clean.toUpperCase();
-                const isSpecialEurosport = upperName.includes('EUROSPORT 1') || upperName.includes('EUROSPORT 2');
-                const logoStyle = isSpecialEurosport ? 'width:95%; height:95%; transform: scale(1.28); padding-left: 8px;' : 'width:80%; height:80%;';
+
+                if (upperName.includes('BALONCESTO')) {
+                    badgeHtml = '<div style="position: absolute; right: 15.4%; top: 50.5%; transform: translateY(-50%); font-size: 36.7px; line-height: 1; z-index: 0; opacity: 0.9;">🏀</div>';
+                }
+
+                if (upperName.includes('VAMOS 2')) {
+                    badgeHtml = '<div style="position: absolute; left: 28px; bottom: 12px; color: #1ec33c; font-weight: 900; font-size: 1.5rem; z-index: 2;">2</div>';
+                }
 
                 return `<div class="channel-button" 
                              onclick="UIManager.handleChannelClick(event, '${safeName}')"
@@ -700,7 +695,7 @@
                              ontouchmove="const moveY = Math.abs(event.touches[0].clientY - UIManager.touchStartY); if(moveY > 10) UIManager.clearLongPress();"
                              ontouchend="UIManager.clearLongPress()">
                         ${badgeHtml}
-                        ${logoUrl ? `<img src="${logoUrl}" class="channel-logo" style="position:relative; z-index:2; pointer-events:none; ${logoStyle}" onerror="this.outerHTML='<span>${clean}</span>'">` : `<span style="position:relative; z-index:2; pointer-events:none;">${clean}</span>`}
+                        ${logoUrl ? `<img src="${logoUrl}" class="channel-logo" style="position:relative; z-index:2; pointer-events:none;" onerror="this.outerHTML='<span>${clean}</span>'">` : `<span style="position:relative; z-index:2; pointer-events:none;">${clean}</span>`}
                     </div>`;
             },            longPressTimer: null,
             isLongPress: false,
@@ -928,7 +923,9 @@
                 const blob = new Blob([swCode], {type: 'text/javascript'});
                 navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(() => {});
             });
-        }        window.syncMarker = () => {
+        }
+
+        window.syncMarker = () => {
             const marker = document.getElementById('real-time-marker');
             const now = new Date();
             const timeStr = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
@@ -936,29 +933,33 @@
                 marker.textContent = timeStr;
             }
             return timeStr;
-        };        const startMasterClock = () => {
+        };
+
+        const startMasterClock = () => {
             const forceUpdate = () => {
-                // Actualización quirúrgica del texto del marcador
-                window.syncMarker();
-                
-                // El refresh completo solo ocurre si el marcador NO existe o si hay cambios de estado reales,
-                // pero para el cambio de minuto basta con actualizar el texto del elemento.
-                if (typeof UIManager !== 'undefined' && state.tvSearchTerm === '' && !document.getElementById('real-time-marker')) {
+                // 1. Actualizar la lógica de datos
+                if (typeof UIManager !== 'undefined') {
+                    UIManager.lastEventsHTML = ''; // Forzar regeneración de HTML
                     UIManager.refresh();
                 }
+                // 2. Actualizar el reloj visual inmediatamente
+                const timeStr = window.syncMarker();
+                console.log('Update ejecutado a las: ' + timeStr);
             };
 
+            // Ejecutar cada vez que cambia el minuto exacto
             const scheduleNext = () => {
                 const now = new Date();
                 const msUntilNextMinute = (60 - now.getSeconds()) * 1000 - now.getMilliseconds();
                 
                 setTimeout(() => {
                     forceUpdate();
-                    scheduleNext();
+                    scheduleNext(); // Re-programar para el siguiente minuto exacto
                 }, msUntilNextMinute);
             };
 
             scheduleNext();
+            // Ejecución inmediata al cargar para asegurar que el reloj no espere al primer minuto
             window.syncMarker();
         };
         startMasterClock();
@@ -966,7 +967,7 @@
         // Lógica de autorefresco a las 00:00:03
         const scheduleMidnightRefresh = () => {
             const now = new Date();
-            const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 5, 0);
+            const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 5);
             const msUntilRefresh = midnight.getTime() - now.getTime();
             
             setTimeout(() => {

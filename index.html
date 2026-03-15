@@ -387,19 +387,24 @@
                         'GOLF': { n: 'sports_golf', c: 'LightGreen' },
                         'BALONMANO': { n: 'sports_handball', c: 'Tomato' },
                         'UFC': { n: 'sports_mma', c: 'LightSalmon' }, 'BOXEO': { n: 'sports_mma', c: 'Crimson' }, 'MMA': { n: 'sports_mma', c: 'LightSalmon' },
-                        'HOCKEY': { n: 'database', c: 'FireBrick' },
+                        'HOCKEY': { n: 'database', c: 'LightSteelBlue' },
                         'RUGBY U': { n: 'sports_rugby', c: 'DarkKhaki' }, 'WATERPOLO': { n: 'water_polo', c: 'aquamarine' }, 'ATLETISMO': { n: 'sprint', c: 'SlateBlue' } 
                     };
-                    window.GLOBAL_ICON_MAP = iconMap;
-
-                    let iconData = { n: 'trophy', c: '#ffc107' };
+                    window.GLOBAL_ICON_MAP = iconMap;                    let iconData = { n: 'trophy', c: '#ffc107' };
                     for (const [key, data] of Object.entries(iconMap)) {
                         if (sportName.includes(key)) {
                             iconData = data;
                             break;
                         }
+                    }                    let iconHtml = '';
+                    if (iconData.n === 'database') {
+                        // Diseño Pro: SVG de hockey de un solo tono plano y sólido
+                        iconHtml = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" style="margin-right:6px;vertical-align:middle;"><ellipse cx="12" cy="9" rx="10" ry="3" fill="${iconData.c}"/><path d="M2 10.5v4.5c0 1.66 4.48 3 10 3s10-1.34 10-3v-4.5c0 1.66-4.48 3-10 3s-10-1.34-10-3z" fill="${iconData.c}"/></svg>`;
+                    } else {
+                        iconHtml = `<i class="material-symbols-outlined" style="font-variation-settings:'FILL' 1;font-size:1.1rem;margin-right:6px;vertical-align:middle;color:${iconData.c}">${iconData.n}</i>`;
                     }
-                    competition = `<i class="material-symbols-outlined" style="font-variation-settings:'FILL' 1;font-size:1.1rem;margin-right:6px;vertical-align:middle;color:${iconData.c}">${iconData.n}</i>` + competition;
+                    
+                    competition = iconHtml + competition;
                     const canales = Array.from(row.querySelectorAll('.listaCanales li'))
                         .map(ch => ch.textContent.trim().split('(')[0].trim());
 

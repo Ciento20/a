@@ -26,7 +26,7 @@
         /* --- Ambilight (modo ambiente en pantalla completa) --- */
         #player-viewport{position:relative;width:100%;overflow:hidden;background:#000;}
         #ambilight-canvas{position:absolute;inset:-10%;width:120%;height:120%;z-index:0;pointer-events:none;opacity:0;filter:blur(clamp(24px,4vw,90px)) saturate(1.6) brightness(1.15);transition:opacity .6s ease;}
-        @media (prefers-reduced-motion: reduce){ #ambilight-canvas{transition:none;} }
+        @media (prefers-reduced-motion: reduce){ #ambilight-canvas{transition:none;} #player-controls{transition:none;} }
         #internal-player-container:fullscreen,#internal-player-container:-webkit-full-screen{width:100%;height:100%;border-radius:0;}
         #internal-player-container:fullscreen #player-viewport,#internal-player-container:-webkit-full-screen #player-viewport{height:100%;display:flex;align-items:center;justify-content:center;}
         #internal-player-container:fullscreen #internal-video,#internal-player-container:-webkit-full-screen #internal-video{height:100%;max-height:100%;width:100%;aspect-ratio:auto;object-fit:contain;}
@@ -560,26 +560,6 @@
             },
 
             handleFullscreenChange() {
-                const fsEl = document.fullscreenElement || document.webkitFullscreenElement;
-
-                // El botón nativo del <video> pone en fullscreen el propio <video>, no el
-                // contenedor, y eso deja el canvas de ambilight fuera (los navegadores solo
-                // renderizan el elemento fullscreen y sus descendientes). Lo redirigimos al
-                // contenedor para que el canvas de fondo siga siendo visible.
-                if (fsEl && fsEl === this.video && this.container) {
-                    const exit = document.exitFullscreen
-                        ? document.exitFullscreen.bind(document)
-                        : (document.webkitExitFullscreen ? document.webkitExitFullscreen.bind(document) : null);
-                    const container = this.container;
-                    if (exit) {
-                        Promise.resolve(exit()).catch(() => {}).then(() => {
-                            const req = container.requestFullscreen || container.webkitRequestFullscreen;
-                            if (req) req.call(container);
-                        });
-                    }
-                    return;
-                }
-
                 if (this.isFullscreen()) {
                     this.resizeCanvas();
                     this.maybeStart();
@@ -681,7 +661,14 @@
                         </div>
                         <div id="player-viewport">
                             <canvas id="ambilight-canvas"></canvas>
-                            <video id="internal-video" autoplay controls playsinline style="position:relative;z-index:1;width:100%;aspect-ratio:16/9;background:#000;display:block;object-fit:contain;"></video>
+                            <video id="internal-video" autoplay playsinline style="position:relative;z-index:1;width:100%;aspect-ratio:16/9;background:#000;display:block;object-fit:contain;cursor:pointer;"></video>
+                            <div id="player-controls" style="position:absolute;left:0;right:0;bottom:0;z-index:2;display:flex;align-items:center;gap:10px;padding:8px 12px;background:linear-gradient(transparent, rgba(0,0,0,.75));transition:opacity .25s ease;opacity:1;">
+                                <button id="btn-play" style="background:none;border:none;color:#fff;font-size:1.1rem;cursor:pointer;line-height:1;padding:4px;">⏸</button>
+                                <button id="btn-mute" style="background:none;border:none;color:#fff;font-size:1rem;cursor:pointer;line-height:1;padding:4px;">🔊</button>
+                                <input id="volume-slider" type="range" min="0" max="1" step="0.05" value="1" style="width:70px;accent-color:var(--accent-blue, #3b82f6);">
+                                <div style="flex:1;"></div>
+                                <button id="btn-fullscreen" style="background:none;border:none;color:#fff;font-size:1.1rem;cursor:pointer;line-height:1;padding:4px;" title="Pantalla completa">⛶</button>
+                            </div>
                         </div>
                     </div>`;
                 document.body.insertAdjacentHTML('beforeend', playerHtml);
@@ -725,6 +712,55 @@
 
                 const ambilightCanvas = document.getElementById('ambilight-canvas');
                 Ambilight.init(video, ambilightCanvas, el);
+
+                // --- Controles propios (sin depender del fullscreen nativo del <video>) ---
+                const btnPlay = document.getElementById('btn-play');
+                const btnMute = document.getElementById('btn-mute');
+                const volumeSlider = document.getElementById('volume-slider');
+                const btnFullscreen = document.getElementById('btn-fullscreen');
+                const playerControls = document.getElementById('player-controls');
+                const viewport = document.getElementById('player-viewport');
+
+                const togglePlay = () => { video.paused ? video.play().catch(() => {}) : video.pause(); };
+                btnPlay.onclick = togglePlay;
+                video.addEventListener('click', togglePlay);
+                video.addEventListener('play', () => { btnPlay.textContent = '⏸'; });
+                video.addEventListener('pause', () => { btnPlay.textContent = '▶'; });
+
+                btnMute.onclick = () => {
+                    video.muted = !video.muted;
+                    btnMute.textContent = video.muted ? '🔇' : '🔊';
+                };
+                volumeSlider.oninput = (e) => {
+                    const v = parseFloat(e.target.value);
+                    video.volume = v;
+                    video.muted = v === 0;
+                    btnMute.textContent = video.muted ? '🔇' : '🔊';
+                };
+
+                btnFullscreen.onclick = () => {
+                    if (Ambilight.isFullscreen()) {
+                        const exit = document.exitFullscreen || document.webkitExitFullscreen;
+                        if (exit) exit.call(document);
+                    } else {
+                        const req = el.requestFullscreen || el.webkitRequestFullscreen;
+                        if (req) req.call(el);
+                    }
+                };
+
+                // Autoocultar controles tras un rato sin actividad (solo mientras reproduce)
+                let hideControlsTimer = null;
+                const showControls = () => {
+                    playerControls.style.opacity = '1';
+                    if (hideControlsTimer) clearTimeout(hideControlsTimer);
+                    hideControlsTimer = setTimeout(() => {
+                        if (!video.paused) playerControls.style.opacity = '0';
+                    }, 2500);
+                };
+                viewport.addEventListener('mousemove', showControls);
+                viewport.addEventListener('touchstart', showControls);
+                video.addEventListener('pause', showControls);
+                showControls();
 
                 const streamUrl = `http://127.0.0.1:6878/ace/manifest.m3u8?id=${id}`;
                 let isAlive = false;

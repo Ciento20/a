@@ -530,6 +530,7 @@
 
             init(video, canvas, container) {
                 this.destroy(); // por si quedaba una instancia previa colgada
+                this._loggedError = false;
 
                 this.video = video;
                 this.canvas = canvas;
@@ -558,15 +559,27 @@
                 return !!fsEl && fsEl === this.container;
             },
 
-            // Llamado desde el botón de la UI
-            requestFullscreen() {
-                const c = document.getElementById('internal-player-container');
-                if (!c) return;
-                const req = c.requestFullscreen || c.webkitRequestFullscreen;
-                if (req) req.call(c);
-            },
-
             handleFullscreenChange() {
+                const fsEl = document.fullscreenElement || document.webkitFullscreenElement;
+
+                // El botón nativo del <video> pone en fullscreen el propio <video>, no el
+                // contenedor, y eso deja el canvas de ambilight fuera (los navegadores solo
+                // renderizan el elemento fullscreen y sus descendientes). Lo redirigimos al
+                // contenedor para que el canvas de fondo siga siendo visible.
+                if (fsEl && fsEl === this.video && this.container) {
+                    const exit = document.exitFullscreen
+                        ? document.exitFullscreen.bind(document)
+                        : (document.webkitExitFullscreen ? document.webkitExitFullscreen.bind(document) : null);
+                    const container = this.container;
+                    if (exit) {
+                        Promise.resolve(exit()).catch(() => {}).then(() => {
+                            const req = container.requestFullscreen || container.webkitRequestFullscreen;
+                            if (req) req.call(container);
+                        });
+                    }
+                    return;
+                }
+
                 if (this.isFullscreen()) {
                     this.resizeCanvas();
                     this.maybeStart();
@@ -600,7 +613,16 @@
                 if (!this.video || this.video.readyState < 2) return;
                 try {
                     this.ctx.drawImage(this.video, 0, 0, this.canvas.width, this.canvas.height);
-                } catch (e) { /* frame no disponible todavía, se ignora */ }
+                } catch (e) {
+                    // Si el vídeo viene de un origen distinto sin cabeceras CORS, el canvas
+                    // queda "tainted" y drawImage lanza SecurityError en cada frame.
+                    // Lo mostramos UNA vez (no en cada tick) y paramos el bucle.
+                    if (!this._loggedError) {
+                        this._loggedError = true;
+                        console.error('[Ambilight] drawImage falló, probablemente por CORS del stream de vídeo:', e);
+                    }
+                    this.stop();
+                }
             },
 
             destroy() {
@@ -655,14 +677,11 @@
                             <div style="display:flex;align-items:center;pointer-events:none;height:22px;">
                                 ${channelLogosMap[getCanonicalName(name)] ? `<img src="${channelLogosMap[getCanonicalName(name)]}" style="height:100%;max-width:100px;object-fit:contain;filter:drop-shadow(0 0 2px rgba(0,0,0,0.5));">` : `<span style="font-size:0.7rem;font-weight:bold;color:var(--accent-blue);">${name}</span>`}
                             </div>
-                            <div style="display:flex;align-items:center;gap:12px;">
-                                <button id="player-fullscreen-btn" onclick="Ambilight.requestFullscreen()" style="background:none;border:none;color:white;font-size:1rem;cursor:pointer;line-height:1;" title="Pantalla completa">⛶</button>
-                                <button onclick="const p=document.getElementById('internal-player-container'); if(p){const v=p.querySelector('video'); if(v&&v._hls)v._hls.destroy(); Ambilight.destroy(); p.remove();}" style="background:none;border:none;color:white;font-size:1.2rem;cursor:pointer;line-height:1;">&times;</button>
-                            </div>
+                            <button onclick="const p=document.getElementById('internal-player-container'); if(p){const v=p.querySelector('video'); if(v&&v._hls)v._hls.destroy(); Ambilight.destroy(); p.remove();}" style="background:none;border:none;color:white;font-size:1.2rem;cursor:pointer;line-height:1;">&times;</button>
                         </div>
                         <div id="player-viewport">
                             <canvas id="ambilight-canvas"></canvas>
-                            <video id="internal-video" autoplay controls controlslist="nofullscreen" playsinline style="position:relative;z-index:1;width:100%;aspect-ratio:16/9;background:#000;display:block;object-fit:contain;"></video>
+                            <video id="internal-video" autoplay controls playsinline style="position:relative;z-index:1;width:100%;aspect-ratio:16/9;background:#000;display:block;object-fit:contain;"></video>
                         </div>
                     </div>`;
                 document.body.insertAdjacentHTML('beforeend', playerHtml);

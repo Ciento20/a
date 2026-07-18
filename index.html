@@ -23,15 +23,15 @@
             width: 100%;
         }
 
-        /* --- MODO AMBIENTE (Ambilight) para el reproductor interno flotante --- */
-        .video-stage{position:relative;width:100%;aspect-ratio:16/9;background:#000;}
-        .video-stage:fullscreen,.video-stage:-webkit-full-screen,.video-stage:-moz-full-screen,.video-stage:-ms-fullscreen{width:100vw;height:100vh;aspect-ratio:unset;}
-        .video-stage:fullscreen .ambient-canvas,.video-stage:-webkit-full-screen .ambient-canvas{top:0;left:0;width:100%;height:100%;}
-        .ambient-canvas{position:absolute;top:-10%;left:-10%;width:120%;height:120%;z-index:0;filter:blur(28px) saturate(1.7) brightness(1.2);opacity:0;pointer-events:none;transform:translateZ(0);transition:opacity .7s ease;will-change:opacity;}
-        .ambient-canvas.active{opacity:.85}
-        #internal-video{position:relative;z-index:1;border-radius:0 0 12px 12px;object-fit:contain;}
-        .video-stage:fullscreen #internal-video,.video-stage:-webkit-full-screen #internal-video{border-radius:0;}
-        @media (prefers-reduced-motion: reduce){ .ambient-canvas{transition:none} }
+        /* --- Ambilight (modo ambiente en pantalla completa) --- */
+        #player-viewport{position:relative;width:100%;overflow:hidden;background:#000;}
+        #ambilight-canvas{position:absolute;inset:-10%;width:120%;height:120%;z-index:0;pointer-events:none;opacity:0;filter:blur(clamp(24px,4vw,90px)) saturate(1.6) brightness(1.15);transition:opacity .6s ease;}
+        @media (prefers-reduced-motion: reduce){ #ambilight-canvas{transition:none;} }
+        #internal-player-container:fullscreen,#internal-player-container:-webkit-full-screen{width:100%;height:100%;border-radius:0;}
+        #internal-player-container:fullscreen #player-viewport,#internal-player-container:-webkit-full-screen #player-viewport{height:100%;display:flex;align-items:center;justify-content:center;}
+        #internal-player-container:fullscreen #internal-video,#internal-player-container:-webkit-full-screen #internal-video{height:100%;max-height:100%;width:100%;aspect-ratio:auto;object-fit:contain;}
+        #internal-player-container:fullscreen #ambilight-canvas,#internal-player-container:-webkit-full-screen #ambilight-canvas{opacity:1;}
+        #internal-player-container:fullscreen #player-handle,#internal-player-container:-webkit-full-screen #player-handle{position:absolute;top:0;left:0;right:0;z-index:2;background:linear-gradient(rgba(0,0,0,.6),transparent);border-bottom:none;}
         </style></head><body>
     <div id="loader-container">
         <div class="loader-bar"></div>
@@ -518,7 +518,107 @@
                 });
                 return results;
             }
-        };        const UIManager = {
+        };
+
+        const Ambilight = {
+            video: null,
+            canvas: null,
+            ctx: null,
+            container: null,
+            intervalId: null,
+            W: 192, // ancho de baja resolución del canvas
+
+            init(video, canvas, container) {
+                this.destroy(); // por si quedaba una instancia previa colgada
+
+                this.video = video;
+                this.canvas = canvas;
+                this.container = container;
+                this.ctx = canvas.getContext('2d', { alpha: false, willReadFrequently: false });
+
+                this._onPlaying = () => this.maybeStart();
+                this._onPause = () => this.stop();
+                this._onLoadedMeta = () => this.resizeCanvas();
+                this._onFsChange = () => this.handleFullscreenChange();
+
+                video.addEventListener('play', this._onPlaying);
+                video.addEventListener('playing', this._onPlaying);
+                video.addEventListener('pause', this._onPause);
+                video.addEventListener('ended', this._onPause);
+                video.addEventListener('loadedmetadata', this._onLoadedMeta);
+
+                document.addEventListener('fullscreenchange', this._onFsChange);
+                document.addEventListener('webkitfullscreenchange', this._onFsChange);
+
+                this.resizeCanvas();
+            },
+
+            isFullscreen() {
+                const fsEl = document.fullscreenElement || document.webkitFullscreenElement;
+                return !!fsEl && fsEl === this.container;
+            },
+
+            // Llamado desde el botón de la UI
+            requestFullscreen() {
+                const c = document.getElementById('internal-player-container');
+                if (!c) return;
+                const req = c.requestFullscreen || c.webkitRequestFullscreen;
+                if (req) req.call(c);
+            },
+
+            handleFullscreenChange() {
+                if (this.isFullscreen()) {
+                    this.resizeCanvas();
+                    this.maybeStart();
+                } else {
+                    this.stop();
+                }
+            },
+
+            maybeStart() {
+                // Solo pinta el canvas mientras estamos en pantalla completa, para ahorrar CPU/GPU el resto del tiempo
+                if (this.isFullscreen() && this.video && !this.video.paused && !this.intervalId) {
+                    this.resizeCanvas();
+                    this.intervalId = setInterval(() => this.draw(), 66); // ~15fps
+                }
+            },
+
+            stop() {
+                if (this.intervalId) { clearInterval(this.intervalId); this.intervalId = null; }
+            },
+
+            // Ajusta la resolución del canvas a la relación de aspecto real del vídeo (funciona también en vertical)
+            resizeCanvas() {
+                if (!this.canvas || !this.video) return;
+                const vw = this.video.videoWidth || 16;
+                const vh = this.video.videoHeight || 9;
+                this.canvas.width = this.W;
+                this.canvas.height = Math.max(1, Math.round(this.W * (vh / vw)));
+            },
+
+            draw() {
+                if (!this.video || this.video.readyState < 2) return;
+                try {
+                    this.ctx.drawImage(this.video, 0, 0, this.canvas.width, this.canvas.height);
+                } catch (e) { /* frame no disponible todavía, se ignora */ }
+            },
+
+            destroy() {
+                this.stop();
+                if (this.video) {
+                    this.video.removeEventListener('play', this._onPlaying);
+                    this.video.removeEventListener('playing', this._onPlaying);
+                    this.video.removeEventListener('pause', this._onPause);
+                    this.video.removeEventListener('ended', this._onPause);
+                    this.video.removeEventListener('loadedmetadata', this._onLoadedMeta);
+                }
+                document.removeEventListener('fullscreenchange', this._onFsChange);
+                document.removeEventListener('webkitfullscreenchange', this._onFsChange);
+                this.video = null; this.canvas = null; this.ctx = null; this.container = null;
+            }
+        };
+
+        const UIManager = {
             container: document.getElementById('events-container'),
             status: document.getElementById('status'),
             modal: document.getElementById('ids-modal'),
@@ -544,21 +644,25 @@
                         if (v._hls) { v._hls.detachMedia(); v._hls.destroy(); }
                         v.src = ""; v.load();
                     }
+                    Ambilight.destroy();
                     old.remove();
                     await new Promise(r => setTimeout(r, 400));
                 }
 
                 const playerHtml = `
-                    <div id="internal-player-container" style="position:fixed;top:20px;right:20px;width:320px;background:#000;z-index:9999;display:flex;flex-direction:column;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,0.8);border:1px solid #444;touch-action:none;transition: box-shadow 0.3s ease;">
-                        <div id="player-handle" style="padding:8px 12px;display:flex;justify-content:space-between;align-items:center;background:#1a1a1a;border-bottom:1px solid #333;cursor:move;user-select:none;border-radius:12px 12px 0 0;">
+                    <div id="internal-player-container" style="position:fixed;top:20px;right:20px;width:320px;background:#000;z-index:9999;display:flex;flex-direction:column;border-radius:12px;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,0.8);border:1px solid #444;touch-action:none;transition: box-shadow 0.3s ease;">
+                        <div id="player-handle" style="padding:8px 12px;display:flex;justify-content:space-between;align-items:center;background:#1a1a1a;border-bottom:1px solid #333;cursor:move;user-select:none;">
                             <div style="display:flex;align-items:center;pointer-events:none;height:22px;">
                                 ${channelLogosMap[getCanonicalName(name)] ? `<img src="${channelLogosMap[getCanonicalName(name)]}" style="height:100%;max-width:100px;object-fit:contain;filter:drop-shadow(0 0 2px rgba(0,0,0,0.5));">` : `<span style="font-size:0.7rem;font-weight:bold;color:var(--accent-blue);">${name}</span>`}
                             </div>
-                            <button onclick="const p=document.getElementById('internal-player-container'); if(p){const v=p.querySelector('video'); if(v&&v._hls)v._hls.destroy(); window.stopAmbientMode&&window.stopAmbientMode(); p.remove();}" style="background:none;border:none;color:white;font-size:1.2rem;cursor:pointer;line-height:1;">&times;</button>
+                            <div style="display:flex;align-items:center;gap:12px;">
+                                <button id="player-fullscreen-btn" onclick="Ambilight.requestFullscreen()" style="background:none;border:none;color:white;font-size:1rem;cursor:pointer;line-height:1;" title="Pantalla completa">⛶</button>
+                                <button onclick="const p=document.getElementById('internal-player-container'); if(p){const v=p.querySelector('video'); if(v&&v._hls)v._hls.destroy(); Ambilight.destroy(); p.remove();}" style="background:none;border:none;color:white;font-size:1.2rem;cursor:pointer;line-height:1;">&times;</button>
+                            </div>
                         </div>
-                        <div class="video-stage">
-                            <canvas id="ambientCanvas" class="ambient-canvas"></canvas>
-                            <video id="internal-video" autoplay controls style="width:100%;height:100%;background:transparent;display:block;"></video>
+                        <div id="player-viewport">
+                            <canvas id="ambilight-canvas"></canvas>
+                            <video id="internal-video" autoplay controls controlslist="nofullscreen" playsinline style="position:relative;z-index:1;width:100%;aspect-ratio:16/9;background:#000;display:block;object-fit:contain;"></video>
                         </div>
                     </div>`;
                 document.body.insertAdjacentHTML('beforeend', playerHtml);
@@ -600,120 +704,8 @@
                     setTimeout(() => { video.play().catch(() => {}); }, 100);
                 });
 
-                /* --- MODO AMBIENTE (Ambilight) ---
-                   Mismo truco que en el reproductor principal: un <canvas> pequeño
-                   pintado en cada fotograma del vídeo, escalado y desenfocado por CSS
-                   para crear un halo de color alrededor del reproductor flotante.
-                   Solo se activa cuando está en PANTALLA COMPLETA, usando el botón
-                   de fullscreen nativo que ya trae el <video> (controls). Como el
-                   navegador solo pondría en fullscreen al propio <video> (y así no
-                   se vería el canvas, que es un hermano suyo), interceptamos ese
-                   evento y redirigimos el fullscreen real al contenedor .video-stage. */
-                (function initAmbientForInternalPlayer() {
-                    let ambientRAF = null;
-                    let ambientCtx = null;
-                    let lastAmbientDraw = 0;
-                    let redirecting = false;
-                    const AMBIENT_FRAME_MS = 66; // ~15fps
-                    const stage = el.querySelector('.video-stage');
-
-                    function isAmbientEnabled() {
-                        return localStorage.getItem('ambientModeEnabled') !== 'false';
-                    }
-
-                    function getFsElement() {
-                        return document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement;
-                    }
-
-                    function isStageFullscreen() {
-                        return getFsElement() === stage;
-                    }
-
-                    function resizeAmbientCanvas() {
-                        const canvas = document.getElementById('ambientCanvas');
-                        if (!canvas || !stage) return;
-                        const rect = stage.getBoundingClientRect();
-                        if (!rect.width || !rect.height) return;
-                        const AMBIENT_BASE = 192;
-                        const aspect = rect.width / rect.height;
-                        const newW = AMBIENT_BASE;
-                        const newH = Math.max(1, Math.round(AMBIENT_BASE / aspect));
-                        if (canvas.width !== newW || canvas.height !== newH) {
-                            canvas.width = newW;
-                            canvas.height = newH;
-                        }
-                    }
-
-                    function ambientLoop(ts) {
-                        const canvas = document.getElementById('ambientCanvas');
-                        if (!video || !canvas || !document.body.contains(video) || video.paused || video.ended || !isStageFullscreen()) {
-                            window.stopAmbientMode();
-                            return;
-                        }
-                        if (!lastAmbientDraw || (ts - lastAmbientDraw) >= AMBIENT_FRAME_MS) {
-                            lastAmbientDraw = ts;
-                            try {
-                                if (!ambientCtx) ambientCtx = canvas.getContext('2d', { alpha: false });
-                                const cw = canvas.width, ch = canvas.height;
-                                if (video.videoWidth && video.videoHeight) {
-                                    ambientCtx.drawImage(video, 0, 0, cw, ch);
-                                }
-                            } catch (e) { /* el primer fotograma puede no estar listo aún */ }
-                        }
-                        ambientRAF = requestAnimationFrame(ambientLoop);
-                    }
-
-                    window.startAmbientMode = function() {
-                        const canvas = document.getElementById('ambientCanvas');
-                        if (!canvas || !video) return;
-                        if (!isAmbientEnabled() || !isStageFullscreen() || video.paused) { canvas.classList.remove('active'); return; }
-                        resizeAmbientCanvas();
-                        canvas.classList.add('active');
-                        if (ambientRAF) cancelAnimationFrame(ambientRAF);
-                        lastAmbientDraw = 0;
-                        ambientRAF = requestAnimationFrame(ambientLoop);
-                    };
-
-                    window.stopAmbientMode = function() {
-                        if (ambientRAF) { cancelAnimationFrame(ambientRAF); ambientRAF = null; }
-                        const canvas = document.getElementById('ambientCanvas');
-                        if (canvas) canvas.classList.remove('active');
-                    };
-
-                    ['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange'].forEach(ev => {
-                        document.addEventListener(ev, () => {
-                            const fsEl = getFsElement();
-                            // El navegador puso en fullscreen el <video> (botón nativo de sus controles):
-                            // lo redirigimos AL VUELO al contenedor, sin salir de fullscreen antes,
-                            // para no perder el gesto del usuario (eso era lo que provocaba el parpadeo).
-                            if (fsEl === video && !redirecting) {
-                                redirecting = true;
-                                const req = stage.requestFullscreen || stage.webkitRequestFullscreen || stage.mozRequestFullScreen || stage.msRequestFullscreen;
-                                if (req) {
-                                    const p = req.call(stage);
-                                    if (p && p.catch) p.catch(() => { redirecting = false; });
-                                }
-                                return;
-                            }
-                            if (fsEl === stage) {
-                                redirecting = false;
-                                setTimeout(() => { resizeAmbientCanvas(); window.startAmbientMode(); }, 50);
-                                return;
-                            }
-                            if (!fsEl) {
-                                redirecting = false;
-                                window.stopAmbientMode();
-                            }
-                        });
-                    });
-
-                    window.addEventListener('resize', resizeAmbientCanvas);
-                    video.addEventListener('pause', window.stopAmbientMode);
-                    video.addEventListener('ended', window.stopAmbientMode);
-                    video.addEventListener('emptied', window.stopAmbientMode);
-                    video.addEventListener('play', () => { if (isStageFullscreen()) window.startAmbientMode(); });
-                    video.addEventListener('playing', () => { if (isStageFullscreen()) window.startAmbientMode(); });
-                })();
+                const ambilightCanvas = document.getElementById('ambilight-canvas');
+                Ambilight.init(video, ambilightCanvas, el);
 
                 const streamUrl = `http://127.0.0.1:6878/ace/manifest.m3u8?id=${id}`;
                 let isAlive = false;

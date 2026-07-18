@@ -535,12 +535,14 @@
                 this.video = video;
                 this.canvas = canvas;
                 this.container = container;
+                this.viewport = container.querySelector('#player-viewport') || container;
                 this.ctx = canvas.getContext('2d', { alpha: false, willReadFrequently: false });
 
                 this._onPlaying = () => this.maybeStart();
                 this._onPause = () => this.stop();
-                this._onLoadedMeta = () => this.resizeCanvas();
+                this._onLoadedMeta = () => { this.resizeCanvas(); if (this.isFullscreen()) this.fitVideoBox(); };
                 this._onFsChange = () => this.handleFullscreenChange();
+                this._onResize = () => { if (this.isFullscreen()) this.fitVideoBox(); };
 
                 video.addEventListener('play', this._onPlaying);
                 video.addEventListener('playing', this._onPlaying);
@@ -550,6 +552,8 @@
 
                 document.addEventListener('fullscreenchange', this._onFsChange);
                 document.addEventListener('webkitfullscreenchange', this._onFsChange);
+                window.addEventListener('resize', this._onResize);
+                window.addEventListener('orientationchange', this._onResize);
 
                 this.resizeCanvas();
             },
@@ -562,10 +566,47 @@
             handleFullscreenChange() {
                 if (this.isFullscreen()) {
                     this.resizeCanvas();
+                    this.fitVideoBox();
                     this.maybeStart();
                 } else {
                     this.stop();
+                    this.resetVideoBox();
                 }
+            },
+
+            // El object-fit:contain del navegador NO deja hueco real detrás: el letterbox
+            // lo pinta el propio <video> dentro de su caja, tapando el canvas igualmente.
+            // Por eso encogemos la caja del <video> al tamaño EXACTO que ocupa el contenido
+            // real (según su aspect ratio), dejando el resto del contenedor realmente vacío
+            // para que el canvas de ambilight se vea ahí.
+            fitVideoBox() {
+                if (!this.isFullscreen() || !this.video || !this.viewport) return;
+                const vw = this.video.videoWidth;
+                const vh = this.video.videoHeight;
+                if (!vw || !vh) return; // metadata aún no disponible
+
+                const cw = this.viewport.clientWidth;
+                const ch = this.viewport.clientHeight;
+                if (!cw || !ch) return;
+
+                const videoAspect = vw / vh;
+                const containerAspect = cw / ch;
+                let w, h;
+                if (videoAspect > containerAspect) {
+                    // el vídeo es "más ancho" que el hueco disponible -> se ajusta por anchura
+                    w = cw;
+                    h = cw / videoAspect;
+                } else {
+                    // el vídeo es "más alto" (p.ej. contenido vertical en móvil) -> se ajusta por altura
+                    h = ch;
+                    w = ch * videoAspect;
+                }
+                this.video.style.width = Math.round(w) + 'px';
+                this.video.style.height = Math.round(h) + 'px';
+            },
+
+            resetVideoBox() {
+                if (this.video) { this.video.style.width = ''; this.video.style.height = ''; }
             },
 
             maybeStart() {
@@ -616,7 +657,10 @@
                 }
                 document.removeEventListener('fullscreenchange', this._onFsChange);
                 document.removeEventListener('webkitfullscreenchange', this._onFsChange);
-                this.video = null; this.canvas = null; this.ctx = null; this.container = null;
+                window.removeEventListener('resize', this._onResize);
+                window.removeEventListener('orientationchange', this._onResize);
+                this.resetVideoBox();
+                this.video = null; this.canvas = null; this.ctx = null; this.container = null; this.viewport = null;
             }
         };
 

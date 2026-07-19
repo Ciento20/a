@@ -25,7 +25,8 @@
 
         /* --- Ambilight (modo ambiente), réplica exacta de la técnica de referencia --- */
         #player-viewport{position:relative;width:100%;aspect-ratio:16/9;overflow:hidden;background:#000;}
-        #internal-player-container:fullscreen,#internal-player-container:-webkit-full-screen{width:100%;height:100%;border-radius:0;}
+        #internal-player-container:fullscreen,#internal-player-container:-webkit-full-screen{width:100%;height:100%;border-radius:0;border:none;box-shadow:none;}
+        #internal-player-container:fullscreen::backdrop,#internal-player-container:-webkit-full-screen::backdrop{background:#000;}
         #internal-player-container:fullscreen #player-viewport,#internal-player-container:-webkit-full-screen #player-viewport{width:100%;height:100%;aspect-ratio:unset;}
         #internal-video{position:absolute;top:0;left:0;width:100%;height:100%;z-index:1;background:transparent;object-fit:contain;cursor:pointer;}
         #ambilight-canvas{

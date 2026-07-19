@@ -25,7 +25,7 @@
 
         /* --- Ambilight (modo ambiente), réplica exacta de la técnica de referencia --- */
         #player-viewport{position:relative;width:100%;aspect-ratio:16/9;overflow:hidden;background:#000;}
-        #internal-player-container:fullscreen,#internal-player-container:-webkit-full-screen{width:100%;height:100%;border-radius:0;border:none;box-shadow:none;}
+        #internal-player-container:fullscreen,#internal-player-container:-webkit-full-screen{width:100% !important;height:100% !important;border-radius:0 !important;border:none !important;box-shadow:none !important;}
         #internal-player-container:fullscreen::backdrop,#internal-player-container:-webkit-full-screen::backdrop{background:#000;}
         #internal-player-container:fullscreen #player-viewport,#internal-player-container:-webkit-full-screen #player-viewport{width:100%;height:100%;aspect-ratio:unset;}
         #internal-video{position:absolute;top:0;left:0;width:100%;height:100%;z-index:1;background:transparent;object-fit:contain;cursor:pointer;}
@@ -639,14 +639,19 @@
                         // 2) Estiramos el borde exterior REAL del vídeo hacia las franjas,
                         //    para que el color que toca el vídeo sea siempre el de su propio
                         //    borde (da continuidad en vez de mostrar un recorte interior).
-                        const EXT = 1;
+                        // Usamos una franja de ~2% del ancho/alto real (no 1px suelto) para que el
+                        // color de los bordes salga de un promedio y no de un único píxel que
+                        // podría caer justo sobre un logo del canal o un marcador fijo, lo cual
+                        // provocaba un tono claramente distinto entre el lado izquierdo y el derecho.
+                        const EXT = Math.max(2, Math.round(vw * 0.02));
+                        const EXT_V = Math.max(2, Math.round(vh * 0.02));
                         if (dx > 0) {
                             this.ctx.drawImage(this.video, 0, 0, EXT, vh, 0, dy, dx, dh);
                             this.ctx.drawImage(this.video, vw - EXT, 0, EXT, vh, dx + dw, dy, cw - (dx + dw), dh);
                         }
                         if (dy > 0) {
-                            this.ctx.drawImage(this.video, 0, 0, vw, EXT, dx, 0, dw, dy);
-                            this.ctx.drawImage(this.video, 0, vh - EXT, vw, EXT, dx, dy + dh, dw, ch - (dy + dh));
+                            this.ctx.drawImage(this.video, 0, 0, vw, EXT_V, dx, 0, dw, dy);
+                            this.ctx.drawImage(this.video, 0, vh - EXT_V, vw, EXT_V, dx, dy + dh, dw, ch - (dy + dh));
                         }
                     } else {
                         this.ctx.drawImage(this.video, 0, 0, cw, ch);

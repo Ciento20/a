@@ -28,7 +28,7 @@
         #internal-player-container:fullscreen,#internal-player-container:-webkit-full-screen{width:100% !important;height:100% !important;border-radius:0 !important;border:none !important;box-shadow:none !important;}
         #internal-player-container:fullscreen::backdrop,#internal-player-container:-webkit-full-screen::backdrop{background:#000;}
         #internal-player-container:fullscreen #player-viewport,#internal-player-container:-webkit-full-screen #player-viewport{width:100%;height:100%;aspect-ratio:unset;}
-        #internal-video{position:absolute;top:0;left:0;width:100%;height:100%;z-index:1;background:transparent;object-fit:contain;cursor:pointer;}
+        #internal-video{position:absolute;top:0;left:0;width:100%;height:100%;z-index:1;background:transparent;object-fit:contain;}
         #ambilight-canvas{
             position:absolute;
             top:-3%; left:-3%; width:106%; height:106%;
@@ -639,12 +639,12 @@
                         // 2) Estiramos el borde exterior REAL del vídeo hacia las franjas,
                         //    para que el color que toca el vídeo sea siempre el de su propio
                         //    borde (da continuidad en vez de mostrar un recorte interior).
-                        // Usamos una franja de ~2% del ancho/alto real (no 1px suelto) para que el
+                        // Usamos una franja de ~1% del ancho/alto real (no 1px suelto) para que el
                         // color de los bordes salga de un promedio y no de un único píxel que
                         // podría caer justo sobre un logo del canal o un marcador fijo, lo cual
                         // provocaba un tono claramente distinto entre el lado izquierdo y el derecho.
-                        const EXT = Math.max(2, Math.round(vw * 0.02));
-                        const EXT_V = Math.max(2, Math.round(vh * 0.02));
+                        const EXT = Math.max(2, Math.round(vw * 0.01));
+                        const EXT_V = Math.max(2, Math.round(vh * 0.01));
                         if (dx > 0) {
                             this.ctx.drawImage(this.video, 0, 0, EXT, vh, 0, dy, dx, dh);
                             this.ctx.drawImage(this.video, vw - EXT, 0, EXT, vh, dx + dw, dy, cw - (dx + dw), dh);
@@ -742,11 +742,11 @@
                             <canvas id="ambilight-canvas"></canvas>
                             <video id="internal-video" autoplay playsinline></video>
                             <div id="player-controls" style="position:absolute;left:0;right:0;bottom:0;z-index:2;display:flex;align-items:center;gap:10px;padding:8px 12px;background:linear-gradient(transparent, rgba(0,0,0,.75));transition:opacity .25s ease;opacity:1;">
-                                <button id="btn-play" style="background:none;border:none;color:#fff;font-size:1.1rem;cursor:pointer;line-height:1;padding:4px;">⏸</button>
-                                <button id="btn-mute" style="background:none;border:none;color:#fff;font-size:1rem;cursor:pointer;line-height:1;padding:4px;">🔊</button>
+                                <button id="btn-play" style="background:none;border:none;color:#fff;cursor:pointer;line-height:1;padding:4px;display:flex;align-items:center;"><span class="material-symbols-outlined" style="font-size:1.3rem;">pause</span></button>
+                                <button id="btn-mute" style="background:none;border:none;color:#fff;cursor:pointer;line-height:1;padding:4px;display:flex;align-items:center;"><span class="material-symbols-outlined" style="font-size:1.2rem;">volume_up</span></button>
                                 <input id="volume-slider" type="range" min="0" max="1" step="0.05" value="1" style="width:70px;accent-color:var(--accent-blue, #3b82f6);">
                                 <div style="flex:1;"></div>
-                                <button id="btn-fullscreen" style="background:none;border:none;color:#fff;font-size:1.1rem;cursor:pointer;line-height:1;padding:4px;" title="Pantalla completa">⛶</button>
+                                <button id="btn-fullscreen" style="background:none;border:none;color:#fff;cursor:pointer;line-height:1;padding:4px;display:flex;align-items:center;" title="Pantalla completa"><span class="material-symbols-outlined" style="font-size:1.3rem;">fullscreen</span></button>
                             </div>
                         </div>
                     </div>`;
@@ -803,19 +803,18 @@
 
                 const togglePlay = () => { video.paused ? video.play().catch(() => {}) : video.pause(); };
                 btnPlay.onclick = togglePlay;
-                video.addEventListener('click', togglePlay);
-                video.addEventListener('play', () => { btnPlay.textContent = '⏸'; });
-                video.addEventListener('pause', () => { btnPlay.textContent = '▶'; });
+                video.addEventListener('play', () => { btnPlay.querySelector('.material-symbols-outlined').textContent = 'pause'; });
+                video.addEventListener('pause', () => { btnPlay.querySelector('.material-symbols-outlined').textContent = 'play_arrow'; });
 
                 btnMute.onclick = () => {
                     video.muted = !video.muted;
-                    btnMute.textContent = video.muted ? '🔇' : '🔊';
+                    btnMute.querySelector('.material-symbols-outlined').textContent = video.muted ? 'volume_off' : 'volume_up';
                 };
                 volumeSlider.oninput = (e) => {
                     const v = parseFloat(e.target.value);
                     video.volume = v;
                     video.muted = v === 0;
-                    btnMute.textContent = video.muted ? '🔇' : '🔊';
+                    btnMute.querySelector('.material-symbols-outlined').textContent = video.muted ? 'volume_off' : 'volume_up';
                 };
 
                 btnFullscreen.onclick = () => {
@@ -843,6 +842,12 @@
                         }
                     }
                 };
+                document.addEventListener('fullscreenchange', () => {
+                    btnFullscreen.querySelector('.material-symbols-outlined').textContent = Ambilight.isFullscreen() ? 'fullscreen_exit' : 'fullscreen';
+                });
+                document.addEventListener('webkitfullscreenchange', () => {
+                    btnFullscreen.querySelector('.material-symbols-outlined').textContent = Ambilight.isFullscreen() ? 'fullscreen_exit' : 'fullscreen';
+                });
 
                 // Autoocultar controles tras un rato sin actividad (solo mientras reproduce)
                 let hideControlsTimer = null;
@@ -856,6 +861,8 @@
                 viewport.addEventListener('mousemove', showControls);
                 viewport.addEventListener('touchstart', showControls);
                 video.addEventListener('pause', showControls);
+                video.addEventListener('play', showControls);
+                video.addEventListener('playing', showControls);
                 showControls();
 
                 const streamUrl = `http://127.0.0.1:6878/ace/manifest.m3u8?id=${id}`;

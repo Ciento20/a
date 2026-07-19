@@ -23,15 +23,26 @@
             width: 100%;
         }
 
-        /* --- Ambilight (modo ambiente en pantalla completa) --- */
-        #player-viewport{position:relative;width:100%;overflow:hidden;background:#000;}
-        #ambilight-canvas{position:absolute;inset:-10%;width:120%;height:120%;z-index:0;pointer-events:none;opacity:0;filter:blur(clamp(24px,4vw,90px)) saturate(1.6) brightness(1.15);transition:opacity .6s ease;}
-        @media (prefers-reduced-motion: reduce){ #ambilight-canvas{transition:none;} #player-controls{transition:none;} }
+        /* --- Ambilight (modo ambiente), réplica exacta de la técnica de referencia --- */
+        #player-viewport{position:relative;width:100%;aspect-ratio:16/9;overflow:hidden;background:#000;}
         #internal-player-container:fullscreen,#internal-player-container:-webkit-full-screen{width:100%;height:100%;border-radius:0;}
-        #internal-player-container:fullscreen #player-viewport,#internal-player-container:-webkit-full-screen #player-viewport{height:100%;display:flex;align-items:center;justify-content:center;}
-        #internal-player-container:fullscreen #internal-video,#internal-player-container:-webkit-full-screen #internal-video{height:100%;max-height:100%;width:100%;aspect-ratio:auto;object-fit:contain;}
-        #internal-player-container:fullscreen #ambilight-canvas,#internal-player-container:-webkit-full-screen #ambilight-canvas{opacity:1;}
-        #internal-player-container:fullscreen #player-handle,#internal-player-container:-webkit-full-screen #player-handle{position:absolute;top:0;left:0;right:0;z-index:2;background:linear-gradient(rgba(0,0,0,.6),transparent);border-bottom:none;}
+        #internal-player-container:fullscreen #player-viewport,#internal-player-container:-webkit-full-screen #player-viewport{width:100%;height:100%;aspect-ratio:unset;}
+        #internal-video{position:absolute;top:0;left:0;width:100%;height:100%;z-index:1;background:transparent;object-fit:contain;cursor:pointer;}
+        #ambilight-canvas{
+            position:absolute;
+            top:-3%; left:-3%; width:106%; height:106%;
+            z-index:0;
+            filter:blur(clamp(24px,4vw,90px)) saturate(1.7) brightness(1.2);
+            opacity:0;
+            transform:translateZ(0);
+            pointer-events:none;
+            transition:opacity .7s ease;
+            will-change:opacity;
+        }
+        #ambilight-canvas.active{opacity:0.9;}
+        #internal-player-container:fullscreen #ambilight-canvas,#internal-player-container:-webkit-full-screen #ambilight-canvas{top:0;left:0;width:100%;height:100%;}
+        @media (prefers-reduced-motion: reduce){ #ambilight-canvas{transition:none;} #player-controls{transition:none;} }
+        #internal-player-container:fullscreen #player-handle,#internal-player-container:-webkit-full-screen #player-handle{display:none !important;}
         </style></head><body>
     <div id="loader-container">
         <div class="loader-bar"></div>
@@ -520,40 +531,51 @@
             }
         };
 
+        /* --- MODO AMBIENTE (Ambilight) ---
+           Réplica exacta de la técnica de referencia: un <canvas> de baja resolución
+           (192 de ancho, alto según el aspecto REAL del contenedor) detrás del vídeo,
+           escalado y con blur CSS. En cada fotograma se calcula el recuadro exacto que
+           ocupa el vídeo real dentro del contenedor (mismo cálculo que object-fit:contain)
+           y se pinta ahí sin distorsión; después se estira el borde exterior real del
+           vídeo hacia las franjas de letterbox, para que el color case con el borde.
+           Clave: el <video> tiene background:transparent (no negro), así el hueco de
+           letterbox de object-fit:contain deja ver el canvas que está detrás. */
         const Ambilight = {
             video: null,
             canvas: null,
             ctx: null,
             container: null,
-            intervalId: null,
-            W: 192, // ancho de baja resolución del canvas
+            viewport: null,
+            rafId: null,
+            lastDraw: 0,
+            W: 192,
+            FRAME_MS: 66, // ~15fps
+            _loggedError: false,
 
-            init(video, canvas, container) {
+            init(video, canvas, container, viewport) {
                 this.destroy(); // por si quedaba una instancia previa colgada
                 this._loggedError = false;
 
                 this.video = video;
                 this.canvas = canvas;
                 this.container = container;
-                this.viewport = container.querySelector('#player-viewport') || container;
-                this.ctx = canvas.getContext('2d', { alpha: false, willReadFrequently: false });
+                this.viewport = viewport || container;
 
-                this._onPlaying = () => this.maybeStart();
-                this._onPause = () => this.stop();
-                this._onLoadedMeta = () => { this.resizeCanvas(); if (this.isFullscreen()) this.fitVideoBox(); };
-                this._onFsChange = () => this.handleFullscreenChange();
-                this._onResize = () => { if (this.isFullscreen()) this.fitVideoBox(); };
+                this._onPlaying = () => this.start();
+                this._onStop = () => this.stop();
+                this._onResize = () => this.resizeCanvas();
+                this._onFsChange = () => setTimeout(() => this.resizeCanvas(), 50);
 
                 video.addEventListener('play', this._onPlaying);
                 video.addEventListener('playing', this._onPlaying);
-                video.addEventListener('pause', this._onPause);
-                video.addEventListener('ended', this._onPause);
-                video.addEventListener('loadedmetadata', this._onLoadedMeta);
+                video.addEventListener('pause', this._onStop);
+                video.addEventListener('ended', this._onStop);
+                video.addEventListener('emptied', this._onStop);
 
-                document.addEventListener('fullscreenchange', this._onFsChange);
-                document.addEventListener('webkitfullscreenchange', this._onFsChange);
                 window.addEventListener('resize', this._onResize);
                 window.addEventListener('orientationchange', this._onResize);
+                document.addEventListener('fullscreenchange', this._onFsChange);
+                document.addEventListener('webkitfullscreenchange', this._onFsChange);
 
                 this.resizeCanvas();
             },
@@ -563,77 +585,71 @@
                 return !!fsEl && fsEl === this.container;
             },
 
-            handleFullscreenChange() {
-                if (this.isFullscreen()) {
-                    this.resizeCanvas();
-                    this.fitVideoBox();
-                    this.maybeStart();
-                } else {
-                    this.stop();
-                    this.resetVideoBox();
-                }
-            },
-
-            // El object-fit:contain del navegador NO deja hueco real detrás: el letterbox
-            // lo pinta el propio <video> dentro de su caja, tapando el canvas igualmente.
-            // Por eso encogemos la caja del <video> al tamaño EXACTO que ocupa el contenido
-            // real (según su aspect ratio), dejando el resto del contenedor realmente vacío
-            // para que el canvas de ambilight se vea ahí.
-            fitVideoBox() {
-                if (!this.isFullscreen() || !this.video || !this.viewport) return;
-                const vw = this.video.videoWidth;
-                const vh = this.video.videoHeight;
-                if (!vw || !vh) return; // metadata aún no disponible
-
-                const cw = this.viewport.clientWidth;
-                const ch = this.viewport.clientHeight;
-                if (!cw || !ch) return;
-
-                const videoAspect = vw / vh;
-                const containerAspect = cw / ch;
-                let w, h;
-                if (videoAspect > containerAspect) {
-                    // el vídeo es "más ancho" que el hueco disponible -> se ajusta por anchura
-                    w = cw;
-                    h = cw / videoAspect;
-                } else {
-                    // el vídeo es "más alto" (p.ej. contenido vertical en móvil) -> se ajusta por altura
-                    h = ch;
-                    w = ch * videoAspect;
-                }
-                this.video.style.width = Math.round(w) + 'px';
-                this.video.style.height = Math.round(h) + 'px';
-            },
-
-            resetVideoBox() {
-                if (this.video) { this.video.style.width = ''; this.video.style.height = ''; }
-            },
-
-            maybeStart() {
-                // Solo pinta el canvas mientras estamos en pantalla completa, para ahorrar CPU/GPU el resto del tiempo
-                if (this.isFullscreen() && this.video && !this.video.paused && !this.intervalId) {
-                    this.resizeCanvas();
-                    this.intervalId = setInterval(() => this.draw(), 66); // ~15fps
-                }
-            },
-
-            stop() {
-                if (this.intervalId) { clearInterval(this.intervalId); this.intervalId = null; }
-            },
-
-            // Ajusta la resolución del canvas a la relación de aspecto real del vídeo (funciona también en vertical)
+            // La resolución interna del canvas sigue la relación de aspecto REAL que ocupa
+            // el contenedor en pantalla (no siempre 16:9): en fullscreen puede ser cualquier
+            // aspecto (p.ej. un móvil en vertical). Si no igualamos esa relación, el canvas
+            // se estiraría de forma distinta en horizontal y vertical, deformando el color.
             resizeCanvas() {
-                if (!this.canvas || !this.video) return;
-                const vw = this.video.videoWidth || 16;
-                const vh = this.video.videoHeight || 9;
-                this.canvas.width = this.W;
-                this.canvas.height = Math.max(1, Math.round(this.W * (vh / vw)));
+                if (!this.canvas || !this.viewport) return;
+                const rect = this.viewport.getBoundingClientRect();
+                if (!rect.width || !rect.height) return;
+                const aspect = rect.width / rect.height;
+                const newW = this.W;
+                const newH = Math.max(1, Math.round(this.W / aspect));
+                if (this.canvas.width !== newW || this.canvas.height !== newH) {
+                    this.canvas.width = newW;
+                    this.canvas.height = newH;
+                }
+            },
+
+            loop(ts) {
+                if (!this.video || !this.canvas || this.video.paused || this.video.ended) {
+                    this.stop();
+                    return;
+                }
+                if (!this.lastDraw || (ts - this.lastDraw) >= this.FRAME_MS) {
+                    this.lastDraw = ts;
+                    this.draw();
+                }
+                this.rafId = requestAnimationFrame((t) => this.loop(t));
             },
 
             draw() {
-                if (!this.video || this.video.readyState < 2) return;
                 try {
-                    this.ctx.drawImage(this.video, 0, 0, this.canvas.width, this.canvas.height);
+                    if (!this.ctx) this.ctx = this.canvas.getContext('2d', { alpha: false });
+                    const cw = this.canvas.width, ch = this.canvas.height;
+                    const vw = this.video.videoWidth, vh = this.video.videoHeight;
+                    if (vw && vh) {
+                        // Recuadro exacto que ocupa el vídeo real dentro del contenedor
+                        // (mismo cálculo que hace object-fit:contain), para no estirar el
+                        // fotograma entero sobre todo el canvas.
+                        const containerAspect = cw / ch;
+                        const videoAspect = vw / vh;
+                        let dw, dh, dx, dy;
+                        if (videoAspect > containerAspect) {
+                            dw = cw; dh = cw / videoAspect;
+                            dx = 0; dy = (ch - dh) / 2;
+                        } else {
+                            dh = ch; dw = ch * videoAspect;
+                            dy = 0; dx = (cw - dw) / 2;
+                        }
+                        // 1) Fotograma real, sin distorsión, en su recuadro exacto.
+                        this.ctx.drawImage(this.video, dx, dy, dw, dh);
+                        // 2) Estiramos el borde exterior REAL del vídeo hacia las franjas,
+                        //    para que el color que toca el vídeo sea siempre el de su propio
+                        //    borde (da continuidad en vez de mostrar un recorte interior).
+                        const EXT = 1;
+                        if (dx > 0) {
+                            this.ctx.drawImage(this.video, 0, 0, EXT, vh, 0, dy, dx, dh);
+                            this.ctx.drawImage(this.video, vw - EXT, 0, EXT, vh, dx + dw, dy, cw - (dx + dw), dh);
+                        }
+                        if (dy > 0) {
+                            this.ctx.drawImage(this.video, 0, 0, vw, EXT, dx, 0, dw, dy);
+                            this.ctx.drawImage(this.video, 0, vh - EXT, vw, EXT, dx, dy + dh, dw, ch - (dy + dh));
+                        }
+                    } else {
+                        this.ctx.drawImage(this.video, 0, 0, cw, ch);
+                    }
                 } catch (e) {
                     // Si el vídeo viene de un origen distinto sin cabeceras CORS, el canvas
                     // queda "tainted" y drawImage lanza SecurityError en cada frame.
@@ -646,20 +662,33 @@
                 }
             },
 
+            start() {
+                if (!this.canvas || !this.video) return;
+                this.resizeCanvas();
+                this.canvas.classList.add('active');
+                if (this.rafId) cancelAnimationFrame(this.rafId);
+                this.lastDraw = 0;
+                this.rafId = requestAnimationFrame((t) => this.loop(t));
+            },
+
+            stop() {
+                if (this.rafId) { cancelAnimationFrame(this.rafId); this.rafId = null; }
+                if (this.canvas) this.canvas.classList.remove('active');
+            },
+
             destroy() {
                 this.stop();
                 if (this.video) {
                     this.video.removeEventListener('play', this._onPlaying);
                     this.video.removeEventListener('playing', this._onPlaying);
-                    this.video.removeEventListener('pause', this._onPause);
-                    this.video.removeEventListener('ended', this._onPause);
-                    this.video.removeEventListener('loadedmetadata', this._onLoadedMeta);
+                    this.video.removeEventListener('pause', this._onStop);
+                    this.video.removeEventListener('ended', this._onStop);
+                    this.video.removeEventListener('emptied', this._onStop);
                 }
-                document.removeEventListener('fullscreenchange', this._onFsChange);
-                document.removeEventListener('webkitfullscreenchange', this._onFsChange);
                 window.removeEventListener('resize', this._onResize);
                 window.removeEventListener('orientationchange', this._onResize);
-                this.resetVideoBox();
+                document.removeEventListener('fullscreenchange', this._onFsChange);
+                document.removeEventListener('webkitfullscreenchange', this._onFsChange);
                 this.video = null; this.canvas = null; this.ctx = null; this.container = null; this.viewport = null;
             }
         };
@@ -705,7 +734,7 @@
                         </div>
                         <div id="player-viewport">
                             <canvas id="ambilight-canvas"></canvas>
-                            <video id="internal-video" autoplay playsinline style="position:relative;z-index:1;width:100%;aspect-ratio:16/9;background:#000;display:block;object-fit:contain;cursor:pointer;"></video>
+                            <video id="internal-video" autoplay playsinline></video>
                             <div id="player-controls" style="position:absolute;left:0;right:0;bottom:0;z-index:2;display:flex;align-items:center;gap:10px;padding:8px 12px;background:linear-gradient(transparent, rgba(0,0,0,.75));transition:opacity .25s ease;opacity:1;">
                                 <button id="btn-play" style="background:none;border:none;color:#fff;font-size:1.1rem;cursor:pointer;line-height:1;padding:4px;">⏸</button>
                                 <button id="btn-mute" style="background:none;border:none;color:#fff;font-size:1rem;cursor:pointer;line-height:1;padding:4px;">🔊</button>
@@ -755,7 +784,8 @@
                 });
 
                 const ambilightCanvas = document.getElementById('ambilight-canvas');
-                Ambilight.init(video, ambilightCanvas, el);
+                const playerViewport = document.getElementById('player-viewport');
+                Ambilight.init(video, ambilightCanvas, el, playerViewport);
 
                 // --- Controles propios (sin depender del fullscreen nativo del <video>) ---
                 const btnPlay = document.getElementById('btn-play');
@@ -786,9 +816,25 @@
                     if (Ambilight.isFullscreen()) {
                         const exit = document.exitFullscreen || document.webkitExitFullscreen;
                         if (exit) exit.call(document);
+                        if (screen.orientation && screen.orientation.unlock) {
+                            try { screen.orientation.unlock(); } catch (e) {}
+                        }
                     } else {
                         const req = el.requestFullscreen || el.webkitRequestFullscreen;
-                        if (req) req.call(el);
+                        if (req) {
+                            const result = req.call(el);
+                            // El bloqueo de orientación solo puede pedirse una vez el elemento
+                            // ya está en pantalla completa (requisito de la Screen Orientation API).
+                            const lockLandscape = () => {
+                                if (screen.orientation && screen.orientation.lock) {
+                                    screen.orientation.lock('landscape').catch(() => {
+                                        // No soportado (p.ej. iOS Safari o escritorio): se ignora sin romper el fullscreen.
+                                    });
+                                }
+                            };
+                            if (result && result.then) result.then(lockLandscape).catch(() => {});
+                            else lockLandscape();
+                        }
                     }
                 };
 

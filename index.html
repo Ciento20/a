@@ -41,8 +41,17 @@
             will-change:opacity;
         }
         #ambilight-canvas.active{opacity:0.9;}
+        #player-viewport::after{
+            content:"";
+            position:absolute; inset:0; z-index:2;
+            pointer-events:none;
+            box-shadow: inset 0 0 clamp(20px,5vw,90px) clamp(4px,1vw,18px) rgba(0,0,0,.65);
+            opacity:0;
+            transition:opacity .7s ease;
+        }
+        #player-viewport:has(#ambilight-canvas.active)::after{opacity:1;}
         #internal-player-container:fullscreen #ambilight-canvas,#internal-player-container:-webkit-full-screen #ambilight-canvas{top:0;left:0;width:100%;height:100%;}
-        @media (prefers-reduced-motion: reduce){ #ambilight-canvas{transition:none;} #player-controls{transition:none;} }
+        @media (prefers-reduced-motion: reduce){ #ambilight-canvas{transition:none;} #player-controls{transition:none;} #player-viewport::after{transition:none;} }
         #internal-player-container:fullscreen #player-handle,#internal-player-container:-webkit-full-screen #player-handle{display:none !important;}
         </style></head><body>
     <div id="loader-container">
@@ -639,12 +648,12 @@
                         // 2) Estiramos el borde exterior REAL del vídeo hacia las franjas,
                         //    para que el color que toca el vídeo sea siempre el de su propio
                         //    borde (da continuidad en vez de mostrar un recorte interior).
-                        // Usamos una franja de ~1% del ancho/alto real (no 1px suelto) para que el
+                        // Usamos una franja de ~0.5% del ancho/alto real (no 1px suelto) para que el
                         // color de los bordes salga de un promedio y no de un único píxel que
                         // podría caer justo sobre un logo del canal o un marcador fijo, lo cual
                         // provocaba un tono claramente distinto entre el lado izquierdo y el derecho.
-                        const EXT = Math.max(2, Math.round(vw * 0.01));
-                        const EXT_V = Math.max(2, Math.round(vh * 0.01));
+                        const EXT = Math.max(2, Math.round(vw * 0.005));
+                        const EXT_V = Math.max(2, Math.round(vh * 0.005));
                         if (dx > 0) {
                             this.ctx.drawImage(this.video, 0, 0, EXT, vh, 0, dy, dx, dh);
                             this.ctx.drawImage(this.video, vw - EXT, 0, EXT, vh, dx + dw, dy, cw - (dx + dw), dh);

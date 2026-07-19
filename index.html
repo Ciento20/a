@@ -746,6 +746,7 @@
                                 <button id="btn-mute" style="background:none;border:none;color:#fff;cursor:pointer;line-height:1;padding:4px;display:flex;align-items:center;"><span class="material-symbols-outlined" style="font-size:1.2rem;">volume_up</span></button>
                                 <input id="volume-slider" type="range" min="0" max="1" step="0.05" value="1" style="width:70px;accent-color:var(--accent-blue, #3b82f6);">
                                 <div style="flex:1;"></div>
+                                <button id="btn-live" style="background:none;border:none;color:#fff;cursor:pointer;line-height:1;padding:4px 6px;display:flex;align-items:center;gap:4px;" title="Volver al directo"><span class="material-symbols-outlined" style="font-size:1.1rem;">podcasts</span><span style="font-size:.6rem;font-weight:700;letter-spacing:.5px;">DIRECTO</span></button>
                                 <button id="btn-fullscreen" style="background:none;border:none;color:#fff;cursor:pointer;line-height:1;padding:4px;display:flex;align-items:center;" title="Pantalla completa"><span class="material-symbols-outlined" style="font-size:1.3rem;">fullscreen</span></button>
                             </div>
                         </div>
@@ -848,6 +849,34 @@
                 document.addEventListener('webkitfullscreenchange', () => {
                     btnFullscreen.querySelector('.material-symbols-outlined').textContent = Ambilight.isFullscreen() ? 'fullscreen_exit' : 'fullscreen';
                 });
+
+                // --- Botón "Volver al directo" ---
+                const btnLive = document.getElementById('btn-live');
+                const LIVE_EDGE_THRESHOLD = 8; // segundos de margen para considerar que ya estamos "en directo"
+                const getLiveEdge = () => {
+                    if (video.seekable && video.seekable.length > 0) {
+                        return video.seekable.end(video.seekable.length - 1);
+                    }
+                    return null;
+                };
+                const goLive = () => {
+                    const edge = getLiveEdge();
+                    if (edge !== null) {
+                        video.currentTime = Math.max(0, edge - 1.5);
+                    }
+                    if (video.paused) video.play().catch(() => {});
+                };
+                btnLive.onclick = goLive;
+                const updateLiveButtonState = () => {
+                    const edge = getLiveEdge();
+                    const isLive = edge === null || (edge - video.currentTime) <= LIVE_EDGE_THRESHOLD;
+                    btnLive.style.opacity = isLive ? '0.55' : '1';
+                    btnLive.style.pointerEvents = isLive ? 'none' : 'auto';
+                    btnLive.querySelector('span:last-child').style.color = isLive ? '' : 'var(--accent-blue, #448aff)';
+                };
+                video.addEventListener('timeupdate', updateLiveButtonState);
+                video.addEventListener('loadedmetadata', updateLiveButtonState);
+                updateLiveButtonState();
 
                 // Autoocultar controles tras un rato sin actividad (solo mientras reproduce)
                 let hideControlsTimer = null;

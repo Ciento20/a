@@ -706,16 +706,18 @@
                 }
             },
 
-            // Decide en qué 2 lados va el sombreado: los que NO tienen banda de letterbox,
-            // es decir, los lados donde el vídeo llega completo hasta el borde del contenedor.
-            // dx>0  -> hay banda a izquierda/derecha -> los lados "completos" son arriba/abajo.
-            // dy>0  -> hay banda arriba/abajo         -> los lados "completos" son izquierda/derecha.
-            // Sin banda en ningún eje -> los 4 lados son "completos" (comportamiento original).
+            // Decide en qué 2 lados va el sombreado: los lados con banda de letterbox,
+            // donde se ve el ambilight completo y sin cortar por el vídeo (el vídeo no llega
+            // hasta ahí). Los otros 2 lados, donde el vídeo sí llega justo al borde, se quedan
+            // limpios (sin sombreado).
+            // dx>0  -> banda a izquierda/derecha -> sombreado en izquierda/derecha.
+            // dy>0  -> banda arriba/abajo         -> sombreado en arriba/abajo.
+            // Sin banda en ningún eje -> los 4 lados los toca el vídeo (comportamiento original).
             updateVignette(dx, dy) {
                 if (!this.viewport) return;
                 let mode = 'all';
-                if (dx > 0.5) mode = 'tb';
-                else if (dy > 0.5) mode = 'lr';
+                if (dx > 0.5) mode = 'lr';
+                else if (dy > 0.5) mode = 'tb';
                 if (this.viewport.getAttribute('data-vignette') !== mode) {
                     this.viewport.setAttribute('data-vignette', mode);
                 }

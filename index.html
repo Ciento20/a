@@ -659,12 +659,12 @@
                         // rellenar para garantizar un promedio real de varios píxeles por cada
                         // píxel de destino, diluyendo cualquier elemento puntual brillante.
                         const EXT = Math.min(
-                            Math.round(vw * 0.15),
-                            Math.max(2, Math.round(vw * 0.005), Math.ceil(dx * 3))
+                            Math.round(vw * 0.2),
+                            Math.max(2, Math.round(vw * 0.005), Math.ceil(dx * 5))
                         );
                         const EXT_V = Math.min(
-                            Math.round(vh * 0.15),
-                            Math.max(2, Math.round(vh * 0.005), Math.ceil(dy * 3))
+                            Math.round(vh * 0.2),
+                            Math.max(2, Math.round(vh * 0.005), Math.ceil(dy * 5))
                         );
                         if (dx > 0) {
                             this.ctx.drawImage(this.video, 0, 0, EXT, vh, 0, dy, dx, dh);

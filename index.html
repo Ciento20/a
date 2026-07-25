@@ -45,9 +45,20 @@
             content:"";
             position:absolute; inset:0; z-index:2;
             pointer-events:none;
-            box-shadow: inset 0 0 clamp(20px,5vw,90px) clamp(4px,1vw,18px) rgba(0,0,0,.65);
             opacity:0;
-            transition:opacity .7s ease;
+            transition:opacity .7s ease, background .3s ease;
+            /* Antes: box-shadow inset en los 4 lados a la vez. Ahora: un solo lado,
+               que cambia según la orientación de la pantalla. El lado de abajo se
+               excluye siempre porque #player-controls ya trae su propio degradado. */
+            background: linear-gradient(to bottom, rgba(0,0,0,.65), transparent clamp(20px,5vw,90px));
+        }
+        /* Landscape: sombreado arriba (cambia "to bottom" por "to top" si lo quieres abajo) */
+        @media (orientation: landscape){
+            #player-viewport::after{ background: linear-gradient(to bottom, rgba(0,0,0,.65), transparent clamp(20px,5vw,90px)); }
+        }
+        /* Portrait: sombreado a la izquierda (cambia "to right" por "to left" si lo quieres a la derecha) */
+        @media (orientation: portrait){
+            #player-viewport::after{ background: linear-gradient(to right, rgba(0,0,0,.65), transparent clamp(20px,5vw,90px)); }
         }
         #player-viewport:has(#ambilight-canvas.active)::after{opacity:1;}
         #internal-player-container:fullscreen #ambilight-canvas,#internal-player-container:-webkit-full-screen #ambilight-canvas{top:0;left:0;width:100%;height:100%;}

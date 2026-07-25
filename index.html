@@ -648,12 +648,24 @@
                         // 2) Estiramos el borde exterior REAL del vídeo hacia las franjas,
                         //    para que el color que toca el vídeo sea siempre el de su propio
                         //    borde (da continuidad en vez de mostrar un recorte interior).
-                        // Usamos una franja de ~0.5% del ancho/alto real (no 1px suelto) para que el
-                        // color de los bordes salga de un promedio y no de un único píxel que
-                        // podría caer justo sobre un logo del canal o un marcador fijo, lo cual
-                        // provocaba un tono claramente distinto entre el lado izquierdo y el derecho.
-                        const EXT = Math.max(2, Math.round(vw * 0.005));
-                        const EXT_V = Math.max(2, Math.round(vh * 0.005));
+                        // La franja de origen (EXT) SIEMPRE debe ser igual o más ancha que la
+                        // franja de destino (dx/dy en el canvas), para que drawImage haga una
+                        // REDUCCIÓN real (promedio de muchos píxeles) y no una AMPLIACIÓN.
+                        // Si la franja de origen es más estrecha que el hueco a rellenar, el
+                        // navegador se limita a estirar esos pocos píxeles: si justo caen sobre
+                        // un marcador, logo o línea de campo brillante, ese único tono se
+                        // convierte en el 100% del color de toda la franja oscura de alrededor
+                        // ("el brillo invade la oscuridad"). Multiplicamos por 3 el hueco a
+                        // rellenar para garantizar un promedio real de varios píxeles por cada
+                        // píxel de destino, diluyendo cualquier elemento puntual brillante.
+                        const EXT = Math.min(
+                            Math.round(vw * 0.15),
+                            Math.max(2, Math.round(vw * 0.005), Math.ceil(dx * 3))
+                        );
+                        const EXT_V = Math.min(
+                            Math.round(vh * 0.15),
+                            Math.max(2, Math.round(vh * 0.005), Math.ceil(dy * 3))
+                        );
                         if (dx > 0) {
                             this.ctx.drawImage(this.video, 0, 0, EXT, vh, 0, dy, dx, dh);
                             this.ctx.drawImage(this.video, vw - EXT, 0, EXT, vh, dx + dw, dy, cw - (dx + dw), dh);

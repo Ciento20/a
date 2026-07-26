@@ -561,6 +561,19 @@
             W: 192,
             FRAME_MS: 66, // ~15fps
             _loggedError: false,
+            // Gamma < 1: sube los tonos oscuros/medios de forma proporcional real,
+            // dejando el negro puro (0) y el blanco puro (255) exactamente igual.
+            // Es una curva sobre el propio valor del píxel, no un filtro superpuesto.
+            GAMMA: 0.82,
+            _lut: null,
+
+            _buildLut() {
+                const lut = new Uint8ClampedArray(256);
+                for (let i = 0; i < 256; i++) {
+                    lut[i] = 255 * Math.pow(i / 255, this.GAMMA);
+                }
+                this._lut = lut;
+            },
 
             init(video, canvas, container, viewport) {
                 this.destroy(); // por si quedaba una instancia previa colgada
@@ -677,15 +690,21 @@
                     } else {
                         this.ctx.drawImage(this.video, 0, 0, cw, ch);
                     }
-                    // Levanta los tonos oscuros sin apenas tocar los claros: con blend
-                    // 'screen', un píxel cercano a 0 sube notablemente mientras uno ya
-                    // cercano a 255 casi no se mueve (resultado = 255-(255-orig)*(255-luz)/255).
-                    // Así el ambilight deja de verse "apagado" respecto al vídeo real sin
-                    // arriesgarse a que las zonas claras se quemen o pierdan matiz.
-                    this.ctx.globalCompositeOperation = 'screen';
-                    this.ctx.fillStyle = 'rgba(255,255,255,0.14)';
-                    this.ctx.fillRect(0, 0, cw, ch);
-                    this.ctx.globalCompositeOperation = 'source-over';
+                    // Tratamiento de color real: se lee el píxel, se remapea su valor
+                    // por la curva de gamma (LUT precalculada) y se reescribe. El negro
+                    // puro sigue en 0 y el blanco puro en 255 (los extremos no se mueven),
+                    // solo se realza el rango de oscuros/medios que hacía que el ambilight
+                    // se viera apagado frente al vídeo.
+                    if (!this._lut) this._buildLut();
+                    const imgData = this.ctx.getImageData(0, 0, cw, ch);
+                    const d = imgData.data;
+                    const lut = this._lut;
+                    for (let i = 0; i < d.length; i += 4) {
+                        d[i] = lut[d[i]];
+                        d[i + 1] = lut[d[i + 1]];
+                        d[i + 2] = lut[d[i + 2]];
+                    }
+                    this.ctx.putImageData(imgData, 0, 0);
                 } catch (e) {
                     // Si el vídeo viene de un origen distinto sin cabeceras CORS, el canvas
                     // queda "tainted" y drawImage lanza SecurityError en cada frame.

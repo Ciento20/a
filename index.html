@@ -40,31 +40,16 @@
             transition:opacity .7s ease;
             will-change:opacity;
         }
-        #ambilight-canvas.active{opacity:0.9;}
+        #ambilight-canvas.active{opacity:1;}
         #player-viewport::after{
             content:"";
             position:absolute; inset:0; z-index:2;
             pointer-events:none;
+            box-shadow: inset 0 0 clamp(20px,5vw,90px) clamp(4px,1vw,18px) rgba(0,0,0,.35);
             opacity:0;
             transition:opacity .7s ease;
         }
         #player-viewport:has(#ambilight-canvas.active)::after{opacity:1;}
-        /* Vignette solo en los 2 lados donde el vídeo llega al borde sin banda de letterbox
-           (los otros 2 lados ya se difuminan con el propio degradado del ambilight) */
-        #player-viewport[data-vignette="tb"]::after{
-            box-shadow:
-                inset 0 clamp(18px,4vw,55px) clamp(20px,4vw,50px) clamp(-30px,-6vw,-14px) rgba(0,0,0,.65),
-                inset 0 calc(-1 * clamp(18px,4vw,55px)) clamp(20px,4vw,50px) clamp(-30px,-6vw,-14px) rgba(0,0,0,.65);
-        }
-        #player-viewport[data-vignette="lr"]::after{
-            box-shadow:
-                inset clamp(18px,4vw,55px) 0 clamp(20px,4vw,50px) clamp(-30px,-6vw,-14px) rgba(0,0,0,.65),
-                inset calc(-1 * clamp(18px,4vw,55px)) 0 clamp(20px,4vw,50px) clamp(-30px,-6vw,-14px) rgba(0,0,0,.65);
-        }
-        #player-viewport[data-vignette="all"]::after,
-        #player-viewport:not([data-vignette])::after{
-            box-shadow: inset 0 0 clamp(20px,5vw,90px) clamp(4px,1vw,18px) rgba(0,0,0,.65);
-        }
         #internal-player-container:fullscreen #ambilight-canvas,#internal-player-container:-webkit-full-screen #ambilight-canvas{top:0;left:0;width:100%;height:100%;}
         @media (prefers-reduced-motion: reduce){ #ambilight-canvas{transition:none;} #player-controls{transition:none;} #player-viewport::after{transition:none;} }
         #internal-player-container:fullscreen #player-handle,#internal-player-container:-webkit-full-screen #player-handle{display:none !important;}
@@ -689,11 +674,18 @@
                             this.ctx.drawImage(this.video, 0, 0, vw, EXT_V, dx, 0, dw, dy);
                             this.ctx.drawImage(this.video, 0, vh - EXT_V, vw, EXT_V, dx, dy + dh, dw, ch - (dy + dh));
                         }
-                        this.updateVignette(dx, dy);
                     } else {
                         this.ctx.drawImage(this.video, 0, 0, cw, ch);
-                        this.updateVignette(0, 0);
                     }
+                    // Levanta los tonos oscuros sin apenas tocar los claros: con blend
+                    // 'screen', un píxel cercano a 0 sube notablemente mientras uno ya
+                    // cercano a 255 casi no se mueve (resultado = 255-(255-orig)*(255-luz)/255).
+                    // Así el ambilight deja de verse "apagado" respecto al vídeo real sin
+                    // arriesgarse a que las zonas claras se quemen o pierdan matiz.
+                    this.ctx.globalCompositeOperation = 'screen';
+                    this.ctx.fillStyle = 'rgba(255,255,255,0.14)';
+                    this.ctx.fillRect(0, 0, cw, ch);
+                    this.ctx.globalCompositeOperation = 'source-over';
                 } catch (e) {
                     // Si el vídeo viene de un origen distinto sin cabeceras CORS, el canvas
                     // queda "tainted" y drawImage lanza SecurityError en cada frame.
@@ -703,23 +695,6 @@
                         console.error('[Ambilight] drawImage falló, probablemente por CORS del stream de vídeo:', e);
                     }
                     this.stop();
-                }
-            },
-
-            // Decide en qué 2 lados va el sombreado: los lados con banda de letterbox,
-            // donde se ve el ambilight completo y sin cortar por el vídeo (el vídeo no llega
-            // hasta ahí). Los otros 2 lados, donde el vídeo sí llega justo al borde, se quedan
-            // limpios (sin sombreado).
-            // dx>0  -> banda a izquierda/derecha -> sombreado en izquierda/derecha.
-            // dy>0  -> banda arriba/abajo         -> sombreado en arriba/abajo.
-            // Sin banda en ningún eje -> los 4 lados los toca el vídeo (comportamiento original).
-            updateVignette(dx, dy) {
-                if (!this.viewport) return;
-                let mode = 'all';
-                if (dx > 0.5) mode = 'lr';
-                else if (dy > 0.5) mode = 'tb';
-                if (this.viewport.getAttribute('data-vignette') !== mode) {
-                    this.viewport.setAttribute('data-vignette', mode);
                 }
             },
 

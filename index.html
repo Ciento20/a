@@ -62,7 +62,6 @@
         };        const RatingEngine = {
             DB_KEY: 'ace_autorating_v1',
             SESSION_KEY: 'ace_current_session',
-            PENDING_KEY: 'ace_pending_penalties_list',
             interval: null,
 
             getDB() { return JSON.parse(localStorage.getItem(this.DB_KEY)) || {}; },
@@ -121,7 +120,6 @@
                 // Si la sesión es antigua (>30min) o hay cambio de canal, cerramos para nueva sesión
                 if (minutesSpent >= 30 || (newChannelName && newChannelName !== session.channelName)) {
                     localStorage.removeItem(this.SESSION_KEY);
-                    if (minutesSpent >= 30) localStorage.removeItem(this.PENDING_KEY);
                 }
 
                 if (newChannelName && newChannelName === session.channelName) {
@@ -132,7 +130,6 @@
 
                     if (penalty !== 0) {
                         this.saveScore(session.id, penalty, session.channelName);
-                        localStorage.setItem(this.PENDING_KEY, JSON.stringify({ id: session.id, timestamp: Date.now() }));
                     }
                 }
             },
@@ -782,6 +779,53 @@
             lastClickTime: 0,
             stallCheckInterval: null,
             playAttemptToken: 0,
+            RETRY_STATE_KEY: 'ace_retry_state_v1',
+            RETRY_TTL_MS: 30 * 60 * 1000, // mismo criterio de "sesión" que el resto del sistema
+
+            // --- Memoria de "qué enlaces ya se han probado" para este canal ---
+            // Esto es la clave de que cada pulsación dé SIEMPRE un enlace distinto:
+            // sin esto, si el mejor enlace tenía mucha ventaja de puntuación, aunque
+            // fallara y perdiera puntos seguía siendo "el mejor" y se repetía.
+            getRetryState(canonical) {
+                try {
+                    const raw = JSON.parse(localStorage.getItem(this.RETRY_STATE_KEY)) || {};
+                    const entry = raw[canonical];
+                    if (!entry) return [];
+                    if (Date.now() - entry.ts > this.RETRY_TTL_MS) return [];
+                    return entry.excluded || [];
+                } catch (e) { return []; }
+            },
+            setRetryState(canonical, excluded) {
+                try {
+                    const raw = JSON.parse(localStorage.getItem(this.RETRY_STATE_KEY)) || {};
+                    raw[canonical] = { excluded, ts: Date.now() };
+                    localStorage.setItem(this.RETRY_STATE_KEY, JSON.stringify(raw));
+                } catch (e) { }
+            },
+            clearRetryState(canonical) {
+                try {
+                    const raw = JSON.parse(localStorage.getItem(this.RETRY_STATE_KEY)) || {};
+                    delete raw[canonical];
+                    localStorage.setItem(this.RETRY_STATE_KEY, JSON.stringify(raw));
+                } catch (e) { }
+            },
+
+            // Aviso flotante breve para que el usuario VEA al instante qué está
+            // pasando con el sistema de puntuación (qué enlace se prueba, con qué
+            // puntuación, y cuándo se descarta uno), en vez de tener que adivinarlo.
+            showToast(msg, duration = 2600) {
+                let t = document.getElementById('rating-toast');
+                if (!t) {
+                    t = document.createElement('div');
+                    t.id = 'rating-toast';
+                    t.style.cssText = 'position:fixed;bottom:64px;left:50%;transform:translateX(-50%);background:rgba(20,20,20,.96);color:#fff;padding:9px 16px;border-radius:20px;font-size:.7rem;font-weight:600;z-index:10050;box-shadow:0 4px 14px rgba(0,0,0,.5);border:1px solid var(--accent-blue);opacity:0;transition:opacity .25s ease;pointer-events:none;max-width:88%;text-align:center;';
+                    document.body.appendChild(t);
+                }
+                t.textContent = msg;
+                t.style.opacity = '1';
+                clearTimeout(t._hideTimer);
+                t._hideTimer = setTimeout(() => { t.style.opacity = '0'; }, duration);
+            },
 
             togglePlayerMode() {
                 const current = localStorage.getItem('player_mode') || 'external';
@@ -1274,10 +1318,16 @@
 
             handleChannelClick(event, channelName) {
                 if (!this.isLongPress) {
-                    this.playBestOrNext(channelName);
+                    // null = "esto es una pulsación nueva del usuario, no una continuación
+                    // automática": carga el historial guardado de este canal (qué enlaces
+                    // ya se probaron) en vez de partir de cero cada vez.
+                    this.playBestOrNext(channelName, 0, null);
                 }
                 this.isLongPress = false;
-            },            playBestOrNext(channelName, triedCount = 0, excludedIds = []) {
+            },            playBestOrNext(channelName, triedCount = 0, excludedIds = null) {
+                const canonical = getCanonicalName(channelName);
+                if (excludedIds === null) excludedIds = this.getRetryState(canonical);
+
                 const matching = aceStreamMap
                     .filter(a => ComparisonEngine.isMatch(channelName, a.name))
                     .sort((a, b) => RatingEngine.getScore(b.id) - RatingEngine.getScore(a.id));
@@ -1285,22 +1335,31 @@
                 if (matching.length === 0) return;
 
                 // Elegimos siempre la MEJOR opción disponible que aún no se haya probado
-                // en este ciclo de reintentos (por ID, nunca por posición/índice: el array
-                // se reordena en cada llamada porque las puntuaciones acaban de cambiar,
-                // y usar un índice ahí era justo lo que provocaba el bucle).
-                const candidates = matching.filter(m => !excludedIds.includes(m.id));
+                // en este ciclo (por ID, guardado en localStorage por canal, nunca por
+                // posición/índice: así cada pulsación del usuario da SIEMPRE un enlace
+                // distinto al anterior, aunque la puntuación no lo haya bajado lo bastante
+                // como para dejar de ser "el mejor").
+                let candidates = matching.filter(m => !excludedIds.includes(m.id));
 
                 if (candidates.length === 0) {
-                    // Ya se probaron todas las opciones disponibles sin éxito.
-                    console.log("Auto-retry: agotadas todas las opciones para " + channelName + ".");
-                    this.openIdsModal(new Event('click'), channelName);
-                    return;
+                    // Ya se probaron todos los enlaces disponibles en este ciclo: puede que
+                    // alguno haya recuperado puntuación mientras tanto, así que reiniciamos
+                    // el ciclo desde el mejor en vez de dejar al usuario sin nada que pulsar.
+                    this.clearRetryState(canonical);
+                    excludedIds = [];
+                    candidates = matching;
+                    this.showToast('Ya se han probado todos los enlaces. Reiniciando ciclo...');
                 }
 
                 const pick = candidates[0];
                 const pickIndex = matching.findIndex(m => m.id === pick.id);
+                const pickScore = RatingEngine.getScore(pick.id);
+                const newExcluded = [...excludedIds, pick.id];
+                this.setRetryState(canonical, newExcluded);
 
-                RatingEngine.trackStart(pick.id, getCanonicalName(channelName), pickIndex);
+                this.showToast((triedCount > 0 ? '↻ Probando otro enlace' : '▶ Reproduciendo') + ' · ★' + pickScore.toFixed(1));
+
+                RatingEngine.trackStart(pick.id, canonical, pickIndex);
 
                 // Token que invalida cualquier vigilancia (watchdog) de un intento anterior,
                 // por si el usuario cambia de canal manualmente mientras se estaba reintentando.
@@ -1308,13 +1367,14 @@
 
                 const mode = localStorage.getItem('player_mode') || 'external';
                 if (mode === 'internal') {
-                    this.openInternalPlayer(pick.id, getCanonicalName(channelName)).then(() => {
-                        this.watchStream(myToken, channelName, triedCount, [...excludedIds, pick.id]);
+                    this.openInternalPlayer(pick.id, canonical).then(() => {
+                        this.watchStream(myToken, channelName, triedCount, newExcluded);
                     });
                 } else {
                     location.href = 'acestream://' + pick.id;
                 }
             },
+
 
             // Vigila la reproducción real del stream elegido:
             //  1) si no arranca en STARTUP_TIMEOUT_MS, se descarta,
@@ -1328,9 +1388,10 @@
             watchStream(token, channelName, triedCount, excludedIds) {
                 if (this.stallCheckInterval) clearInterval(this.stallCheckInterval);
 
-                const STARTUP_TIMEOUT_MS = 9000;
-                const STALL_TIMEOUT_MS = 18000;
+                const STARTUP_TIMEOUT_MS = 20000;
+                const STALL_TIMEOUT_MS = 22000;
                 const POLL_MS = 2000;
+                const MAX_AUTO_RETRIES = 8; // tope de seguridad: nunca reintentar indefinidamente
 
                 const startedAt = Date.now();
                 let hasStartedPlaying = false;
@@ -1344,9 +1405,11 @@
                     clearInterval(this.stallCheckInterval);
                     this.stallCheckInterval = null;
                     console.log("Auto-retry (" + reason + "): descartando esta opción y probando la siguiente mejor disponible.");
-                    if (excludedIds.length < totalOptions) {
+                    if (excludedIds.length < totalOptions && triedCount + 1 < MAX_AUTO_RETRIES) {
+                        this.showToast('✕ Enlace descartado (' + reason + '), probando el siguiente...');
                         this.playBestOrNext(channelName, triedCount + 1, excludedIds);
                     } else {
+                        this.showToast('No queda ningún enlace que funcione, elige uno manualmente.');
                         this.openIdsModal(new Event('click'), channelName);
                     }
                 };
@@ -1394,21 +1457,20 @@
                 list.innerHTML = "";
                 
                 matching.forEach((item, i) => {
-                    let currentRating = RatingEngine.getScore(item.id);
-                    const pending = JSON.parse(localStorage.getItem(RatingEngine.PENDING_KEY));
-                    if (pending && pending.id === item.id) {
-                        currentRating = Math.max(0.0, currentRating - 1.5);
-                    }
+                    const currentRating = RatingEngine.getScore(item.id);
                     const btn = document.createElement('div');
                     btn.className = 'id-item';                    btn.innerHTML = `
                         <small style="flex: 1; text-align: left; color: var(--text-muted); font-size: 0.6rem; font-weight: 700; opacity: 0.6; letter-spacing: 0.5px;">${item.source || 'ID'}</small>
                         <span style="flex: 2; text-align: center; font-family: monospace; opacity: 0.9;">${item.id.substring(0, 10).toUpperCase()}</span>
                         <span class="id-rating" style="flex: 1; text-align: right;">★ ${currentRating.toFixed(1)}</span>
                     `;                    btn.onclick = () => {
-                        RatingEngine.trackStart(item.id, getCanonicalName(channelName), i);
+                        const canonical = getCanonicalName(channelName);
+                        const excluded = UIManager.getRetryState(canonical);
+                        if (!excluded.includes(item.id)) UIManager.setRetryState(canonical, [...excluded, item.id]);
+                        RatingEngine.trackStart(item.id, canonical, i);
                         const mode = localStorage.getItem('player_mode') || 'external';
                         if (mode === 'internal') {
-                            UIManager.openInternalPlayer(item.id, getCanonicalName(channelName));
+                            UIManager.openInternalPlayer(item.id, canonical);
                             UIManager.closeModal();
                         } else {
                             window.location.href = `acestream://${item.id}`;

@@ -71,88 +71,30 @@
             DB_KEY: 'ace_autorating_v1',
             SESSION_KEY: 'ace_current_session',
             PENDING_KEY: 'ace_pending_penalties_list',
-            QUARANTINE_BASE_MS: 60 * 60 * 1000, // 1h por cada fallo consecutivo tras el 3º
-            QUARANTINE_MAX_MS: 24 * 60 * 60 * 1000,
             interval: null,
 
             getDB() { return JSON.parse(localStorage.getItem(this.DB_KEY)) || {}; },
-            saveDB(db) { localStorage.setItem(this.DB_KEY, JSON.stringify(db)); },
-
-            getEntry(id) {
+            
+            getScore(id) { 
                 const entry = this.getDB()[id];
-                if (!entry) return { score: 2.0, name: "Desconocido", failStreak: 0, quarantinedUntil: 0 };
-                if (typeof entry !== 'object') return { score: entry, name: "Desconocido", failStreak: 0, quarantinedUntil: 0 };
-                return { score: 2.0, name: "Desconocido", failStreak: 0, quarantinedUntil: 0, ...entry };
-            },
-
-            getScore(id) { return this.getEntry(id).score; },
-
-            // Un enlace en cuarentena queda excluido de la selección automática durante un
-            // tiempo (que crece con cada fallo consecutivo): esto es lo que hace que un
-            // enlace claramente malo se "descarte de verdad" en vez de solo perder unas
-            // décimas y seguir compitiendo por el primer puesto entre 30 opciones.
-            isQuarantined(id) {
-                const e = this.getEntry(id);
-                return !!(e.quarantinedUntil && Date.now() < e.quarantinedUntil);
+                if (!entry) return 2.0;
+                return (typeof entry === 'object') ? (entry.score || 2.0) : entry;
             },
 
             saveScore(id, delta, name = "") {
                 const db = this.getDB();
-                const entry = this.getEntry(id);
+                let entry = db[id];
+
+                if (!entry || typeof entry !== 'object') {
+                    entry = { score: entry || 2.0, name: name || "Desconocido" };
+                }
+                
                 if (name) entry.name = name;
                 entry.score = Math.max(0.0, Math.min(5.0, entry.score + delta));
+                
                 db[id] = entry;
-                this.saveDB(db);
-            },
-
-            // Confirmación fuerte de que un enlace funciona bien (reproducción sostenida
-            // o probe de manifest exitoso): sube la puntuación de forma notable y limpia
-            // cualquier cuarentena/racha de fallos, para que destaque claramente como bueno.
-            registerSuccess(id, name = "", boost = 1.0) {
-                const db = this.getDB();
-                const entry = this.getEntry(id);
-                if (name) entry.name = name;
-                entry.score = Math.max(0.0, Math.min(5.0, entry.score + boost));
-                entry.failStreak = 0;
-                entry.quarantinedUntil = 0;
-                db[id] = entry;
-                this.saveDB(db);
-            },
-
-            // Fallo confirmado (no arrancó, se quedó congelado, o el probe de manifest
-            // no respondió). Aumenta la racha de fallos y, a partir del 3º fallo seguido,
-            // pone el enlace en cuarentena con una duración creciente.
-            registerFailure(id, name = "", penalty = -1.5) {
-                const db = this.getDB();
-                const entry = this.getEntry(id);
-                if (name) entry.name = name;
-                entry.score = Math.max(0.0, Math.min(5.0, entry.score + penalty));
-                entry.failStreak = (entry.failStreak || 0) + 1;
-                if (entry.failStreak >= 3) {
-                    const extraStreak = entry.failStreak - 2;
-                    entry.quarantinedUntil = Date.now() + Math.min(this.QUARANTINE_MAX_MS, this.QUARANTINE_BASE_MS * extraStreak);
-                }
-                db[id] = entry;
-                this.saveDB(db);
-            },
-
-            // Comprobación rápida y real de si el motor de AceStream puede servir ese
-            // stream: pedimos el manifest .m3u8 con un timeout corto. Permite descartar
-            // enlaces muertos en segundos en vez de esperar a que el <video> falle.
-            async probeManifest(id, timeoutMs = 5000) {
-                const controller = new AbortController();
-                const timer = setTimeout(() => controller.abort(), timeoutMs);
-                try {
-                    const res = await fetch(`http://127.0.0.1:6878/ace/manifest.m3u8?id=${id}`, { signal: controller.signal });
-                    clearTimeout(timer);
-                    if (!res.ok) return false;
-                    const text = await res.text();
-                    return text.includes('#EXTM3U');
-                } catch (e) {
-                    clearTimeout(timer);
-                    return false;
-                }
-            },
+                localStorage.setItem(this.DB_KEY, JSON.stringify(db));
+            },            
 
             trackStart(id, channelName, index = 0) {
                 this.checkPreviousSession(channelName);
@@ -181,7 +123,7 @@
                 const recoveryPoints = Math.min(1.5, Math.floor(minutesSpent / 30) * 0.5);
                 
                 if (recoveryPoints > 0) {
-                    this.registerSuccess(session.id, session.channelName, recoveryPoints);
+                    this.saveScore(session.id, recoveryPoints, session.channelName);
                 }
                 
                 // Si la sesión es antigua (>30min) o hay cambio de canal, cerramos para nueva sesión
@@ -197,7 +139,7 @@
                     else if (minutesSpent < 25) penalty = -0.5;
 
                     if (penalty !== 0) {
-                        this.registerFailure(session.id, session.channelName, penalty);
+                        this.saveScore(session.id, penalty, session.channelName);
                         localStorage.setItem(this.PENDING_KEY, JSON.stringify({ id: session.id, timestamp: Date.now() }));
                     }
                 }
@@ -1343,122 +1285,75 @@
                     this.playBestOrNext(channelName);
                 }
                 this.isLongPress = false;
-            },
-
-            // Selección automática: en vez de reproducir opciones de una en una esperando
-            // hasta 27s por cada fallo (inviable con 30 opciones), se comprueban varias en
-            // PARALELO mediante un probe rápido al manifest, y se reproduce en cuanto una
-            // responde. Los enlaces en cuarentena (fallos repetidos recientes) se saltan.
-            async playBestOrNext(channelName, excludedIds = []) {
-                const PROBE_BATCH_SIZE = 3;
-                const canonicalName = getCanonicalName(channelName);
-                const myToken = ++this.playAttemptToken;
-
-                const allMatching = aceStreamMap
+            },            playBestOrNext(channelName, triedCount = 0, excludedIds = []) {
+                const matching = aceStreamMap
                     .filter(a => ComparisonEngine.isMatch(channelName, a.name))
                     .sort((a, b) => RatingEngine.getScore(b.id) - RatingEngine.getScore(a.id));
 
-                if (allMatching.length === 0) return;
+                if (matching.length === 0) return;
 
-                const mode = localStorage.getItem('player_mode') || 'external';
-
-                // En modo externo no podemos vigilar el reproductor de terceros, así que
-                // simplemente lanzamos la mejor opción no descartada, sin probing.
-                if (mode === 'external') {
-                    const nonQuarantined = allMatching.filter(m => !excludedIds.includes(m.id) && !RatingEngine.isQuarantined(m.id));
-                    const pick = (nonQuarantined[0] || allMatching.filter(m => !excludedIds.includes(m.id))[0] || allMatching[0]);
-                    const idx = allMatching.findIndex(m => m.id === pick.id);
-                    RatingEngine.trackStart(pick.id, canonicalName, idx);
-                    location.href = 'acestream://' + pick.id;
-                    return;
-                }
-
-                // Candidatos: primero los que no están en cuarentena ni ya probados; si no
-                // queda ninguno, se recurre a los que sí lo están antes de rendirse (mejor
-                // probar algo que no probar nada).
-                let candidates = allMatching.filter(m => !excludedIds.includes(m.id) && !RatingEngine.isQuarantined(m.id));
-                if (candidates.length === 0) candidates = allMatching.filter(m => !excludedIds.includes(m.id));
+                // Elegimos siempre la MEJOR opción disponible que aún no se haya probado
+                // en este ciclo de reintentos (por ID, nunca por posición/índice: el array
+                // se reordena en cada llamada porque las puntuaciones acaban de cambiar,
+                // y usar un índice ahí era justo lo que provocaba el bucle).
+                const candidates = matching.filter(m => !excludedIds.includes(m.id));
 
                 if (candidates.length === 0) {
+                    // Ya se probaron todas las opciones disponibles sin éxito.
                     console.log("Auto-retry: agotadas todas las opciones para " + channelName + ".");
                     this.openIdsModal(new Event('click'), channelName);
                     return;
                 }
 
-                const batch = candidates.slice(0, PROBE_BATCH_SIZE);
-                this.setProbingStatus(channelName, batch.length);
+                const pick = candidates[0];
+                const pickIndex = matching.findIndex(m => m.id === pick.id);
 
-                const probeResults = await Promise.all(batch.map(c =>
-                    RatingEngine.probeManifest(c.id).then(ok => ({ item: c, ok }))
-                ));
+                RatingEngine.trackStart(pick.id, getCanonicalName(channelName), pickIndex);
 
-                if (myToken !== this.playAttemptToken) return; // el usuario ya cambió de canal mientras probábamos
+                // Token que invalida cualquier vigilancia (watchdog) de un intento anterior,
+                // por si el usuario cambia de canal manualmente mientras se estaba reintentando.
+                const myToken = ++this.playAttemptToken;
 
-                const winner = probeResults.find(r => r.ok);
-                const nextExcluded = [...excludedIds, ...batch.map(b => b.item.id)];
-
-                // Los que fallaron el probe se penalizan ya (fallo confirmado real, no una suposición).
-                probeResults.forEach(r => {
-                    if (!r.ok) RatingEngine.registerFailure(r.item.id, canonicalName, -1.0);
-                });
-
-                if (!winner) {
-                    if (nextExcluded.length < allMatching.length) {
-                        this.playBestOrNext(channelName, nextExcluded);
-                    } else {
-                        this.openIdsModal(new Event('click'), channelName);
-                    }
-                    return;
+                const mode = localStorage.getItem('player_mode') || 'external';
+                if (mode === 'internal') {
+                    this.openInternalPlayer(pick.id, getCanonicalName(channelName)).then(() => {
+                        this.watchStream(myToken, channelName, triedCount, [...excludedIds, pick.id]);
+                    });
+                } else {
+                    location.href = 'acestream://' + pick.id;
                 }
-
-                const idx = allMatching.findIndex(m => m.id === winner.item.id);
-                RatingEngine.trackStart(winner.item.id, canonicalName, idx);
-
-                this.openInternalPlayer(winner.item.id, canonicalName).then(() => {
-                    if (myToken !== this.playAttemptToken) return;
-                    this.watchStream(myToken, channelName, winner.item.id, nextExcluded, allMatching.length);
-                });
             },
 
-            setProbingStatus(channelName, count) {
-                // Pequeño aviso opcional en consola; el spinner/loader ya visible en la UI
-                // cubre la espera visual durante el probing.
-                console.log(`Comprobando ${count} opción(es) para ${channelName}...`);
-            },
-
-            // Vigila la reproducción real del stream elegido (ya pasó el probe de manifest,
-            // así que aquí solo comprobamos que el <video> arranque y no se quede congelado):
+            // Vigila la reproducción real del stream elegido:
             //  1) si no arranca en STARTUP_TIMEOUT_MS, se descarta,
             //  2) si arranca pero se queda "colgado" (mismo currentTime) durante
-            //     STALL_TIMEOUT_MS, también se descarta (esto es lo que antes nunca se
-            //     detectaba: un stream podía quedar "pillado" indefinidamente),
-            //  3) si HLS.js reporta un error fatal, se descarta de inmediato,
-            //  4) si sostiene reproducción real CONFIRM_TIMEOUT_MS, se confirma como bueno
-            //     con una subida de puntuación notable y se limpia su cuarentena/racha.
-            watchStream(token, channelName, currentId, excludedIds, totalOptions) {
+            //     STALL_TIMEOUT_MS, también se descarta (esto es lo que antes nunca
+            //     se detectaba: un stream podía quedar "pillado" indefinidamente),
+            //  3) si HLS.js reporta un error fatal, se descarta de inmediato.
+            // La puntuación se ajusta sola: al probar la siguiente opción, trackStart()
+            // llama a checkPreviousSession(), que penaliza el stream fallido según el
+            // tiempo real que estuvo "activo" (siempre poco, así que penalización máxima).
+            watchStream(token, channelName, triedCount, excludedIds) {
                 if (this.stallCheckInterval) clearInterval(this.stallCheckInterval);
 
-                const canonicalName = getCanonicalName(channelName);
                 const STARTUP_TIMEOUT_MS = 9000;
                 const STALL_TIMEOUT_MS = 18000;
-                const CONFIRM_TIMEOUT_MS = 45000;
                 const POLL_MS = 2000;
 
                 const startedAt = Date.now();
                 let hasStartedPlaying = false;
-                let confirmed = false;
-                let playingSince = null;
                 let lastTime = -1;
                 let lastAdvanceAt = Date.now();
+
+                const totalOptions = aceStreamMap.filter(a => ComparisonEngine.isMatch(channelName, a.name)).length;
 
                 const failover = (reason) => {
                     if (token !== this.playAttemptToken) return; // ya no es el intento activo, ignorar
                     clearInterval(this.stallCheckInterval);
                     this.stallCheckInterval = null;
-                    RatingEngine.registerFailure(currentId, canonicalName, -1.5);
                     console.log("Auto-retry (" + reason + "): descartando esta opción y probando la siguiente mejor disponible.");
                     if (excludedIds.length < totalOptions) {
-                        this.playBestOrNext(channelName, excludedIds);
+                        this.playBestOrNext(channelName, triedCount + 1, excludedIds);
                     } else {
                         this.openIdsModal(new Event('click'), channelName);
                     }
@@ -1474,7 +1369,6 @@
                     if (!hasStartedPlaying) {
                         if (!video.paused && video.currentTime > 0) {
                             hasStartedPlaying = true;
-                            playingSince = Date.now();
                             lastTime = video.currentTime;
                             lastAdvanceAt = Date.now();
                         } else if (Date.now() - startedAt >= STARTUP_TIMEOUT_MS) {
@@ -1491,13 +1385,6 @@
                         lastAdvanceAt = Date.now();
                     } else if (Date.now() - lastAdvanceAt >= STALL_TIMEOUT_MS) {
                         failover('se quedó congelado');
-                        return;
-                    }
-
-                    if (!confirmed && playingSince && (Date.now() - playingSince >= CONFIRM_TIMEOUT_MS)) {
-                        confirmed = true;
-                        RatingEngine.registerSuccess(currentId, canonicalName, 1.0);
-                        console.log("Stream confirmado como bueno, puntuación reforzada.");
                     }
                 }, POLL_MS);
             },
@@ -1520,23 +1407,16 @@
                     if (pending && pending.id === item.id) {
                         currentRating = Math.max(0.0, currentRating - 1.5);
                     }
-                    const quarantined = RatingEngine.isQuarantined(item.id);
                     const btn = document.createElement('div');
-                    btn.className = 'id-item';
-                    if (quarantined) btn.style.opacity = '0.5';
-                    btn.innerHTML = `
+                    btn.className = 'id-item';                    btn.innerHTML = `
                         <small style="flex: 1; text-align: left; color: var(--text-muted); font-size: 0.6rem; font-weight: 700; opacity: 0.6; letter-spacing: 0.5px;">${item.source || 'ID'}</small>
                         <span style="flex: 2; text-align: center; font-family: monospace; opacity: 0.9;">${item.id.substring(0, 10).toUpperCase()}</span>
-                        <span class="id-rating" style="flex: 1; text-align: right;">${quarantined ? '🚫 ' : '★ '}${currentRating.toFixed(1)}</span>
+                        <span class="id-rating" style="flex: 1; text-align: right;">★ ${currentRating.toFixed(1)}</span>
                     `;                    btn.onclick = () => {
                         RatingEngine.trackStart(item.id, getCanonicalName(channelName), i);
                         const mode = localStorage.getItem('player_mode') || 'external';
                         if (mode === 'internal') {
-                            const myToken = ++UIManager.playAttemptToken;
-                            UIManager.openInternalPlayer(item.id, getCanonicalName(channelName)).then(() => {
-                                if (myToken !== UIManager.playAttemptToken) return;
-                                UIManager.watchStream(myToken, channelName, item.id, matching.map(m => m.id), matching.length);
-                            });
+                            UIManager.openInternalPlayer(item.id, getCanonicalName(channelName));
                             UIManager.closeModal();
                         } else {
                             window.location.href = `acestream://${item.id}`;

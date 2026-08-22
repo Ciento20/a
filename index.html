@@ -56,7 +56,7 @@
         </style></head><body>
     <div id="loader-container">
         <div class="loader-bar"></div>
-    </div><div id="status"><div class="spinner"></div></div><div id="searchContainer" style="display:none;width:95%;max-width:500px;margin:10px auto 0 auto;gap:8px;align-items:center;padding-bottom:10px;"><div style="position:relative;flex:1;display:flex;align-items:center"><input type="text" id="globalSearchInput" placeholder="Buscar canal, equipo o competición..." style="width:100%;padding:12px 40px 12px 16px;border-radius:12px;border:1px solid var(--border-color);background:var(--card-bg);color:#fff;font-size:.9rem;outline:0"><span id="clearSearch" style="position:absolute;right:12px;color:var(--text-muted);cursor:pointer;display:none;font-size:1.2rem;user-select:none">&times;</span></div></div><div id="events-container"></div>
+    </div><div id="status"><div class="spinner"></div></div><div id="searchContainer" style="display:none;width:95%;max-width:500px;margin:10px auto 0 auto;gap:8px;align-items:center;padding-bottom:10px;"><div style="position:relative;flex:1;display:flex;align-items:center"><input type="text" id="globalSearchInput" placeholder="Buscar canal, equipo o competición..." style="width:100%;padding:12px 40px 12px 16px;border-radius:12px;border:1px solid var(--border-color);background:var(--card-bg);color:#fff;font-size:.9rem;outline:0"><span id="clearSearch" style="position:absolute;right:12px;color:var(--text-muted);cursor:pointer;display:none;font-size:1.2rem;user-select:none">&times;</span></div></div><div id="events-container"></div><div id="debug-fab" onclick="DebugPanel.show()" style="display:none;position:fixed;bottom:60px;right:14px;z-index:1500;width:42px;height:42px;border-radius:50%;background:#d32f2f;color:#fff;align-items:center;justify-content:center;font-size:1.2rem;box-shadow:0 4px 10px rgba(0,0,0,.4);cursor:pointer;">⚠️</div><div id="debug-panel-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:3000;flex-direction:column;padding:14px;box-sizing:border-box;"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;"><span style="color:var(--accent-blue);font-weight:700;font-size:.85rem;">Diagnóstico de conexión</span><span onclick="DebugPanel.hide()" style="color:#fff;font-size:1.4rem;cursor:pointer;padding:0 8px;">&times;</span></div><pre id="debug-panel-content" style="flex:1;overflow:auto;background:#111;color:#0f0;font-size:.65rem;line-height:1.4;padding:10px;border-radius:8px;white-space:pre-wrap;word-break:break-word;margin:0;"></pre><button onclick="navigator.clipboard && navigator.clipboard.writeText(DebugPanel.lines.join('\n'))" style="margin-top:10px;padding:10px;border:none;border-radius:8px;background:var(--accent-blue);color:#fff;font-weight:700;">Copiar log</button></div>
 <div id="noResultsContainer" style="display:none;text-align:center;padding:40px;color:var(--text-muted)"><div><div style="font-size:3rem;margin-bottom:10px;color:var(--accent-blue)" class="material-symbols-outlined">satellite_alt</div><div style="font-weight:700;font-size:1.1rem;color:var(--text-main)">Sin resultados</div><div style="font-size:.85rem;margin-top:5px;opacity:.8">Intenta con otra búsqueda</div></div></div><div id="ids-modal" class="modal-overlay" onclick="UIManager.closeModal(event)"><div class="modal-content" onclick="event.stopPropagation()"><div id="modal-title" class="modal-title">Canales</div><div id="ids-list" class="ids-list"></div></div></div><nav class="bottom-nav"><div class="nav-item active" id="nav-home" onclick='UIManager.switchTab("home")'><span class="nav-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg></span><span>EVENTOS</span></div><div class="nav-item" id="nav-channels" onclick='UIManager.switchTab("channels")'><span class="nav-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg></span><span>CANALES</span></div></nav><script>const CONFIG = {
             BASE_URL: 'https://www.futbolenlatv.es',
             TARGET_URL: 'https://www.futbolenlatv.es/deporte',
@@ -189,10 +189,42 @@
         const getCanonicalName = (name) => {
             const clean = cleanChannelName(name);
             return channelCanonicalMap[clean] || clean;
-        };        const NetworkService = {
-            async fetchHtml(targetUrl) {
+        };        const DebugPanel = {
+            lines: [],
+            log(msg) {
+                const ts = new Date().toLocaleTimeString();
+                this.lines.push(`[${ts}] ${msg}`);
+                if (this.lines.length > 200) this.lines.shift();
+                this.render();
+                const fab = document.getElementById('debug-fab');
+                if (fab) fab.style.display = 'flex';
+            },
+            render() {
+                const box = document.getElementById('debug-panel-content');
+                if (box) box.textContent = this.lines.join('\n');
+            },
+            show() {
+                const el = document.getElementById('debug-panel-overlay');
+                if (el) el.style.display = 'flex';
+                this.render();
+            },
+            hide() {
+                const el = document.getElementById('debug-panel-overlay');
+                if (el) el.style.display = 'none';
+            }
+        };
+
+        const NetworkService = {
+            IPFS_GATEWAYS: [
+                'https://dweb.link',
+                'https://w3s.link',
+                'https://4everland.io',
+                'https://trustless-gateway.link',
+                'https://ipfs.io'
+            ],
+            async fetchHtml(targetUrl, timeoutMs = 10000) {
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 10000);
+                const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
                 try {
                     const res = await fetch(targetUrl, { signal: controller.signal });
                     clearTimeout(timeoutId);
@@ -202,6 +234,34 @@
                     clearTimeout(timeoutId);
                     throw new Error("Error de conexión");
                 }
+            },
+            // Prueba varios gateways IPFS públicos en orden hasta que uno responda con datos válidos.
+            // "isValid" permite descartar respuestas "200 OK" que en realidad son páginas de bloqueo/verificación anti-bot.
+            async fetchIpfsPath(path, isValid = (text) => text && text.length > 0) {
+                let lastErr = null;
+                for (const gateway of this.IPFS_GATEWAYS) {
+                    try {
+                        const text = await this.fetchHtml(gateway + path, 8000);
+                        if (isValid(text)) {
+                            const okMsg = 'OK -> ' + gateway + ' (' + text.length + ' bytes)';
+                            console.log('[IPFS]', okMsg);
+                            DebugPanel.log('✅ ' + okMsg);
+                            return text;
+                        }
+                        const invalidMsg = 'Respuesta inválida/bloqueada -> ' + gateway;
+                        console.warn('[IPFS]', invalidMsg, text.slice(0, 200));
+                        DebugPanel.log('⚠️ ' + invalidMsg);
+                        lastErr = new Error("Respuesta inválida de " + gateway);
+                    } catch (e) {
+                        const failMsg = 'Fallo -> ' + gateway + ' -> ' + (e.message || e);
+                        console.warn('[IPFS]', failMsg);
+                        DebugPanel.log('❌ ' + failMsg);
+                        lastErr = e;
+                    }
+                }
+                console.error('[IPFS] Todos los gateways fallaron para', path);
+                DebugPanel.log('🛑 Todos los gateways fallaron para: ' + path);
+                throw lastErr || new Error("Todos los gateways IPFS fallaron");
             },
             async fetchLogos() {
                 try {
@@ -281,8 +341,8 @@
 
         const AceStreamEngine = {
             SOURCES: [
-                { id: 'ERA', url: 'https://ipfs.io/ipns/k2k4r8lm8tkmuxbc8lkmq1in3v0oya1p6pe9o5bu0hu30br5ko08k2gb/data/listas/lista_fuera_iptv.m3u', parser: 'parseEra' },
-                { id: 'ELCANO', url: 'https://ipfs.io/ipns/k51qzi5uqu5dh5qej4b9wlcr5i6vhc7rcfkekhrxqek5c9lk6gdaiik820fecs/hashes.json', parser: 'parseElcano' }
+                { id: 'ERA', path: '/ipns/k2k4r8lm8tkmuxbc8lkmq1in3v0oya1p6pe9o5bu0hu30br5ko08k2gb/data/listas/lista_fuera_iptv.m3u', parser: 'parseEra', isValid: (t) => t && t.includes('#EXTINF') },
+                { id: 'ELCANO', path: '/ipns/k51qzi5uqu5dh5qej4b9wlcr5i6vhc7rcfkekhrxqek5c9lk6gdaiik820fecs/hashes.json', parser: 'parseElcano', isValid: (t) => { try { return Array.isArray(JSON.parse(t).hashes); } catch (e) { return false; } } }
             ],generateHash(str){let hash=5381,i=str.length;while(i)hash=(hash*33)^str.charCodeAt(--i);return(hash>>>0).toString(16)},
 
             async init() {
@@ -293,7 +353,7 @@
 
                 for (const src of this.SOURCES) {
                     try {
-                        const raw = await NetworkService.fetchHtml(src.url);
+                        const raw = await NetworkService.fetchIpfsPath(src.path, src.isValid);
                         const newHash = this.generateHash(raw);if (currentHashes[src.id] === newHash) continue;
                         hasChanges = true;
                         currentHashes[src.id] = newHash;
@@ -1259,9 +1319,10 @@
                 const now = Date.now();
 
                 let nextIndex;
-                // Si es reintento automático o clic rápido, siguiente. Si no, el mejor.
-                if (triedCount > 0 || (now - lastTimestamp < 900000)) {
-                    nextIndex = (triedCount > 0) ? (lastIndex + 1) % matching.length : (lastIndex + 1) % matching.length;
+                // Un toque normal SIEMPRE va al mejor puntuado (index 0, ya vienen ordenados por rating).
+                // Solo el reintento automático real (el stream falló de verdad) avanza al siguiente.
+                if (triedCount > 0) {
+                    nextIndex = (lastIndex + 1) % matching.length;
                 } else {
                     nextIndex = 0;
                 }
@@ -1447,11 +1508,16 @@
                 UIManager.refresh();
             } catch (err) {
                 console.error("Error en carga:", err);
+                DebugPanel.log('🛑 Error general en carga: ' + (err.message || err));
             } finally {
                 UIManager.status.style.display = 'none';
                 document.body.classList.add('loading-finished');
                 if (globalData.length === 0 && aceStreamMap.length === 0) {
                     document.getElementById('noResultsContainer').style.display = 'block';
+                }
+                if (aceStreamMap.length === 0) {
+                    DebugPanel.log('🛑 aceStreamMap vacío tras init() — 0 canales disponibles.');
+                    DebugPanel.show();
                 }
             }
         }        init();        window.syncMarker = () => {

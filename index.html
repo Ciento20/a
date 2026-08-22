@@ -41,7 +41,15 @@
             will-change:opacity;
         }
         #ambilight-canvas.active{opacity:1;}
-
+        #player-viewport::after{
+            content:"";
+            position:absolute; inset:0; z-index:2;
+            pointer-events:none;
+            background: radial-gradient(ellipse closest-side at center, transparent 55%, rgba(0,0,0,.35) 100%);
+            opacity:0;
+            transition:opacity .7s ease;
+        }
+        #player-viewport:has(#ambilight-canvas.active)::after{opacity:1;}
         #internal-player-container:fullscreen #ambilight-canvas,#internal-player-container:-webkit-full-screen #ambilight-canvas{top:0;left:0;width:100%;height:100%;}
         @media (prefers-reduced-motion: reduce){ #ambilight-canvas{transition:none;} #player-controls{transition:none;} #player-viewport::after{transition:none;} }
         #internal-player-container:fullscreen #player-handle,#internal-player-container:-webkit-full-screen #player-handle{display:none !important;}
@@ -62,6 +70,7 @@
         };        const RatingEngine = {
             DB_KEY: 'ace_autorating_v1',
             SESSION_KEY: 'ace_current_session',
+            PENDING_KEY: 'ace_pending_penalties_list',
             interval: null,
 
             getDB() { return JSON.parse(localStorage.getItem(this.DB_KEY)) || {}; },
@@ -107,22 +116,33 @@
             checkPreviousSession(newChannelName = null) {
                 const session = JSON.parse(localStorage.getItem(this.SESSION_KEY));
                 if (!session) return;
-                
+
                 const minutesSpent = Math.floor((Date.now() - session.start) / 60000);
-                
-                // Cómputo justo: Si vuelve tras mucho tiempo, recuperamos hasta 1.5 puntos (90 min)
+                let sessionChanged = false;
+
+                // Recompensa por tiempo visto (hasta 1.5 puntos, por tramos de 30 min).
+                // Se aplica solo la DIFERENCIA respecto a lo ya acreditado, para que llamar
+                // a este método varias veces (p.ej. cada vez que vuelves a la pestaña) no
+                // sume la recompensa repetidas veces y perjudique a los enlaces buenos... y no
+                // maquille los que en realidad han estado colgados/en bucle todo ese tiempo.
                 const recoveryPoints = Math.min(1.5, Math.floor(minutesSpent / 30) * 0.5);
-                
-                if (recoveryPoints > 0) {
-                    this.saveScore(session.id, recoveryPoints, session.channelName);
-                }
-                
-                // Si la sesión es antigua (>30min) o hay cambio de canal, cerramos para nueva sesión
-                if (minutesSpent >= 30 || (newChannelName && newChannelName !== session.channelName)) {
-                    localStorage.removeItem(this.SESSION_KEY);
+                const alreadyApplied = session.recoveryApplied || 0;
+                if (recoveryPoints > alreadyApplied) {
+                    this.saveScore(session.id, recoveryPoints - alreadyApplied, session.channelName);
+                    session.recoveryApplied = recoveryPoints;
+                    sessionChanged = true;
                 }
 
-                if (newChannelName && newChannelName === session.channelName) {
+                // Penalización por fallo rápido: se evalúa en CUALQUIER punto de contacto
+                // (reintento del mismo canal, elección de otro canal, o simplemente volver
+                // a la app/pestaña tras probar el enlace externo), no solo si se repulsa el
+                // mismo canal. Antes solo se comprobaba en ese único caso, así que si volvías
+                // a la app y elegías otro canal (o simplemente mirabas y volvías), el enlace
+                // fallido se quedaba con su puntuación intacta para siempre: de ahí que nunca
+                // se actualizara y que un mismo enlace roto volviera a salir elegido más tarde.
+                // Se aplica como máximo una vez por sesión (session.penalized) para no penalizar
+                // el mismo intento varias veces si hay varios eventos de "vuelta a la app".
+                if (!session.penalized) {
                     let penalty = 0;
                     if (minutesSpent < 5) penalty = -1.5;
                     else if (minutesSpent < 15) penalty = -1.0;
@@ -130,7 +150,29 @@
 
                     if (penalty !== 0) {
                         this.saveScore(session.id, penalty, session.channelName);
+                        session.penalized = true;
+                        sessionChanged = true;
+                        localStorage.setItem(this.PENDING_KEY, JSON.stringify({ id: session.id, timestamp: Date.now() }));
                     }
+                }
+
+                if (sessionChanged) {
+                    localStorage.setItem(this.SESSION_KEY, JSON.stringify(session));
+                    // Refresco inmediato: si el usuario tiene abierto el listado de IDs
+                    // de este canal, que vea el cambio de puntuación al instante, sin
+                    // tener que cerrar y reabrir el modal.
+                    if (typeof UIManager !== 'undefined' && UIManager.refreshRatingDisplays) {
+                        UIManager.refreshRatingDisplays();
+                    }
+                }
+
+                // Cerramos la sesión si ya ha pasado suficiente tiempo, o si el usuario ha
+                // elegido explícitamente otro canal (confirma que abandona este intento).
+                if (minutesSpent >= 30) {
+                    localStorage.removeItem(this.SESSION_KEY);
+                    localStorage.removeItem(this.PENDING_KEY);
+                } else if (newChannelName && newChannelName !== session.channelName) {
+                    localStorage.removeItem(this.SESSION_KEY);
                 }
             },
 
@@ -779,53 +821,6 @@
             lastClickTime: 0,
             stallCheckInterval: null,
             playAttemptToken: 0,
-            RETRY_STATE_KEY: 'ace_retry_state_v1',
-            RETRY_TTL_MS: 30 * 60 * 1000, // mismo criterio de "sesión" que el resto del sistema
-
-            // --- Memoria de "qué enlaces ya se han probado" para este canal ---
-            // Esto es la clave de que cada pulsación dé SIEMPRE un enlace distinto:
-            // sin esto, si el mejor enlace tenía mucha ventaja de puntuación, aunque
-            // fallara y perdiera puntos seguía siendo "el mejor" y se repetía.
-            getRetryState(canonical) {
-                try {
-                    const raw = JSON.parse(localStorage.getItem(this.RETRY_STATE_KEY)) || {};
-                    const entry = raw[canonical];
-                    if (!entry) return [];
-                    if (Date.now() - entry.ts > this.RETRY_TTL_MS) return [];
-                    return entry.excluded || [];
-                } catch (e) { return []; }
-            },
-            setRetryState(canonical, excluded) {
-                try {
-                    const raw = JSON.parse(localStorage.getItem(this.RETRY_STATE_KEY)) || {};
-                    raw[canonical] = { excluded, ts: Date.now() };
-                    localStorage.setItem(this.RETRY_STATE_KEY, JSON.stringify(raw));
-                } catch (e) { }
-            },
-            clearRetryState(canonical) {
-                try {
-                    const raw = JSON.parse(localStorage.getItem(this.RETRY_STATE_KEY)) || {};
-                    delete raw[canonical];
-                    localStorage.setItem(this.RETRY_STATE_KEY, JSON.stringify(raw));
-                } catch (e) { }
-            },
-
-            // Aviso flotante breve para que el usuario VEA al instante qué está
-            // pasando con el sistema de puntuación (qué enlace se prueba, con qué
-            // puntuación, y cuándo se descarta uno), en vez de tener que adivinarlo.
-            showToast(msg, duration = 2600) {
-                let t = document.getElementById('rating-toast');
-                if (!t) {
-                    t = document.createElement('div');
-                    t.id = 'rating-toast';
-                    t.style.cssText = 'position:fixed;bottom:64px;left:50%;transform:translateX(-50%);background:rgba(20,20,20,.96);color:#fff;padding:9px 16px;border-radius:20px;font-size:.7rem;font-weight:600;z-index:10050;box-shadow:0 4px 14px rgba(0,0,0,.5);border:1px solid var(--accent-blue);opacity:0;transition:opacity .25s ease;pointer-events:none;max-width:88%;text-align:center;';
-                    document.body.appendChild(t);
-                }
-                t.textContent = msg;
-                t.style.opacity = '1';
-                clearTimeout(t._hideTimer);
-                t._hideTimer = setTimeout(() => { t.style.opacity = '0'; }, duration);
-            },
 
             togglePlayerMode() {
                 const current = localStorage.getItem('player_mode') || 'external';
@@ -1318,15 +1313,21 @@
 
             handleChannelClick(event, channelName) {
                 if (!this.isLongPress) {
-                    // null = "esto es una pulsación nueva del usuario, no una continuación
-                    // automática": carga el historial guardado de este canal (qué enlaces
-                    // ya se probaron) en vez de partir de cero cada vez.
-                    this.playBestOrNext(channelName, 0, null);
+                    this.playBestOrNext(channelName);
                 }
                 this.isLongPress = false;
-            },            playBestOrNext(channelName, triedCount = 0, excludedIds = null) {
-                const canonical = getCanonicalName(channelName);
-                if (excludedIds === null) excludedIds = this.getRetryState(canonical);
+            },            playBestOrNext(channelName, triedCount = 0, excludedIds = []) {
+                const canonicalName = getCanonicalName(channelName);
+
+                // PASO 1 — Cerramos y puntuamos el intento anterior ANTES de elegir el
+                // siguiente enlace. Si esto se hace después (como estaba antes), la lista
+                // se ordena con la puntuación todavía sin actualizar y el sistema puede
+                // volver a ofrecerte el mismo enlace que acaba de fallar. Este orden es
+                // la clave de todo: puntuar primero, elegir después.
+                const prevSession = JSON.parse(localStorage.getItem(RatingEngine.SESSION_KEY));
+                const repeatingSameChannel = triedCount === 0 && prevSession && prevSession.channelName === canonicalName;
+
+                RatingEngine.checkPreviousSession(canonicalName);
 
                 const matching = aceStreamMap
                     .filter(a => ComparisonEngine.isMatch(channelName, a.name))
@@ -1334,32 +1335,39 @@
 
                 if (matching.length === 0) return;
 
+                // PASO 2 — Si repites pulsación sobre el mismo canal, excluimos también
+                // de forma explícita el último enlace probado. Así garantizamos que NUNCA
+                // se repita en la siguiente pulsación, aunque la puntuación no haya bajado
+                // lo suficiente todavía como para cambiar el orden por sí sola.
+                if (repeatingSameChannel && !excludedIds.includes(prevSession.id)) {
+                    excludedIds = [...excludedIds, prevSession.id];
+                }
+
                 // Elegimos siempre la MEJOR opción disponible que aún no se haya probado
-                // en este ciclo (por ID, guardado en localStorage por canal, nunca por
-                // posición/índice: así cada pulsación del usuario da SIEMPRE un enlace
-                // distinto al anterior, aunque la puntuación no lo haya bajado lo bastante
-                // como para dejar de ser "el mejor").
+                // en este ciclo de reintentos (por ID, nunca por posición/índice: el array
+                // se reordena en cada llamada porque las puntuaciones acaban de cambiar,
+                // y usar un índice ahí era justo lo que provocaba el bucle).
                 let candidates = matching.filter(m => !excludedIds.includes(m.id));
 
                 if (candidates.length === 0) {
-                    // Ya se probaron todos los enlaces disponibles en este ciclo: puede que
-                    // alguno haya recuperado puntuación mientras tanto, así que reiniciamos
-                    // el ciclo desde el mejor en vez de dejar al usuario sin nada que pulsar.
-                    this.clearRetryState(canonical);
-                    excludedIds = [];
-                    candidates = matching;
-                    this.showToast('Ya se han probado todos los enlaces. Reiniciando ciclo...');
+                    if (triedCount === 0) {
+                        // Ya se han probado todos los enlaces en pulsaciones anteriores:
+                        // reiniciamos el ciclo por puntuación en vez de dejar al usuario
+                        // sin nada que probar.
+                        candidates = matching;
+                    } else {
+                        // Esto solo ocurre dentro del reintento automático del reproductor
+                        // interno: ya se probaron todas las opciones disponibles sin éxito.
+                        console.log("Auto-retry: agotadas todas las opciones para " + channelName + ".");
+                        this.openIdsModal(new Event('click'), channelName);
+                        return;
+                    }
                 }
 
                 const pick = candidates[0];
                 const pickIndex = matching.findIndex(m => m.id === pick.id);
-                const pickScore = RatingEngine.getScore(pick.id);
-                const newExcluded = [...excludedIds, pick.id];
-                this.setRetryState(canonical, newExcluded);
 
-                this.showToast((triedCount > 0 ? '↻ Probando otro enlace' : '▶ Reproduciendo') + ' · ★' + pickScore.toFixed(1));
-
-                RatingEngine.trackStart(pick.id, canonical, pickIndex);
+                RatingEngine.trackStart(pick.id, canonicalName, pickIndex);
 
                 // Token que invalida cualquier vigilancia (watchdog) de un intento anterior,
                 // por si el usuario cambia de canal manualmente mientras se estaba reintentando.
@@ -1367,14 +1375,13 @@
 
                 const mode = localStorage.getItem('player_mode') || 'external';
                 if (mode === 'internal') {
-                    this.openInternalPlayer(pick.id, canonical).then(() => {
-                        this.watchStream(myToken, channelName, triedCount, newExcluded);
+                    this.openInternalPlayer(pick.id, canonicalName).then(() => {
+                        this.watchStream(myToken, channelName, triedCount, [...excludedIds, pick.id]);
                     });
                 } else {
                     location.href = 'acestream://' + pick.id;
                 }
             },
-
 
             // Vigila la reproducción real del stream elegido:
             //  1) si no arranca en STARTUP_TIMEOUT_MS, se descarta,
@@ -1388,10 +1395,9 @@
             watchStream(token, channelName, triedCount, excludedIds) {
                 if (this.stallCheckInterval) clearInterval(this.stallCheckInterval);
 
-                const STARTUP_TIMEOUT_MS = 20000;
-                const STALL_TIMEOUT_MS = 22000;
+                const STARTUP_TIMEOUT_MS = 9000;
+                const STALL_TIMEOUT_MS = 18000;
                 const POLL_MS = 2000;
-                const MAX_AUTO_RETRIES = 8; // tope de seguridad: nunca reintentar indefinidamente
 
                 const startedAt = Date.now();
                 let hasStartedPlaying = false;
@@ -1399,17 +1405,21 @@
                 let lastAdvanceAt = Date.now();
 
                 const totalOptions = aceStreamMap.filter(a => ComparisonEngine.isMatch(channelName, a.name)).length;
+                // Tope duro de reintentos, independiente de "totalOptions": si por lo que
+                // sea la lista de enlaces cambia entre reintentos (se refresca la caché,
+                // hay IDs duplicados, etc.) "excludedIds.length < totalOptions" podía no
+                // cumplirse nunca y el reintento se repetía indefinidamente. Este límite
+                // absoluto garantiza que, pase lo que pase, el bucle termina.
+                const MAX_RETRIES = 12;
 
                 const failover = (reason) => {
                     if (token !== this.playAttemptToken) return; // ya no es el intento activo, ignorar
                     clearInterval(this.stallCheckInterval);
                     this.stallCheckInterval = null;
                     console.log("Auto-retry (" + reason + "): descartando esta opción y probando la siguiente mejor disponible.");
-                    if (excludedIds.length < totalOptions && triedCount + 1 < MAX_AUTO_RETRIES) {
-                        this.showToast('✕ Enlace descartado (' + reason + '), probando el siguiente...');
+                    if (excludedIds.length < totalOptions && triedCount < MAX_RETRIES) {
                         this.playBestOrNext(channelName, triedCount + 1, excludedIds);
                     } else {
-                        this.showToast('No queda ningún enlace que funcione, elige uno manualmente.');
                         this.openIdsModal(new Event('click'), channelName);
                     }
                 };
@@ -1454,23 +1464,28 @@
                     .sort((a, b) => RatingEngine.getScore(b.id) - RatingEngine.getScore(a.id));
 
                 title.textContent = getCanonicalName(channelName);
+                // Guardamos el nombre "en bruto" del canal (no el canónico) para poder
+                // volver a pintar este mismo listado cuando cambie una puntuación,
+                // sin que el usuario tenga que cerrar y reabrir el modal.
+                title.dataset.rawChannel = channelName;
                 list.innerHTML = "";
                 
                 matching.forEach((item, i) => {
-                    const currentRating = RatingEngine.getScore(item.id);
+                    let currentRating = RatingEngine.getScore(item.id);
+                    const pending = JSON.parse(localStorage.getItem(RatingEngine.PENDING_KEY));
+                    if (pending && pending.id === item.id) {
+                        currentRating = Math.max(0.0, currentRating - 1.5);
+                    }
                     const btn = document.createElement('div');
                     btn.className = 'id-item';                    btn.innerHTML = `
                         <small style="flex: 1; text-align: left; color: var(--text-muted); font-size: 0.6rem; font-weight: 700; opacity: 0.6; letter-spacing: 0.5px;">${item.source || 'ID'}</small>
                         <span style="flex: 2; text-align: center; font-family: monospace; opacity: 0.9;">${item.id.substring(0, 10).toUpperCase()}</span>
                         <span class="id-rating" style="flex: 1; text-align: right;">★ ${currentRating.toFixed(1)}</span>
                     `;                    btn.onclick = () => {
-                        const canonical = getCanonicalName(channelName);
-                        const excluded = UIManager.getRetryState(canonical);
-                        if (!excluded.includes(item.id)) UIManager.setRetryState(canonical, [...excluded, item.id]);
-                        RatingEngine.trackStart(item.id, canonical, i);
+                        RatingEngine.trackStart(item.id, getCanonicalName(channelName), i);
                         const mode = localStorage.getItem('player_mode') || 'external';
                         if (mode === 'internal') {
-                            UIManager.openInternalPlayer(item.id, canonical);
+                            UIManager.openInternalPlayer(item.id, getCanonicalName(channelName));
                             UIManager.closeModal();
                         } else {
                             window.location.href = `acestream://${item.id}`;
@@ -1479,7 +1494,19 @@
                     list.appendChild(btn);
                 });
                 this.modal.style.display = 'flex';
-            },            closeModal() { this.modal.style.display = 'none'; },
+            },
+
+            // Repinta el listado de IDs abierto (si lo hay) con las puntuaciones
+            // actuales. Se llama automáticamente cada vez que RatingEngine cambia
+            // una puntuación, para que el usuario la vea reflejada al instante.
+            refreshRatingDisplays() {
+                if (!this.modal || this.modal.style.display !== 'flex') return;
+                const title = document.getElementById('modal-title');
+                const rawChannel = title ? title.dataset.rawChannel : null;
+                if (rawChannel) this.openIdsModal({ stopPropagation() {} }, rawChannel);
+            },
+
+            closeModal() { this.modal.style.display = 'none'; },
 
             setRandomColor() {
                 const randomColor = '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');

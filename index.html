@@ -689,9 +689,9 @@
                 this.viewport.classList.remove('letterbox-h', 'letterbox-v');
                 if (Math.abs(videoAspect - containerAspect) < 0.01) return;
                 if (videoAspect > containerAspect) {
-                    this.viewport.classList.add('letterbox-h');
-                } else {
                     this.viewport.classList.add('letterbox-v');
+                } else {
+                    this.viewport.classList.add('letterbox-h');
                 }
             },
 

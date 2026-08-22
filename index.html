@@ -788,7 +788,8 @@
             status: document.getElementById('status'),
             modal: document.getElementById('ids-modal'),
             lastClickTime: 0,
-            autoRetryTimer: null,
+            stallCheckInterval: null,
+            playAttemptToken: 0,
 
             togglePlayerMode() {
                 const current = localStorage.getItem('player_mode') || 'external';
@@ -801,7 +802,7 @@
                 const btn = document.getElementById('fab-player-toggle');
                 if (btn) btn.remove();
             },            async openInternalPlayer(id, name) {
-                if (this.autoRetryTimer) { clearTimeout(this.autoRetryTimer); this.autoRetryTimer = null; }
+                if (this.stallCheckInterval) { clearInterval(this.stallCheckInterval); this.stallCheckInterval = null; }
                 const old = document.getElementById('internal-player-container');
                 if (old) {
                     const v = old.querySelector('video');
@@ -820,7 +821,7 @@
                             <div style="display:flex;align-items:center;pointer-events:none;height:22px;">
                                 ${channelLogosMap[getCanonicalName(name)] ? `<img src="${channelLogosMap[getCanonicalName(name)]}" style="height:100%;max-width:100px;object-fit:contain;filter:drop-shadow(0 0 2px rgba(0,0,0,0.5));">` : `<span style="font-size:0.7rem;font-weight:bold;color:var(--accent-blue);">${name}</span>`}
                             </div>
-                            <button onclick="const p=document.getElementById('internal-player-container'); if(p){const v=p.querySelector('video'); if(v&&v._hls)v._hls.destroy(); Ambilight.destroy(); p.remove();}" style="background:none;border:none;color:white;font-size:1.2rem;cursor:pointer;line-height:1;">&times;</button>
+                            <button onclick="UIManager.playAttemptToken++; if(UIManager.stallCheckInterval){clearInterval(UIManager.stallCheckInterval); UIManager.stallCheckInterval=null;} const p=document.getElementById('internal-player-container'); if(p){const v=p.querySelector('video'); if(v&&v._hls)v._hls.destroy(); Ambilight.destroy(); p.remove();}" style="background:none;border:none;color:white;font-size:1.2rem;cursor:pointer;line-height:1;">&times;</button>
                         </div>
                         <div id="player-viewport">
                             <canvas id="ambilight-canvas"></canvas>
@@ -866,7 +867,6 @@
                 handle.onmousedown = dragStart; handle.ontouchstart = dragStart;
 
                 const video = document.getElementById('internal-video');
-                video.onplaying = () => { if(this.autoRetryTimer) { clearTimeout(this.autoRetryTimer); this.autoRetryTimer = null; } };
 
                 video.addEventListener('enterpictureinpicture', () => { el.style.display = 'none'; });
                 video.addEventListener('leavepictureinpicture', () => {
@@ -992,9 +992,16 @@
                 if (Hls.isSupported()) {
                     const hls = new Hls();
                     video._hls = hls;
+                    video._fatalError = false;
                     hls.loadSource(streamUrl);
                     hls.attachMedia(video);
                     hls.on(Hls.Events.MANIFEST_PARSED, () => { video.play().catch(() => {}); });
+                    hls.on(Hls.Events.ERROR, (event, data) => {
+                        if (data && data.fatal) {
+                            console.log('HLS error fatal (' + data.type + '), marcando stream como caído.');
+                            video._fatalError = true;
+                        }
+                    });
                 } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
                     video.src = streamUrl;
                     video.play();
@@ -1278,58 +1285,108 @@
                     this.playBestOrNext(channelName);
                 }
                 this.isLongPress = false;
-            },            playBestOrNext(channelName, triedCount = 0) {
+            },            playBestOrNext(channelName, triedCount = 0, excludedIds = []) {
                 const matching = aceStreamMap
                     .filter(a => ComparisonEngine.isMatch(channelName, a.name))
                     .sort((a, b) => RatingEngine.getScore(b.id) - RatingEngine.getScore(a.id));
 
                 if (matching.length === 0) return;
 
-                const normName = ComparisonEngine.normalizeText(getCanonicalName(channelName));
-                const lastIdxKey = 'last_idx_' + normName;
-                const lastTimeKey = 'last_ts_' + normName;
-                
-                const lastIndex = parseInt(localStorage.getItem(lastIdxKey)) || 0;
-                const lastTimestamp = parseInt(localStorage.getItem(lastTimeKey)) || 0;
-                const now = Date.now();
+                // Elegimos siempre la MEJOR opción disponible que aún no se haya probado
+                // en este ciclo de reintentos (por ID, nunca por posición/índice: el array
+                // se reordena en cada llamada porque las puntuaciones acaban de cambiar,
+                // y usar un índice ahí era justo lo que provocaba el bucle).
+                const candidates = matching.filter(m => !excludedIds.includes(m.id));
 
-                let nextIndex;
-                // Un toque normal SIEMPRE va al mejor puntuado (index 0, ya vienen ordenados por rating).
-                // Solo el reintento automático real (el stream falló de verdad) avanza al siguiente.
-                if (triedCount > 0) {
-                    nextIndex = (lastIndex + 1) % matching.length;
-                } else {
-                    nextIndex = 0;
+                if (candidates.length === 0) {
+                    // Ya se probaron todas las opciones disponibles sin éxito.
+                    console.log("Auto-retry: agotadas todas las opciones para " + channelName + ".");
+                    this.openIdsModal(new Event('click'), channelName);
+                    return;
                 }
-                
-                localStorage.setItem(lastIdxKey, nextIndex);
-                localStorage.setItem(lastTimeKey, now);
-                RatingEngine.trackStart(matching[nextIndex].id, getCanonicalName(channelName), nextIndex);
+
+                const pick = candidates[0];
+                const pickIndex = matching.findIndex(m => m.id === pick.id);
+
+                RatingEngine.trackStart(pick.id, getCanonicalName(channelName), pickIndex);
+
+                // Token que invalida cualquier vigilancia (watchdog) de un intento anterior,
+                // por si el usuario cambia de canal manualmente mientras se estaba reintentando.
+                const myToken = ++this.playAttemptToken;
 
                 const mode = localStorage.getItem('player_mode') || 'external';
                 if (mode === 'internal') {
-                    this.openInternalPlayer(matching[nextIndex].id, getCanonicalName(channelName)).then(wasAlive => {
-                        const waitTime = wasAlive ? 5000 : 15000;
-                        if (this.autoRetryTimer) clearTimeout(this.autoRetryTimer);
-                        
-                        this.autoRetryTimer = setTimeout(() => {
-                            const video = document.getElementById('internal-video');
-                            // Si el video no está reproduciéndose (pausado o en el inicio)
-                            if (!video || video.paused || video.currentTime === 0) {
-                                if (triedCount + 1 < matching.length) {
-                                    console.log("Auto-retry: Intentando opción " + (triedCount + 2));
-                                    this.playBestOrNext(channelName, triedCount + 1);
-                                } else {
-                                    console.log("Auto-retry: Agotadas todas las opciones.");
-                                    this.openIdsModal(new Event('click'), channelName);
-                                    if (this.autoRetryTimer) { clearTimeout(this.autoRetryTimer); this.autoRetryTimer = null; }
-                                }
-                            }
-                        }, waitTime);
+                    this.openInternalPlayer(pick.id, getCanonicalName(channelName)).then(() => {
+                        this.watchStream(myToken, channelName, triedCount, [...excludedIds, pick.id]);
                     });
                 } else {
-                    location.href = 'acestream://' + matching[nextIndex].id;
+                    location.href = 'acestream://' + pick.id;
                 }
+            },
+
+            // Vigila la reproducción real del stream elegido:
+            //  1) si no arranca en STARTUP_TIMEOUT_MS, se descarta,
+            //  2) si arranca pero se queda "colgado" (mismo currentTime) durante
+            //     STALL_TIMEOUT_MS, también se descarta (esto es lo que antes nunca
+            //     se detectaba: un stream podía quedar "pillado" indefinidamente),
+            //  3) si HLS.js reporta un error fatal, se descarta de inmediato.
+            // La puntuación se ajusta sola: al probar la siguiente opción, trackStart()
+            // llama a checkPreviousSession(), que penaliza el stream fallido según el
+            // tiempo real que estuvo "activo" (siempre poco, así que penalización máxima).
+            watchStream(token, channelName, triedCount, excludedIds) {
+                if (this.stallCheckInterval) clearInterval(this.stallCheckInterval);
+
+                const STARTUP_TIMEOUT_MS = 9000;
+                const STALL_TIMEOUT_MS = 18000;
+                const POLL_MS = 2000;
+
+                const startedAt = Date.now();
+                let hasStartedPlaying = false;
+                let lastTime = -1;
+                let lastAdvanceAt = Date.now();
+
+                const totalOptions = aceStreamMap.filter(a => ComparisonEngine.isMatch(channelName, a.name)).length;
+
+                const failover = (reason) => {
+                    if (token !== this.playAttemptToken) return; // ya no es el intento activo, ignorar
+                    clearInterval(this.stallCheckInterval);
+                    this.stallCheckInterval = null;
+                    console.log("Auto-retry (" + reason + "): descartando esta opción y probando la siguiente mejor disponible.");
+                    if (excludedIds.length < totalOptions) {
+                        this.playBestOrNext(channelName, triedCount + 1, excludedIds);
+                    } else {
+                        this.openIdsModal(new Event('click'), channelName);
+                    }
+                };
+
+                this.stallCheckInterval = setInterval(() => {
+                    if (token !== this.playAttemptToken) { clearInterval(this.stallCheckInterval); return; }
+                    const video = document.getElementById('internal-video');
+                    if (!video) { clearInterval(this.stallCheckInterval); return; }
+
+                    if (video._fatalError) { failover('error HLS'); return; }
+
+                    if (!hasStartedPlaying) {
+                        if (!video.paused && video.currentTime > 0) {
+                            hasStartedPlaying = true;
+                            lastTime = video.currentTime;
+                            lastAdvanceAt = Date.now();
+                        } else if (Date.now() - startedAt >= STARTUP_TIMEOUT_MS) {
+                            failover('no arrancó');
+                        }
+                        return;
+                    }
+
+                    // Ya arrancó: comprobamos que no se quede congelado (stream "pillado").
+                    if (video.paused) { lastAdvanceAt = Date.now(); return; } // pausa manual del usuario, no penalizar
+
+                    if (video.currentTime > lastTime) {
+                        lastTime = video.currentTime;
+                        lastAdvanceAt = Date.now();
+                    } else if (Date.now() - lastAdvanceAt >= STALL_TIMEOUT_MS) {
+                        failover('se quedó congelado');
+                    }
+                }, POLL_MS);
             },
 
             openIdsModal(event, channelName) {

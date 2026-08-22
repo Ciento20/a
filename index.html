@@ -45,11 +45,18 @@
             content:"";
             position:absolute; inset:0; z-index:2;
             pointer-events:none;
-            background: radial-gradient(ellipse closest-side at center, transparent 55%, rgba(0,0,0,.35) 100%);
             opacity:0;
-            transition:opacity .7s ease;
+            transition:opacity .7s ease, background .3s ease;
         }
         #player-viewport:has(#ambilight-canvas.active)::after{opacity:1;}
+        /* Barras arriba/abajo (vídeo más ancho que el contenedor): sombra solo en esos 2 lados */
+        #player-viewport.letterbox-h::after{
+            background: linear-gradient(to bottom, rgba(0,0,0,.35) 0%, transparent 18%, transparent 82%, rgba(0,0,0,.35) 100%);
+        }
+        /* Barras a los lados (vídeo más alto que el contenedor): sombra solo en esos 2 lados */
+        #player-viewport.letterbox-v::after{
+            background: linear-gradient(to right, rgba(0,0,0,.35) 0%, transparent 18%, transparent 82%, rgba(0,0,0,.35) 100%);
+        }
         #internal-player-container:fullscreen #ambilight-canvas,#internal-player-container:-webkit-full-screen #ambilight-canvas{top:0;left:0;width:100%;height:100%;}
         @media (prefers-reduced-motion: reduce){ #ambilight-canvas{transition:none;} #player-controls{transition:none;} #player-viewport::after{transition:none;} }
         #internal-player-container:fullscreen #player-handle,#internal-player-container:-webkit-full-screen #player-handle{display:none !important;}
@@ -624,11 +631,14 @@
                 this._onResize = () => this.resizeCanvas();
                 this._onFsChange = () => setTimeout(() => this.resizeCanvas(), 50);
 
+                this._onMeta = () => this.updateLetterboxClass();
+
                 video.addEventListener('play', this._onPlaying);
                 video.addEventListener('playing', this._onPlaying);
                 video.addEventListener('pause', this._onStop);
                 video.addEventListener('ended', this._onStop);
                 video.addEventListener('emptied', this._onStop);
+                video.addEventListener('loadedmetadata', this._onMeta);
 
                 window.addEventListener('resize', this._onResize);
                 window.addEventListener('orientationchange', this._onResize);
@@ -657,6 +667,31 @@
                 if (this.canvas.width !== newW || this.canvas.height !== newH) {
                     this.canvas.width = newW;
                     this.canvas.height = newH;
+                }
+                this.updateLetterboxClass(rect, aspect);
+            },
+
+            // Decide en qué 2 lados se ve realmente el letterbox (donde asoma el
+            // ambilight de fondo) comparando el aspecto del vídeo con el del
+            // contenedor: si el vídeo es "más ancho" quedan franjas arriba/abajo,
+            // si es "más alto" quedan franjas a los lados. Si coinciden, no hay
+            // franjas y no se pinta ninguna sombra.
+            updateLetterboxClass(rect, containerAspect) {
+                if (!this.viewport || !this.video) return;
+                const vw = this.video.videoWidth, vh = this.video.videoHeight;
+                if (!vw || !vh) return;
+                if (containerAspect === undefined) {
+                    if (!rect) rect = this.viewport.getBoundingClientRect();
+                    if (!rect.width || !rect.height) return;
+                    containerAspect = rect.width / rect.height;
+                }
+                const videoAspect = vw / vh;
+                this.viewport.classList.remove('letterbox-h', 'letterbox-v');
+                if (Math.abs(videoAspect - containerAspect) < 0.01) return;
+                if (videoAspect > containerAspect) {
+                    this.viewport.classList.add('letterbox-h');
+                } else {
+                    this.viewport.classList.add('letterbox-v');
                 }
             },
 
@@ -774,7 +809,9 @@
                     this.video.removeEventListener('pause', this._onStop);
                     this.video.removeEventListener('ended', this._onStop);
                     this.video.removeEventListener('emptied', this._onStop);
+                    this.video.removeEventListener('loadedmetadata', this._onMeta);
                 }
+                if (this.viewport) this.viewport.classList.remove('letterbox-h', 'letterbox-v');
                 window.removeEventListener('resize', this._onResize);
                 window.removeEventListener('orientationchange', this._onResize);
                 document.removeEventListener('fullscreenchange', this._onFsChange);

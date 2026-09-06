@@ -1021,16 +1021,83 @@
                 } catch (e) { }
 
                 if (Hls.isSupported()) {
-                    const hls = new Hls();
+                    // Config afinada para conexiones móviles inestables: más colchón de
+                    // buffer, más margen respecto al borde en vivo, y reintentos más
+                    // pacientes en manifest/fragmentos para no confundir un pico de
+                    // latencia puntual con una caída real del stream (que antes producía
+                    // micro cortes cada pocos segundos).
+                    const hls = new Hls({
+                        enableWorker: true,
+                        lowLatencyMode: false,
+                        backBufferLength: 30,
+                        maxBufferLength: 20,
+                        maxMaxBufferLength: 60,
+                        maxBufferSize: 60 * 1000 * 1000,
+                        maxBufferHole: 1,
+                        highBufferWatchdogPeriod: 3,
+                        liveSyncDurationCount: 6,
+                        liveMaxLatencyDurationCount: 12,
+                        manifestLoadingTimeOut: 20000,
+                        manifestLoadingMaxRetry: 6,
+                        manifestLoadingRetryDelay: 1000,
+                        manifestLoadingMaxRetryTimeout: 64000,
+                        levelLoadingTimeOut: 20000,
+                        levelLoadingMaxRetry: 6,
+                        levelLoadingRetryDelay: 1000,
+                        fragLoadingTimeOut: 30000,
+                        fragLoadingMaxRetry: 8,
+                        fragLoadingRetryDelay: 1000,
+                        fragLoadingMaxRetryTimeout: 64000,
+                        nudgeMaxRetry: 10,
+                        nudgeOffset: 0.15,
+                    });
                     video._hls = hls;
                     video._fatalError = false;
+                    let netErrRetries = 0;
+                    let mediaErrRetries = 0;
+                    const MAX_ERR_RETRIES = 4;
                     hls.loadSource(streamUrl);
                     hls.attachMedia(video);
                     hls.on(Hls.Events.MANIFEST_PARSED, () => { video.play().catch(() => {}); });
                     hls.on(Hls.Events.ERROR, (event, data) => {
-                        if (data && data.fatal) {
-                            console.log('HLS error fatal (' + data.type + '), marcando stream como caído.');
-                            video._fatalError = true;
+                        if (!data) return;
+
+                        if (!data.fatal) {
+                            // Errores no fatales (fragmento perdido, buffer atascado, etc.):
+                            // hls.js suele resolverlos solo; si es un atasco de buffer le
+                            // damos un pequeño empujón para evitar que se quede "pillado"
+                            // sin llegar a disparar un error fatal.
+                            if (data.details === Hls.ErrorDetails.BUFFER_STALLED_ERROR) {
+                                try { video.currentTime += 0.1; } catch (e) {}
+                            }
+                            return;
+                        }
+
+                        switch (data.type) {
+                            case Hls.ErrorTypes.NETWORK_ERROR:
+                                netErrRetries++;
+                                if (netErrRetries <= MAX_ERR_RETRIES) {
+                                    console.log('Error de red fatal (' + netErrRetries + '/' + MAX_ERR_RETRIES + '), reintentando carga...');
+                                    setTimeout(() => hls.startLoad(), 1000);
+                                } else {
+                                    console.log('Error de red fatal persistente, marcando stream como caído.');
+                                    video._fatalError = true;
+                                }
+                                break;
+                            case Hls.ErrorTypes.MEDIA_ERROR:
+                                mediaErrRetries++;
+                                if (mediaErrRetries <= MAX_ERR_RETRIES) {
+                                    console.log('Error de media fatal (' + mediaErrRetries + '/' + MAX_ERR_RETRIES + '), intentando recuperar...');
+                                    hls.recoverMediaError();
+                                } else {
+                                    console.log('Error de media fatal persistente, marcando stream como caído.');
+                                    video._fatalError = true;
+                                }
+                                break;
+                            default:
+                                console.log('HLS error fatal irrecuperable (' + data.type + '), marcando stream como caído.');
+                                video._fatalError = true;
+                                break;
                         }
                     });
                 } else if (video.canPlayType('application/vnd.apple.mpegurl')) {

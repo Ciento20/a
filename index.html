@@ -242,19 +242,27 @@
                 try {
                     const res = await fetch(targetUrl, { signal: controller.signal });
                     clearTimeout(timeoutId);
-                    if (!res.ok) throw new Error();
-                    return await res.text();
+                    if (!res.ok) throw new Error('HTTP ' + res.status);
+                    return (await res.text()).replace(/^\uFEFF/, '');
                 } catch (e) {
                     clearTimeout(timeoutId);
-                    throw new Error("Error de conexión");
+                    const msg = e.name === 'AbortError' ? 'timeout'
+                              : (/^HTTP \d+/.test(e.message || '') ? e.message : 'red/CORS bloqueado');
+                    throw new Error(msg);
                 }
             },
             // Prueba varios formatos/gateways IPFS en orden hasta que uno responda con datos válidos.
             // "isValid" permite descartar respuestas "200 OK" que en realidad son páginas de bloqueo/verificación.
-            async fetchIpnsResource(ipnsKey, subPath, isValid = (text) => text && text.length > 0) {
+            async fetchIpnsResource(ipnsKey, subPath, isValid = (text) => text && text.length > 0, directUrls = []) {
                 let lastErr = null;
-                for (const gw of this.IPNS_URL_BUILDERS) {
-                    const url = gw.build(ipnsKey, subPath);
+                // Primero las URLs directas (p. ej. el worker de Cloudflare); después los gateways IPFS como respaldo.
+                const candidates = [
+                    ...directUrls.map(u => ({ name: 'directo', url: u })),
+                    ...this.IPNS_URL_BUILDERS.map(gw => ({ name: gw.name, url: gw.build(ipnsKey, subPath) }))
+                ];
+                const attempts = [];
+                for (const gw of candidates) {
+                    const url = gw.url;
                     try {
                         const text = await this.fetchHtml(url, 8000);
                         if (isValid(text)) {
@@ -262,14 +270,18 @@
                             return text;
                         }
                         console.warn('[IPFS] Respuesta inválida/bloqueada ->', gw.name, text.slice(0, 200));
+                        attempts.push(gw.name + ': respuesta inválida');
                         lastErr = new Error("Respuesta inválida de " + gw.name);
                     } catch (e) {
                         console.warn('[IPFS] Fallo ->', gw.name, '->', e.message || e);
+                        attempts.push(gw.name + ': ' + (e.message || 'error'));
                         lastErr = e;
                     }
                 }
                 console.error('[IPFS] Todos los gateways fallaron para', ipnsKey, subPath);
-                throw lastErr || new Error("Todos los gateways IPFS fallaron");
+                const err = lastErr || new Error("Todos los gateways IPFS fallaron");
+                err.attempts = attempts;
+                throw err;
             },
             // Plan B: lee el gist manual. El parámetro ?t= evita que la caché de GitHub sirva una copia vieja (ventana de 1 min).
             async fetchManualGist() {
@@ -356,7 +368,7 @@
         const AceStreamEngine = {
             SOURCES: [
                 { id: 'ERA', ipnsKey: 'k2k4r8lm8tkmuxbc8lkmq1in3v0oya1p6pe9o5bu0hu30br5ko08k2gb', subPath: '/data/listas/lista_fuera_iptv.m3u', parser: 'parseEra', isValid: (t) => t && t.includes('#EXTINF') },
-                { id: 'ELCANO', ipnsKey: 'k51qzi5uqu5dh5qej4b9wlcr5i6vhc7rcfkekhrxqek5c9lk6gdaiik820fecs', subPath: '/hashes.json', parser: 'parseElcano', isValid: (t) => { try { return Array.isArray(JSON.parse(t).hashes); } catch (e) { return false; } } }
+                { id: 'ELCANO', ipnsKey: 'k51qzi5uqu5dh5qej4b9wlcr5i6vhc7rcfkekhrxqek5c9lk6gdaiik820fecs', subPath: '/hashes.json', directUrls: ['https://tokyo.elcano-ipfs.workers.dev/k51qzi5uqu5dh5qej4b9wlcr5i6vhc7rcfkekhrxqek5c9lk6gdaiik820fecs/hashes.json'], parser: 'parseElcano', isValid: (t) => { try { return Array.isArray(JSON.parse(t).hashes); } catch (e) { return false; } } }
             ],generateHash(str){let hash=5381,i=str.length;while(i)hash=(hash*33)^str.charCodeAt(--i);return(hash>>>0).toString(16)},
 
             async init() {
@@ -365,23 +377,28 @@
                 const currentHashes = cache.hashes || {};
                 let hasChanges = false;cache.data.forEach(item => masterMap.set(item.id, item));
                 let sourceOk = false; // true si ERA o ELC han aportado datos (nuevos o sin cambios)
+                const report = {};
 
                 for (const src of this.SOURCES) {
                     try {
-                        const raw = await NetworkService.fetchIpnsResource(src.ipnsKey, src.subPath, src.isValid);
+                        const raw = await NetworkService.fetchIpnsResource(src.ipnsKey, src.subPath, src.isValid, src.directUrls || []);
                         const newHash = this.generateHash(raw);
-                        if (currentHashes[src.id] === newHash) { sourceOk = true; continue; }
+                        if (currentHashes[src.id] === newHash) { sourceOk = true; report[src.id] = 'OK (sin cambios)'; continue; }
 
                         const parsed = src.parser === 'parseEra' ? this.parseEra(raw) : this.parseElcano(raw);
-                        if (parsed.length === 0) continue; // respuesta válida pero sin canales: no cuenta
+                        if (parsed.length === 0) { report[src.id] = 'respuesta sin canales'; continue; } // respuesta válida pero sin canales: no cuenta
+                        report[src.id] = 'OK (' + parsed.length + ' canales)';
                         hasChanges = true;
                         sourceOk = true;
                         currentHashes[src.id] = newHash;
                         parsed.forEach(item => {
                             item.source = src.id === 'ELCANO' ? 'ELC' : 'ERA';
                             masterMap.set(item.id, item);
-                        });} catch (e) {}
+                        });} catch (e) {
+                    report[src.id] = 'FALLO -> ' + (e.attempts && e.attempts.length ? e.attempts.slice(0, 3).join(' | ') : (e.message || 'error'));
                 }
+                }
+                try { localStorage.setItem('ace_report', JSON.stringify(report)); } catch (e) {}
 
                 // PLAN B: si ni ERA ni ELC han dado nada, se lee el gist manual
                 if (!sourceOk) {
@@ -515,9 +532,9 @@
                 try {
                     const data = JSON.parse(jsonStr);
                     const list = data.hashes || [];
-                    return list.map(item => ({
+                    return list.filter(item => item && item.title && item.hash).map(item => ({
                         name: item.title.trim(),
-                        id: item.hash.trim(),
+                        id: item.hash.trim().toLowerCase(),
                         logo: item.logo || '',
                         group: item.group || ''
                     }));
@@ -1642,6 +1659,15 @@
                     };
                     list.appendChild(btn);
                 });
+                try {
+                    const rep = JSON.parse(localStorage.getItem('ace_report') || 'null');
+                    if (rep) {
+                        const note = document.createElement('div');
+                        note.style.cssText = 'font-size:0.55rem;opacity:0.5;text-align:left;padding:8px 4px 0;line-height:1.4;word-break:break-word;';
+                        note.textContent = Object.entries(rep).map(([k, v]) => k + ': ' + v).join('  ·  ');
+                        list.appendChild(note);
+                    }
+                } catch (e) {}
                 this.modal.style.display = 'flex';
             },
 

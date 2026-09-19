@@ -382,7 +382,7 @@
                 for (const src of this.SOURCES) {
                     try {
                         const raw = await NetworkService.fetchIpnsResource(src.ipnsKey, src.subPath, src.isValid, src.directUrls || []);
-                        const newHash = this.generateHash(raw);
+                        const newHash = this.generateHash('parser-v3|' + raw);
                         if (currentHashes[src.id] === newHash) { sourceOk = true; report[src.id] = 'OK (sin cambios)'; continue; }
 
                         const parsed = src.parser === 'parseEra' ? this.parseEra(raw) : this.parseElcano(raw);
@@ -405,10 +405,11 @@
                     console.warn('[Plan B] ERA y ELC sin datos, probando el gist manual...');
                     try {
                         const raw = await NetworkService.fetchManualGist();
-                        const newHash = this.generateHash(raw);
+                        const newHash = this.generateHash('parser-v3|' + raw); // cambiar la versión fuerza a re-parsear
                         if (currentHashes.MANUAL !== newHash) {
                             const parsed = this.parseManual(raw);
                             if (parsed.length > 0) {
+                                for (const [k, v] of masterMap) { if (v.source === 'MAN') masterMap.delete(k); }
                                 parsed.forEach(item => {
                                     item.source = 'MAN';
                                     masterMap.set(item.id, item);
@@ -450,6 +451,17 @@
                     return isExpired ? [] : (cacheObj.data || []);
                 } catch (e) { return []; }
             },
+            // Quita de un nombre cualquier resto de hash/ID (trozos hexadecimales largos, "id=", "acestream://"...)
+            sanitizeName(n) {
+                return String(n || '')
+                    .replace(/acestream:\/\/\S*/gi, ' ')
+                    .replace(/\b(?:id|hash|content_id|infohash)\s*[=:]\s*\S*/gi, ' ')
+                    .replace(/[a-f0-9]{8,}/gi, (m) => (m.length >= 20 || (/\d/.test(m) && /[a-f]/i.test(m))) ? ' ' : m)
+                    .replace(/[\(\[\{]\s*[\)\]\}]/g, ' ')
+                    .replace(/^[\s\-–|,:;=>]+|[\s\-–|,:;=>]+$/g, '')
+                    .replace(/\s{2,}/g, ' ')
+                    .trim();
+            },
             parseEra(text) {
                 const results = [];
                 const lines = text.split(/\r?\n/);
@@ -463,7 +475,7 @@
                     // Quitar el sufijo "--> ORIGEN" (p.ej. "--> NEW ERA V")
                     name = name.split('-->')[0].trim();
                     // Limpieza de sufijos de calidad específicos de ERA
-                    name = name.replace(/\b(HDP|SDP|FHDP)\b/gi, '').trim();
+                    name = this.sanitizeName(name.replace(/\b(HDP|SDP|FHDP)\b/gi, ''));
 
                     const logoMatch = line.match(/tvg-logo="([^"]*)"/);
                     const groupMatch = line.match(/group-title="([^"]*)"/);
@@ -474,8 +486,7 @@
                     let j = i + 1;
                     while (j < lines.length && !lines[j].trim()) j++;
                     const nextLine = (lines[j] || '').trim();
-                    const idMatch = nextLine.match(/acestream:\/\/([a-f0-9]{40})/i)
-                        || nextLine.match(/^([a-f0-9]{40})p?$/i);
+                    const idMatch = nextLine.match(/(?<![a-f0-9])([a-f0-9]{40})(?![a-f0-9])/i);
 
                     if (idMatch && name) {
                         results.push({ name, id: idMatch[1].toLowerCase(), logo, group });
@@ -497,7 +508,7 @@
                         const data = JSON.parse(t);
                         const list = Array.isArray(data) ? data : (data.hashes || []);
                         return list.map(item => ({
-                            name: String(item.title || item.name || '').trim(),
+                            name: this.sanitizeName(item.title || item.name || ''),
                             id: String(item.hash || item.id || '').trim().toLowerCase(),
                             logo: item.logo || '',
                             group: item.group || ''
@@ -510,21 +521,43 @@
                     if (m3u.length > 0) return m3u;
                 }
 
+                // Texto plano. Cada línea puede ser:
+                //   - un nombre (o "# nombre") que se aplica a los IDs siguientes hasta que aparezca otro nombre
+                //   - una URL/ID: "http://127.0.0.1:6878/ace/getstream?id=HASH", "acestream://HASH", "HASH"
+                //   - nombre + ID en la misma línea: "Nombre - HASH", "Nombre | HASH", "Nombre acestream://HASH"
                 const results = [];
+                const seen = new Set();
                 let lastName = '';
+                const idRe = /(?<![a-f0-9])([a-f0-9]{40})(?![a-f0-9])/gi;
+                const cleanName = (v) => this.sanitizeName(v.split('-->')[0].replace(/^#+\s*/, ''));
+
                 for (const rawLine of t.split(/\r?\n/)) {
                     const line = rawLine.trim();
-                    if (!line || line.startsWith('#')) continue;
-                    const m = line.match(/(?:acestream:\/\/)?\b([a-f0-9]{40})\b/i);
-                    if (!m) { lastName = line; continue; }
-                    let name = line.replace(m[0], ' ')
-                        .split('-->')[0]
-                        .replace(/^[\s\-–|,:;=>]+|[\s\-–|,:;=>]+$/g, '')
-                        .replace(/\s{2,}/g, ' ')
-                        .trim();
-                    if (!name) name = lastName;
-                    lastName = '';
-                    if (name) results.push({ name, id: m[1].toLowerCase(), logo: '', group: '' });
+                    if (!line) continue;
+                    if (/^#(EXTM3U|EXTINF|EXTGRP|EXTVLCOPT|PLAYLIST)/i.test(line)) continue;
+
+                    const ids = [...line.matchAll(idRe)].map(m => m[1].toLowerCase());
+                    if (ids.length === 0) {
+                        // Línea sin ID: si no es una URL, es un nombre para los IDs que vengan después
+                        if (!/^[a-z][a-z0-9+.-]*:\/\//i.test(line)) {
+                            const n = cleanName(line);
+                            if (n) lastName = n;
+                        }
+                        continue;
+                    }
+
+                    // Quitamos del texto las URLs completas y los IDs; lo que quede es el nombre
+                    let name = cleanName(line
+                        .replace(/\S*:\/\/\S*/g, ' ')
+                        .replace(idRe, ' '));
+                    if (name) lastName = name; else name = lastName;
+                    if (!name) continue;
+
+                    for (const id of ids) {
+                        if (seen.has(id)) continue;
+                        seen.add(id);
+                        results.push({ name, id, logo: '', group: '' });
+                    }
                 }
                 return results;
             },
@@ -533,7 +566,7 @@
                     const data = JSON.parse(jsonStr);
                     const list = data.hashes || [];
                     return list.filter(item => item && item.title && item.hash).map(item => ({
-                        name: item.title.trim(),
+                        name: this.sanitizeName(item.title),
                         id: item.hash.trim().toLowerCase(),
                         logo: item.logo || '',
                         group: item.group || ''
@@ -1643,7 +1676,7 @@
                         currentRating = Math.max(0.0, currentRating - 1.5);
                     }
                     const btn = document.createElement('div');
-                    btn.className = 'id-item';                    btn.innerHTML = `
+                    btn.className = 'id-item'; btn.title = item.id;                    btn.innerHTML = `
                         <small style="flex: 1; text-align: left; color: var(--text-muted); font-size: 0.6rem; font-weight: 700; opacity: 0.6; letter-spacing: 0.5px;">${item.source || 'ID'}</small>
                         <span style="flex: 2; text-align: center; font-family: monospace; opacity: 0.9;">${item.id.substring(0, 10).toUpperCase()}</span>
                         <span class="id-rating" style="flex: 1; text-align: right;">★ ${currentRating.toFixed(1)}</span>

@@ -61,7 +61,9 @@
             BASE_URL: 'https://www.futbolenlatv.es',
             TARGET_URL: 'https://www.futbolenlatv.es/deporte',
             GIST_LOGOS: 'https://gist.githubusercontent.com/Ciento20/5580f05d8ecab2a3de797d7ef4365406/raw/',
-            EPG_XML: 'https://raw.githubusercontent.com/davidmuma/EPG_dobleM/master/guiatv.xml'
+            EPG_XML: 'https://raw.githubusercontent.com/davidmuma/EPG_dobleM/master/guiatv.xml',
+            // Plan B: gist que se rellena a mano. Sin el hash de revisión en la URL, siempre devuelve la última versión guardada.
+            GIST_MANUAL: 'https://gist.githubusercontent.com/Ciento20/fcb8208326c94be2668f6aaaf914cd1c/raw/gistfile1.txt'
         };
 
         const STORAGE_CONFIG = {
@@ -269,6 +271,12 @@
                 console.error('[IPFS] Todos los gateways fallaron para', ipnsKey, subPath);
                 throw lastErr || new Error("Todos los gateways IPFS fallaron");
             },
+            // Plan B: lee el gist manual. El parámetro ?t= evita que la caché de GitHub sirva una copia vieja (ventana de 1 min).
+            async fetchManualGist() {
+                const text = await this.fetchHtml(CONFIG.GIST_MANUAL + '?t=' + Math.floor(Date.now() / 60000), 8000);
+                if (!text || !text.trim()) throw new Error('Gist manual vacío');
+                return text;
+            },
             async fetchLogos() {
                 try {
                     const [gistRes, xmlRes] = await Promise.all([
@@ -356,19 +364,48 @@
                 const cache = JSON.parse(localStorage.getItem(STORAGE_CONFIG.CACHE_KEY)) || { hashes: {}, data: [] };
                 const currentHashes = cache.hashes || {};
                 let hasChanges = false;cache.data.forEach(item => masterMap.set(item.id, item));
+                let sourceOk = false; // true si ERA o ELC han aportado datos (nuevos o sin cambios)
 
                 for (const src of this.SOURCES) {
                     try {
                         const raw = await NetworkService.fetchIpnsResource(src.ipnsKey, src.subPath, src.isValid);
-                        const newHash = this.generateHash(raw);if (currentHashes[src.id] === newHash) continue;
-                        hasChanges = true;
-                        currentHashes[src.id] = newHash;
-                        
+                        const newHash = this.generateHash(raw);
+                        if (currentHashes[src.id] === newHash) { sourceOk = true; continue; }
+
                         const parsed = src.parser === 'parseEra' ? this.parseEra(raw) : this.parseElcano(raw);
+                        if (parsed.length === 0) continue; // respuesta válida pero sin canales: no cuenta
+                        hasChanges = true;
+                        sourceOk = true;
+                        currentHashes[src.id] = newHash;
                         parsed.forEach(item => {
                             item.source = src.id === 'ELCANO' ? 'ELC' : 'ERA';
                             masterMap.set(item.id, item);
                         });} catch (e) {}
+                }
+
+                // PLAN B: si ni ERA ni ELC han dado nada, se lee el gist manual
+                if (!sourceOk) {
+                    console.warn('[Plan B] ERA y ELC sin datos, probando el gist manual...');
+                    try {
+                        const raw = await NetworkService.fetchManualGist();
+                        const newHash = this.generateHash(raw);
+                        if (currentHashes.MANUAL !== newHash) {
+                            const parsed = this.parseManual(raw);
+                            if (parsed.length > 0) {
+                                parsed.forEach(item => {
+                                    item.source = 'MAN';
+                                    masterMap.set(item.id, item);
+                                });
+                                currentHashes.MANUAL = newHash;
+                                hasChanges = true;
+                                console.log('[Plan B] Gist manual OK ->', parsed.length, 'canales');
+                            } else {
+                                console.warn('[Plan B] El gist no contiene ningún ID de 40 caracteres reconocible.');
+                            }
+                        }
+                    } catch (e) {
+                        console.warn('[Plan B] Gist manual no disponible ->', e.message || e);
+                    }
                 }
 
                 const master = Array.from(masterMap.values());
@@ -426,6 +463,51 @@
                     if (idMatch && name) {
                         results.push({ name, id: idMatch[1].toLowerCase(), logo, group });
                     }
+                }
+                return results;
+            },
+            // Parser tolerante para el gist manual. Acepta:
+            //  - JSON con el mismo formato que Elcano ({"hashes":[{title,hash}]}) o un array de {name/title, id/hash}
+            //  - Lista M3U (#EXTINF + acestream://ID)
+            //  - Texto plano: "Nombre acestream://ID", "Nombre - ID", "Nombre | ID", "ID" en la línea siguiente al nombre...
+            parseManual(text) {
+                const t = (text || '').trim();
+                if (!t) return [];
+                const isId = (v) => /^[a-f0-9]{40}$/.test(v);
+
+                if (t[0] === '{' || t[0] === '[') {
+                    try {
+                        const data = JSON.parse(t);
+                        const list = Array.isArray(data) ? data : (data.hashes || []);
+                        return list.map(item => ({
+                            name: String(item.title || item.name || '').trim(),
+                            id: String(item.hash || item.id || '').trim().toLowerCase(),
+                            logo: item.logo || '',
+                            group: item.group || ''
+                        })).filter(i => i.name && isId(i.id));
+                    } catch (e) { /* no es JSON válido: se prueba como texto */ }
+                }
+
+                if (t.includes('#EXTINF')) {
+                    const m3u = this.parseEra(t);
+                    if (m3u.length > 0) return m3u;
+                }
+
+                const results = [];
+                let lastName = '';
+                for (const rawLine of t.split(/\r?\n/)) {
+                    const line = rawLine.trim();
+                    if (!line || line.startsWith('#')) continue;
+                    const m = line.match(/(?:acestream:\/\/)?\b([a-f0-9]{40})\b/i);
+                    if (!m) { lastName = line; continue; }
+                    let name = line.replace(m[0], ' ')
+                        .split('-->')[0]
+                        .replace(/^[\s\-–|,:;=>]+|[\s\-–|,:;=>]+$/g, '')
+                        .replace(/\s{2,}/g, ' ')
+                        .trim();
+                    if (!name) name = lastName;
+                    lastName = '';
+                    if (name) results.push({ name, id: m[1].toLowerCase(), logo: '', group: '' });
                 }
                 return results;
             },

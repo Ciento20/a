@@ -41,17 +41,8 @@
             will-change:opacity;
         }
         #ambilight-canvas.active{opacity:1;}
-        #player-viewport::after{
-            content:"";
-            position:absolute; inset:0; z-index:2;
-            pointer-events:none;
-            background: radial-gradient(ellipse closest-side at center, transparent 55%, rgba(0,0,0,.35) 100%);
-            opacity:0;
-            transition:opacity .7s ease;
-        }
-        #player-viewport:has(#ambilight-canvas.active)::after{opacity:1;}
         #internal-player-container:fullscreen #ambilight-canvas,#internal-player-container:-webkit-full-screen #ambilight-canvas{top:0;left:0;width:100%;height:100%;}
-        @media (prefers-reduced-motion: reduce){ #ambilight-canvas{transition:none;} #player-controls{transition:none;} #player-viewport::after{transition:none;} }
+        @media (prefers-reduced-motion: reduce){ #ambilight-canvas{transition:none;} #player-controls{transition:none;} }
         #internal-player-container:fullscreen #player-handle,#internal-player-container:-webkit-full-screen #player-handle{display:none !important;}
         </style></head><body>
     <div id="loader-container">

@@ -41,8 +41,28 @@
             will-change:opacity;
         }
         #ambilight-canvas.active{opacity:1;}
+        /* Sombreado solo en los 2 lados donde hay franja de letterbox visible con
+           ambilight: arriba/abajo (barras horizontales) o izquierda/derecha (barras
+           verticales), nunca en los 4 a la vez. La orientación la marca el JS con
+           las clases .ambilight-bars-h / .ambilight-bars-v según el recuadro real
+           del vídeo dentro del contenedor. */
+        #player-viewport::after{
+            content:"";
+            position:absolute; inset:0; z-index:2;
+            pointer-events:none;
+            opacity:0;
+            transition:opacity .7s ease, background .3s ease;
+        }
+        #player-viewport.ambilight-bars-h:has(#ambilight-canvas.active)::after{
+            opacity:1;
+            background:linear-gradient(to bottom, rgba(0,0,0,.4) 0%, transparent 18%, transparent 82%, rgba(0,0,0,.4) 100%);
+        }
+        #player-viewport.ambilight-bars-v:has(#ambilight-canvas.active)::after{
+            opacity:1;
+            background:linear-gradient(to right, rgba(0,0,0,.4) 0%, transparent 18%, transparent 82%, rgba(0,0,0,.4) 100%);
+        }
         #internal-player-container:fullscreen #ambilight-canvas,#internal-player-container:-webkit-full-screen #ambilight-canvas{top:0;left:0;width:100%;height:100%;}
-        @media (prefers-reduced-motion: reduce){ #ambilight-canvas{transition:none;} #player-controls{transition:none;} }
+        @media (prefers-reduced-motion: reduce){ #ambilight-canvas{transition:none;} #player-controls{transition:none;} #player-viewport::after{transition:none;} }
         #internal-player-container:fullscreen #player-handle,#internal-player-container:-webkit-full-screen #player-handle{display:none !important;}
         </style></head><body>
     <div id="loader-container">
@@ -814,6 +834,21 @@
                 }
             },
 
+            _barsState: null, // null | 'h' | 'v' | 'none'
+
+            _updateBarsOrientation(dx, dy) {
+                if (!this.viewport) return;
+                const TOL = 0.5; // px de tolerancia para evitar parpadeo por redondeo
+                let state;
+                if (dy > TOL) state = 'h';
+                else if (dx > TOL) state = 'v';
+                else state = 'none';
+                if (state === this._barsState) return;
+                this._barsState = state;
+                this.viewport.classList.toggle('ambilight-bars-h', state === 'h');
+                this.viewport.classList.toggle('ambilight-bars-v', state === 'v');
+            },
+
             loop(ts) {
                 if (!this.video || !this.canvas || this.video.paused || this.video.ended) {
                     this.stop();
@@ -845,6 +880,10 @@
                             dh = ch; dw = ch * videoAspect;
                             dy = 0; dx = (cw - dw) / 2;
                         }
+                        // Marca en el contenedor en qué par de lados hay franja de
+                        // letterbox real (dy>0 = arriba/abajo, dx>0 = izquierda/derecha),
+                        // para que el sombreado CSS solo aparezca en esos 2 lados.
+                        this._updateBarsOrientation(dx, dy);
                         // 1) Fotograma real, sin distorsión, en su recuadro exacto.
                         this.ctx.drawImage(this.video, dx, dy, dw, dh);
                         // 2) Estiramos el borde exterior REAL del vídeo hacia las franjas,
@@ -933,6 +972,8 @@
                 window.removeEventListener('orientationchange', this._onResize);
                 document.removeEventListener('fullscreenchange', this._onFsChange);
                 document.removeEventListener('webkitfullscreenchange', this._onFsChange);
+                if (this.viewport) this.viewport.classList.remove('ambilight-bars-h', 'ambilight-bars-v');
+                this._barsState = null;
                 this.video = null; this.canvas = null; this.ctx = null; this.container = null; this.viewport = null;
             }
         };

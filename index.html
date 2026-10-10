@@ -81,6 +81,11 @@
 @keyframes blink-marker{0%,100%{opacity:1}50%{opacity:0.2}}
 /* Modo ligero para TV: sin animaciones, blur, filtros, scroll-snap ni capas GPU extra */
 html.lite *,html.lite *::before,html.lite *::after{animation:none!important;transition:none!important;scroll-behavior:auto!important;text-shadow:none!important}
+html.lite body{padding-left:92px!important;padding-bottom:6px!important}
+html.lite .bottom-nav{top:0;bottom:0;left:0;right:auto;width:80px;height:auto;flex-direction:column;justify-content:center;align-items:stretch;gap:18px;border-top:none;border-right:1px solid var(--border-color)}
+html.lite .nav-item{flex:0 0 auto;width:100%;padding:16px 0;font-size:.7rem;box-sizing:border-box}
+html.lite .nav-icon svg{width:30px;height:30px}
+html.lite .nav-item:focus,html.lite .nav-item:focus-visible{outline:3px solid var(--accent-blue);outline-offset:-4px;background:rgba(255,255,255,.08);color:var(--text-main)}
 html.lite #events-container{scroll-snap-type:none!important;transform:none!important;min-height:0!important}
 html.lite .event-card{content-visibility:visible!important;contain:none!important;contain-intrinsic-size:auto!important}
 html.lite .event-card{scroll-snap-align:none!important;filter:none!important}
@@ -97,7 +102,7 @@ html.lite .is-live .time{color:var(--accent-blue)}
     <div id="loader-container">
         <div class="loader-bar"></div>
     </div><div id="status"><div class="spinner"></div></div><div id="searchContainer" style="display:none;width:95%;max-width:500px;margin:10px auto 0 auto;gap:8px;align-items:center;padding-bottom:10px;"><div style="position:relative;flex:1;display:flex;align-items:center"><input type="text" id="globalSearchInput" placeholder="Buscar canal, equipo o competición..." style="width:100%;padding:12px 40px 12px 16px;border-radius:12px;border:1px solid var(--border-color);background:var(--card-bg);color:#fff;font-size:.9rem;outline:0"><span id="clearSearch" style="position:absolute;right:12px;color:var(--text-muted);cursor:pointer;display:none;font-size:1.2rem;user-select:none">&times;</span></div></div><div id="events-container"></div>
-<div id="noResultsContainer" style="display:none;text-align:center;padding:40px;color:var(--text-muted)"><div><div style="font-size:3rem;margin-bottom:10px;color:var(--accent-blue)" class="material-symbols-outlined">satellite_alt</div><div style="font-weight:700;font-size:1.1rem;color:var(--text-main)">Sin resultados</div><div style="font-size:.85rem;margin-top:5px;opacity:.8">Intenta con otra búsqueda</div></div></div><div id="ids-modal" class="modal-overlay" onclick="UIManager.closeModal(event)"><div class="modal-content" onclick="event.stopPropagation()"><div id="modal-title" class="modal-title">Canales</div><div id="ids-list" class="ids-list"></div></div></div><nav class="bottom-nav"><div class="nav-item active" id="nav-home" onclick='UIManager.switchTab("home")'><span class="nav-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg></span><span>EVENTOS</span></div><div class="nav-item" id="nav-channels" onclick='UIManager.switchTab("channels")'><span class="nav-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg></span><span>CANALES</span></div></nav><script>const CONFIG = {
+<div id="noResultsContainer" style="display:none;text-align:center;padding:40px;color:var(--text-muted)"><div><div style="font-size:3rem;margin-bottom:10px;color:var(--accent-blue)" class="material-symbols-outlined">satellite_alt</div><div style="font-weight:700;font-size:1.1rem;color:var(--text-main)">Sin resultados</div><div style="font-size:.85rem;margin-top:5px;opacity:.8">Intenta con otra búsqueda</div></div></div><div id="ids-modal" class="modal-overlay" onclick="UIManager.closeModal(event)"><div class="modal-content" onclick="event.stopPropagation()"><div id="modal-title" class="modal-title">Canales</div><div id="ids-list" class="ids-list"></div></div></div><nav class="bottom-nav"><div class="nav-item active" id="nav-home" tabindex="0" role="button" onclick='UIManager.switchTab("home")'><span class="nav-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg></span><span>EVENTOS</span></div><div class="nav-item" id="nav-channels" tabindex="0" role="button" onclick='UIManager.switchTab("channels")'><span class="nav-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg></span><span>CANALES</span></div></nav><script>const CONFIG = {
             BASE_URL: 'https://www.futbolenlatv.es',
             TARGET_URL: 'https://www.futbolenlatv.es/deporte',
             GIST_LOGOS: 'https://gist.githubusercontent.com/Ciento20/5580f05d8ecab2a3de797d7ef4365406/raw/',
@@ -2564,6 +2569,44 @@ html.lite .is-live .time{color:var(--accent-blue)}
                 const cont = document.getElementById('events-container');
                 if (!cont) return;
                 const DIRS = { ArrowUp: 'u', ArrowDown: 'd', ArrowLeft: 'l', ArrowRight: 'r', 38: 'u', 40: 'd', 37: 'l', 39: 'r' };
+                let lastBtn = null;
+                const navItems = () => Array.from(document.querySelectorAll('.bottom-nav .nav-item'));
+                const focusNav = () => {
+                    const items = navItems();
+                    const t = items.find(i => i.classList.contains('active')) || items[0];
+                    if (!t) return false;
+                    t.focus({ preventScroll: true });
+                    return true;
+                };
+                const focusContent = () => {
+                    if (lastBtn && lastBtn.isConnected && lastBtn.offsetParent) { lastBtn.focus({ preventScroll: true }); return true; }
+                    const btns = Array.from(cont.querySelectorAll('.channel-button')).filter(b => b.offsetParent);
+                    const vis = btns.find(b => b.getBoundingClientRect().top >= 0) || btns[0];
+                    if (vis) { vis.focus({ preventScroll: true }); return true; }
+                    const si = document.getElementById('globalSearchInput');
+                    if (si && si.offsetParent) { si.focus(); return true; }
+                    return false;
+                };
+                // Barra lateral (modo TV): OK activa, arriba/abajo cambia entre Eventos y Canales, derecha vuelve al contenido
+                document.addEventListener('keydown', (e) => {
+                    if (!window.LITE || e.defaultPrevented) return;
+                    const cur = document.activeElement;
+                    const si = document.getElementById('globalSearchInput');
+                    if (cur === si && (e.key === 'ArrowLeft' || e.keyCode === 37) && si.selectionStart === 0 && si.selectionEnd === 0) {
+                        if (focusNav()) e.preventDefault();
+                        return;
+                    }
+                    if (!cur || !cur.classList || !cur.classList.contains('nav-item')) return;
+                    if (e.key === 'Enter' || e.keyCode === 13 || e.key === ' ') { e.preventDefault(); cur.click(); return; }
+                    const dir = DIRS[e.key] || DIRS[e.keyCode];
+                    if (!dir) return;
+                    e.preventDefault();
+                    const items = navItems();
+                    const i = items.indexOf(cur);
+                    if (dir === 'u' && i > 0) items[i - 1].focus({ preventScroll: true });
+                    else if (dir === 'd' && i < items.length - 1) items[i + 1].focus({ preventScroll: true });
+                    else if (dir === 'r') focusContent();
+                });
                 const modalOpen = () => {
                     const m = UIManager.modal;
                     const ov = ExportManager && ExportManager.overlay;
@@ -2577,6 +2620,7 @@ html.lite .is-live .time{color:var(--accent-blue)}
                     if (!cur || !cont.contains(cur) || modalOpen()) return;
                     const curBtn = cur.closest ? cur.closest('.channel-button') : null;
                     if (!curBtn) return;
+                    lastBtn = curBtn;
 
                     const r0 = curBtn.getBoundingClientRect();
                     const cx = r0.left + r0.width / 2, cy = r0.top + r0.height / 2;
@@ -2596,7 +2640,11 @@ html.lite .is-live .time{color:var(--accent-blue)}
                         const score = main + cross * 2.5;
                         if (score < bestScore) { bestScore = score; best = el; }
                     }
-                    if (!best) return; // nada en esa dirección: que decida el navegador (cabecera, menú inferior...)
+                    if (!best) {
+                        // Modo TV: al llegar al borde izquierdo se pasa a la barra lateral
+                        if (dir === 'l' && window.LITE && focusNav()) e.preventDefault();
+                        return; // nada en esa dirección: que decida el navegador
+                    }
 
                     e.preventDefault();
                     try { best.focus({ preventScroll: true }); } catch (err) { best.focus(); }

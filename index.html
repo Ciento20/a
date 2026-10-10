@@ -290,7 +290,7 @@ html.lite .is-live .time{color:var(--accent-blue)}
         let globalData = JSON.parse(localStorage.getItem('event_data_cache')) || [];
         let aceStreamMap = []; 
         let currentTab = localStorage.getItem('active_tab') || 'home';
-        const state = { tvSearchTerm: localStorage.getItem('search_query') || '' };
+        const state = { tvSearchTerm: (function(){ var t = localStorage.getItem('search_query') || ''; if (t.charAt(0) === '/') { localStorage.removeItem('search_query'); return ''; } return t; })() };
 
         const _canonCache = new Map();
         const getCanonicalName = (name) => {
@@ -850,7 +850,15 @@ html.lite .is-live .time{color:var(--accent-blue)}
             els: {},
             overlay: null,
 
+            BTN_KEY: 'export_btn_visible',
+            isButtonVisible() { try { return localStorage.getItem(this.BTN_KEY) === '1'; } catch (e) { return false; } },
+            toggleButton() {
+                const on = !this.isButtonVisible();
+                try { localStorage.setItem(this.BTN_KEY, on ? '1' : '0'); } catch (e) {}
+                return on;
+            },
             buttonHtml() {
+                if (!this.isButtonVisible()) return '';
                 return `<div style="grid-column:1/-1;width:100%;display:flex;justify-content:center;margin:5px 0 20px;"><div class="channel-item"><div class="channel-button" onclick="ExportManager.open()"><span class="material-symbols-outlined" style="font-size:1.6rem;pointer-events:none;">download</span><span style="pointer-events:none;">DESCARGAR LISTA .M3U</span></div></div></div>`;
             },
             loadPrefs() {
@@ -2501,12 +2509,23 @@ html.lite .is-live .time{color:var(--accent-blue)}
             }
             UIManager.switchTab(currentTab);
             UIManager.updatePlayerButton();            gInput.addEventListener('input', (e) => {
-                if (e.target.value === '/r') {
-                    UIManager.togglePlayerMode();
+                // Comandos ocultos: /r (modo reproductor) y /e (mostrar/ocultar botón de descarga .m3u)
+                const v = e.target.value.trim().toLowerCase();
+                if (v === '/r' || v === '/e') {
+                    clearTimeout(sT);
+                    if (v === '/r') UIManager.togglePlayerMode();
+                    else ExportManager.toggleButton();
                     e.target.value = '';
                     cBtn.style.display = 'none';
+                    // Si el "/" suelto llegó a guardarse como búsqueda, se descarta del todo
+                    const hadTerm = state.tvSearchTerm !== '';
+                    state.tvSearchTerm = '';
+                    localStorage.removeItem('search_query');
+                    if (hadTerm || v === '/e') UIManager.refresh();
                     return;
                 }
+                // Mientras se escribe un posible comando ("/") no se busca ni se guarda nada
+                if (v === '/') { clearTimeout(sT); cBtn.style.display = 'block'; return; }
                 cBtn.style.display = e.target.value ? 'block' : 'none';
                 clearTimeout(sT);
                 sT = setTimeout(() => {

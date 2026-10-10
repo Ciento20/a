@@ -381,7 +381,7 @@
                 { id: 'ERA', ipnsKey: 'k2k4r8lm8tkmuxbc8lkmq1in3v0oya1p6pe9o5bu0hu30br5ko08k2gb', subPath: '/data/listas/lista_fuera_iptv.m3u', parser: 'parseEra', isValid: (t) => t && t.includes('#EXTINF') },
                 { id: 'ELCANO', ipnsKey: 'k51qzi5uqu5dh5qej4b9wlcr5i6vhc7rcfkekhrxqek5c9lk6gdaiik820fecs', subPath: '/hashes.json', directUrls: ['https://tokyo.elcano-ipfs.workers.dev/k51qzi5uqu5dh5qej4b9wlcr5i6vhc7rcfkekhrxqek5c9lk6gdaiik820fecs/hashes.json'], parser: 'parseElcano', isValid: (t) => { try { return Array.isArray(JSON.parse(t).hashes); } catch (e) { return false; } } },
                 // Fuente local: lista M3U que sirve tu propio motor AceStream (AS). No usa gateways IPFS.
-                { id: 'AS', label: 'AS', localUrl: 'http://127.0.0.1:6878/pl.m3u', parser: 'parseAS', isValid: (t) => t && (t.includes('#EXTINF') || /(?<![a-f0-9])[a-f0-9]{40}(?![a-f0-9])/i.test(t)) }
+                { id: 'AS', label: 'AS', localUrl: 'http://127.0.0.1:6878/pl.m3u', onlyGroups: ['Amateur'], parser: 'parseAS', isValid: (t) => t && (t.includes('#EXTINF') || /(?<![a-f0-9])[a-f0-9]{40}(?![a-f0-9])/i.test(t)) }
             ],generateHash(str){let hash=5381,i=str.length;while(i)hash=(hash*33)^str.charCodeAt(--i);return(hash>>>0).toString(16)},
 
             async init() {
@@ -402,10 +402,24 @@
                         } else {
                             raw = await NetworkService.fetchIpnsResource(src.ipnsKey, src.subPath, src.isValid, src.directUrls || []);
                         }
-                        const newHash = this.generateHash('parser-v4|' + raw);
+                        const newHash = this.generateHash('parser-v4|' + (src.onlyGroups ? 'g:' + src.onlyGroups.join(',') + '|' : '') + raw);
                         if (currentHashes[src.id] === newHash) { if (src.id !== 'AS') sourceOk = true; report[src.id] = 'OK (sin cambios)'; continue; }
 
-                        const parsed = this[src.parser](raw);
+                        let parsed = this[src.parser](raw);
+                        if (src.onlyGroups) {
+                            const norm = (v) => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
+                            const wanted = src.onlyGroups.map(norm);
+                            const seenGroups = [...new Set(parsed.map(it => it.group || '(sin grupo)'))];
+                            parsed = parsed.filter(it => wanted.includes(norm(it.group)));
+                            if (parsed.length === 0) {
+                                // Se retiran los canales AS guardados de antes y se informa de los grupos que sí trae la lista
+                                for (const [k, v] of masterMap) { if (v.source === 'AS') masterMap.delete(k); }
+                                hasChanges = true;
+                                currentHashes[src.id] = newHash;
+                                report[src.id] = 'sin canales del grupo ' + src.onlyGroups.join('/') + ' (grupos en la lista: ' + seenGroups.slice(0, 8).join(', ') + ')';
+                                continue;
+                            }
+                        }
                         if (parsed.length === 0) { report[src.id] = 'respuesta sin canales' + (src.id === 'AS' ? ' (inicio: «' + raw.slice(0, 60).replace(/\s+/g, ' ') + '»)' : ''); continue; } // respuesta válida pero sin canales: no cuenta
                         report[src.id] = 'OK (' + parsed.length + ' canales)';
                         hasChanges = true;
@@ -626,9 +640,11 @@
 
                     // El ID puede estar en el propio EXTINF o en la primera línea de URL que le siga
                     let idMatch = line.match(idRe);
+                    let extGrp = '';
                     let j = i + 1;
                     while (!idMatch && j < lines.length && !lines[j].trim().startsWith('#EXTINF')) {
                         const l = lines[j].trim();
+                        if (/^#EXTGRP:/i.test(l)) extGrp = l.slice(8).trim();
                         if (l && !l.startsWith('#')) { idMatch = l.match(idRe); break; }
                         j++;
                     }
@@ -636,7 +652,7 @@
                     const id = idMatch[1].toLowerCase();
                     if (seen.has(id)) continue;
                     seen.add(id);
-                    results.push({ name, id, logo: attr('tvg-logo'), group: attr('group-title') });
+                    results.push({ name, id, logo: attr('tvg-logo'), group: attr('group-title') || extGrp });
                 }
                 // Si no era una M3U con #EXTINF, se intenta con el parser tolerante (texto plano / JSON)
                 return results.length ? results : this.parseManual(text).map(it => ({ ...it, name: this.cleanAsName(it.name) })).filter(it => it.name);
@@ -653,7 +669,261 @@
                     }));
                 } catch (e) { return []; }
             }
-        };        const LiveEngine = {
+        };                // ===== Exportar lista M3U para VLC (secciones + canales activables) =====
+        const ExportManager = {
+            PREF_KEY: 'export_prefs',
+            VLC_BASE: 'http://127.0.0.1:6878/ace/getstream?id=',
+            SECTIONS: [
+                { key: 'DAZN', label: 'DAZN', color: '#fffc01' },
+                { key: 'MOVISTAR', label: 'Movistar+', color: '#0165fe' },
+                { key: 'EUROSPORT', label: 'Eurosport', color: '#dd0452' },
+                { key: 'OTROS', label: 'Otros', color: '#888888' }
+            ],
+            prefs: { off: new Set(), alts: false },
+            data: {},
+            els: {},
+            overlay: null,
+
+            buttonHtml() {
+                return `<div style="grid-column:1/-1;width:100%;display:flex;justify-content:center;margin:5px 0 20px;"><div class="channel-item"><div class="channel-button" onclick="ExportManager.open()"><span class="material-symbols-outlined" style="font-size:1.6rem;pointer-events:none;">playlist_add_check</span><span style="pointer-events:none;">ABRIR EN VLC</span></div></div></div>`;
+            },
+            loadPrefs() {
+                try {
+                    const p = JSON.parse(localStorage.getItem(this.PREF_KEY) || 'null') || {};
+                    this.prefs = { off: new Set(Array.isArray(p.off) ? p.off : []), alts: !!p.alts };
+                } catch (e) { this.prefs = { off: new Set(), alts: false }; }
+            },
+            savePrefs() {
+                try { localStorage.setItem(this.PREF_KEY, JSON.stringify({ off: [...this.prefs.off], alts: this.prefs.alts })); } catch (e) {}
+            },
+            isOn(canon) { return !this.prefs.off.has(canon); },
+
+            // Reúne todos los canales (sin filtro de búsqueda), agrupados con las mismas reglas que la pestaña Canales
+            buildData() {
+                const byCanon = new Map();
+                aceStreamMap.forEach(a => {
+                    const canon = getCanonicalName(a.name);
+                    if (!canon) return;
+                    let e = byCanon.get(canon);
+                    if (!e) { e = { canon, name: a.name, items: [] }; byCanon.set(canon, e); }
+                    e.items.push(a);
+                });
+                const groups = UIManager.groupChannels(Array.from(byCanon.values()).map(e => e.name));
+                const out = {};
+                this.SECTIONS.forEach(sec => {
+                    out[sec.key] = (groups[sec.key] || []).map(n => byCanon.get(getCanonicalName(n))).filter(Boolean);
+                });
+                return out;
+            },
+
+            open() {
+                this.loadPrefs();
+                this.data = this.buildData();
+                this.ensureModal();
+                this.renderBody();
+                this.overlay.style.display = 'flex';
+            },
+            close() { if (this.overlay) this.overlay.style.display = 'none'; },
+
+            ensureModal() {
+                if (this.overlay) return;
+                const ov = document.createElement('div');
+                ov.className = 'modal-overlay';
+                ov.addEventListener('click', (e) => { if (e.target === ov) this.close(); });
+                ov.innerHTML = `
+                    <div class="modal-content" style="width:92%;max-width:440px;max-height:88vh;display:flex;flex-direction:column;padding:14px;box-sizing:border-box;overflow:hidden;">
+                        <div class="modal-title" style="font-size:.9rem;">Abrir lista en VLC</div>
+                        <div id="exp-body" style="flex:1;overflow-y:auto;min-height:0;display:flex;flex-direction:column;gap:8px;"></div>
+                        <div id="exp-msg" style="display:none;font-size:.7rem;line-height:1.4;color:#ffb74d;margin-top:10px;"></div>
+                        <label style="display:flex;align-items:center;gap:8px;font-size:.7rem;color:var(--text-muted);margin:12px 0 8px;cursor:pointer;">
+                            <input type="checkbox" id="exp-alts" style="accent-color:var(--accent-blue);width:16px;height:16px;"> Incluir también los enlaces alternativos de cada canal
+                        </label>
+                        <div style="display:flex;gap:8px;">
+                            <button id="exp-cancel" style="flex:0 0 auto;background:transparent;color:var(--text-muted);border:1px solid var(--border-color);border-radius:10px;padding:10px 14px;font-weight:700;font-size:.75rem;cursor:pointer;">Cancelar</button>
+                            <button id="exp-dl" style="flex:0 0 auto;background:var(--channel-bg);color:var(--text-main);border:1px solid var(--border-color);border-radius:10px;padding:10px 12px;font-weight:700;font-size:.75rem;cursor:pointer;">Descargar .m3u</button>
+                            <button id="exp-go" style="flex:1;background:var(--accent-blue);color:#fff;border:none;border-radius:10px;padding:10px;font-weight:700;font-size:.8rem;cursor:pointer;"></button>
+                        </div>
+                    </div>`;
+                document.body.appendChild(ov);
+                this.overlay = ov;
+                ov.querySelector('#exp-cancel').onclick = () => this.close();
+                ov.querySelector('#exp-go').onclick = () => this.openInVLC();
+                ov.querySelector('#exp-dl').onclick = () => this.downloadM3U();
+                ov.querySelector('#exp-alts').onchange = (e) => { this.prefs.alts = e.target.checked; this.savePrefs(); this.refresh(); };
+            },
+
+            renderBody() {
+                const body = this.overlay.querySelector('#exp-body');
+                body.innerHTML = '';
+                this.els = {};
+                this.overlay.querySelector('#exp-alts').checked = this.prefs.alts;
+                const total = this.SECTIONS.reduce((n, s) => n + this.data[s.key].length, 0);
+                if (total === 0) {
+                    body.innerHTML = '<div style="text-align:center;color:var(--text-muted);font-size:.75rem;padding:20px;">Aún no hay canales cargados.</div>';
+                }
+                this.SECTIONS.forEach(sec => {
+                    const channels = this.data[sec.key];
+                    if (!channels.length) return;
+                    const box = document.createElement('div');
+                    box.style.cssText = `border:1px solid ${sec.color}66;border-radius:10px;background:rgba(0,0,0,.25);overflow:hidden;`;
+                    const head = document.createElement('div');
+                    head.style.cssText = 'display:flex;align-items:center;gap:10px;padding:10px 12px;cursor:pointer;';
+                    const allBtn = document.createElement('button');
+                    allBtn.style.cssText = 'flex:0 0 auto;background:var(--channel-bg);color:var(--text-main);border:1px solid var(--border-color);border-radius:8px;padding:6px 9px;font-weight:700;font-size:.62rem;cursor:pointer;white-space:nowrap;';
+                    const title = document.createElement('span');
+                    title.textContent = sec.label;
+                    title.style.cssText = `flex:1;font-weight:700;font-size:.8rem;color:${sec.color === '#888888' ? 'var(--text-main)' : sec.color};`;
+                    const count = document.createElement('span');
+                    count.style.cssText = 'font-size:.7rem;color:var(--text-muted);';
+                    const chev = document.createElement('span');
+                    chev.className = 'material-symbols-outlined';
+                    chev.textContent = 'expand_more';
+                    chev.style.cssText = 'font-size:1.3rem;color:var(--text-muted);';
+                    head.append(title, count, allBtn, chev);
+                    const list = document.createElement('div');
+                    list.style.cssText = 'display:none;padding:2px 12px 10px;border-top:1px solid rgba(255,255,255,.06);';
+                    box.append(head, list);
+                    body.appendChild(box);
+                    this.els[sec.key] = { allBtn, count, list, chev, channels, built: false };
+
+                    allBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const allOn = this.data[sec.key].every(x => this.isOn(x.canon));
+                        this.setSection(sec.key, !allOn);
+                    });
+                    head.addEventListener('click', () => {
+                        const st = this.els[sec.key];
+                        const open = list.style.display === 'none';
+                        if (open && !st.built) this.buildList(sec.key);
+                        list.style.display = open ? 'block' : 'none';
+                        chev.textContent = open ? 'expand_less' : 'expand_more';
+                    });
+                });
+                this.refresh();
+            },
+
+            // Las filas de cada sección se crean solo al desplegarla (la de "Otros" puede ser larga)
+            buildList(key) {
+                const st = this.els[key];
+                st.built = true;
+                const frag = document.createDocumentFragment();
+                st.channels.forEach(e => {
+                    const row = document.createElement('label');
+                    row.style.cssText = 'display:flex;align-items:center;gap:10px;padding:7px 0;font-size:.75rem;color:var(--text-main);cursor:pointer;border-bottom:1px solid rgba(255,255,255,.04);';
+                    const cb = document.createElement('input');
+                    cb.type = 'checkbox';
+                    cb.dataset.canon = e.canon;
+                    cb.checked = this.isOn(e.canon);
+                    cb.style.cssText = 'width:16px;height:16px;flex:0 0 auto;accent-color:var(--accent-blue);cursor:pointer;';
+                    cb.addEventListener('change', () => {
+                        if (cb.checked) this.prefs.off.delete(e.canon); else this.prefs.off.add(e.canon);
+                        this.savePrefs();
+                        this.refresh();
+                    });
+                    const name = document.createElement('span');
+                    name.textContent = e.canon;
+                    name.style.cssText = 'flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+                    const n = document.createElement('span');
+                    n.textContent = e.items.length > 1 ? e.items.length + ' enl.' : '';
+                    n.style.cssText = 'font-size:.6rem;color:var(--text-muted);';
+                    row.append(cb, name, n);
+                    frag.appendChild(row);
+                });
+                st.list.appendChild(frag);
+            },
+
+            syncRows() {
+                this.overlay.querySelectorAll('input[data-canon]').forEach(cb => { cb.checked = this.isOn(cb.dataset.canon); });
+            },
+            setSection(key, on) {
+                this.data[key].forEach(e => { if (on) this.prefs.off.delete(e.canon); else this.prefs.off.add(e.canon); });
+                this.savePrefs();
+                this.syncRows();
+                this.refresh();
+            },
+            countSelected() {
+                return this.SECTIONS.reduce((n, s) => n + this.data[s.key].filter(e => this.isOn(e.canon)).length, 0);
+            },
+            refresh() {
+                let on = 0, total = 0;
+                this.SECTIONS.forEach(sec => {
+                    const st = this.els[sec.key];
+                    if (!st) return;
+                    const o = st.channels.filter(e => this.isOn(e.canon)).length;
+                    on += o; total += st.channels.length;
+                    st.allBtn.textContent = o === st.channels.length ? 'Quitar todo' : 'Seleccionar todo';
+                    st.count.textContent = o + '/' + st.channels.length;
+                });
+                const go = this.overlay.querySelector('#exp-go');
+                const links = this.SECTIONS.reduce((n, s) => n + this.data[s.key].filter(e => this.isOn(e.canon)).reduce((m, e) => m + (this.prefs.alts ? e.items.length : 1), 0), 0);
+                go.textContent = on > 0 ? 'Abrir en VLC (' + on + (on === 1 ? ' canal' : ' canales') + (this.prefs.alts ? ' · ' + links + ' enlaces' : '') + ')' : 'Nada seleccionado';
+                go.disabled = on === 0;
+                go.style.opacity = on === 0 ? '.4' : '1';
+                const dl = this.overlay.querySelector('#exp-dl');
+                dl.disabled = on === 0;
+                dl.style.opacity = on === 0 ? '.4' : '1';
+            },
+
+            buildM3U() {
+                const attr = (v) => String(v || '').replace(/"/g, "'").replace(/[\r\n]+/g, ' ');
+                const title = (v) => String(v || '').replace(/[,\r\n]+/g, ' ').replace(/\s{2,}/g, ' ').trim();
+                const lines = ['#EXTM3U'];
+                let n = 0;
+                this.SECTIONS.forEach(sec => {
+                    this.data[sec.key].forEach(e => {
+                        if (!this.isOn(e.canon)) return;
+                        const items = e.items.slice().sort((a, b) => RatingEngine.getScore(b.id) - RatingEngine.getScore(a.id));
+                        const use = this.prefs.alts ? items : items.slice(0, 1);
+                        const logo = channelLogosMap[e.canon] || (items.find(i => i.logo) || {}).logo || '';
+                        use.forEach((it, idx) => {
+                            const t = title(e.canon) + (use.length > 1 ? ' (' + (idx + 1) + ')' : '');
+                            lines.push('#EXTINF:-1 tvg-name="' + attr(e.canon) + '"' + (logo ? ' tvg-logo="' + attr(logo) + '"' : '') + ' group-title="' + sec.label + '",' + t);
+                            lines.push(this.VLC_BASE + it.id);
+                            n++;
+                        });
+                    });
+                });
+                return { text: lines.join('\n') + '\n', count: n };
+            },
+            showMsg(t) {
+                const m = this.overlay.querySelector('#exp-msg');
+                m.textContent = t || '';
+                m.style.display = t ? 'block' : 'none';
+            },
+            // No se guarda ningún archivo: la lista se genera en memoria y se entrega al sistema para que la abra VLC.
+            async openInVLC() {
+                this.showMsg('');
+                const { text, count } = this.buildM3U();
+                if (count === 0) return;
+                try {
+                    const file = new File([text], 'lista_vlc.m3u', { type: 'audio/x-mpegurl' });
+                    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                        await navigator.share({ files: [file], title: 'Lista VLC' });
+                        this.close();
+                        return;
+                    }
+                } catch (e) {
+                    if (e && e.name === 'AbortError') return; // el usuario cerró el selector
+                    console.warn('[VLC] share falló ->', e);
+                }
+                // Sin menú de compartir: se descarga el .m3u para abrirlo con VLC
+                this.downloadM3U('Tu navegador no puede abrir VLC directamente: se ha descargado la lista, ábrela con VLC.');
+            },
+            downloadM3U(msg) {
+                const { text, count } = this.buildM3U();
+                if (count === 0) return;
+                const url = URL.createObjectURL(new Blob([text], { type: 'audio/x-mpegurl' }));
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'lista_vlc.m3u';
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                setTimeout(() => URL.revokeObjectURL(url), 5000);
+                this.showMsg(msg || 'Lista descargada (' + count + ' canales). Ábrela con VLC.');
+            }
+        };
+        const LiveEngine = {
             checkLive(event) {
                 const fechaLimpia = event.fecha.toLowerCase();
                 if (!fechaLimpia.includes("hoy") && !fechaLimpia.includes("directo")) return false;
@@ -1498,51 +1768,7 @@
                     if (noResults) noResults.style.display = 'block';
                     this.container.innerHTML = "";
                     return;
-                } else { if (noResults) noResults.style.display = 'none'; }                const getPriority = (name) => {
-                    // Evaluamos la prioridad basada en el nombre CANÓNICO para que los alias hereden el grupo correcto
-                    const canon = getCanonicalName(name).toUpperCase();
-                    // Ampliamos la detección para capturar [PL], (PL) o simplemente PL al final
-                    const isForeign = ['PL', 'DE', 'RU'].some(t => name.toUpperCase().includes('['+t+']') || name.toUpperCase().includes('('+t+')') || canon.endsWith(' '+t));
-                    
-                    // 1. ELEVEN y cualquier canal extranjero (incluyendo Eurosport PL/DE/RU) van a OTROS
-                    if (canon.includes('ELEVEN') || isForeign) return 4.1;
-                    
-                    // 2. DAZN mantiene su prioridad 1 (Grupo DAZN)
-                    if (canon.includes('DAZN')) return 1;
-                    
-                    // 3. Movistar+ y competiciones de fútbol mantienen prioridad 2
-                    if ((canon.includes('M+') && !canon.includes('FILM+')) || canon.includes('MOVISTAR') || canon.includes('LIGA DE CAMPEONES') || canon.includes('HYPERMOTION')) return 2;
-                    
-                    // 4. Eurosport (solo si no es extranjero) mantiene prioridad 3
-                    if (canon.includes('EUROSPORT')) return 3;
-                    
-                    return 4.1;
-                };                const gistOrder = Object.keys(channelLogosMap);
-                const sortedChannels = Array.from(uniqueMap.values()).sort((a, b) => {
-                    const pA = getPriority(a), pB = getPriority(b);
-                    if (pA !== pB) return pA - pB;
-
-                    // Forzamos la búsqueda por nombre canónico para que los alias hereden la posición del Gist
-                    const canonA = getCanonicalName(a);
-                    const canonB = getCanonicalName(b);
-
-                    const indexA = gistOrder.indexOf(canonA);
-                    const indexB = gistOrder.indexOf(canonB);
-
-                    if (indexA !== -1 && indexB !== -1) return indexA - indexB;
-                    if (indexA !== -1) return -1;
-                    if (indexB !== -1) return 1;
-                    return canonA.localeCompare(canonB);
-                });
-
-                const groups = { DAZN: [], MOVISTAR: [], EUROSPORT: [], OTROS: [] };
-                sortedChannels.forEach(name => {
-                    const p = getPriority(name);
-                    if (p === 1) groups.DAZN.push(name);
-                    else if (p === 2) groups.MOVISTAR.push(name);
-                    else if (p === 3) groups.EUROSPORT.push(name);
-                    else groups.OTROS.push(name);
-                });
+                } else { if (noResults) noResults.style.display = 'none'; }                const groups = this.groupChannels(Array.from(uniqueMap.values()));
 
                 const renderGroup = (title, channels, color, logoKey, isEurosport = false) => {
                     if (channels.length === 0) return '';
@@ -1569,6 +1795,7 @@
                 mainHtml += renderGroup('MOVISTAR+', groups.MOVISTAR, '#0165fe', 'MOVISTARP');
                 mainHtml += renderGroup('EUROSPORT', groups.EUROSPORT, '#dd0452', 'EUROS', true);
                 mainHtml += renderGroup('OTROS CANALES', groups.OTROS, '#333333', '');
+                mainHtml += ExportManager.buttonHtml();
                 this.container.innerHTML = mainHtml;
 
                 // Canales renderizados por grupos superiores
@@ -1591,7 +1818,58 @@
                              ontouchend="UIManager.clearLongPress()">
                         ${logoUrl ? `<img src="${logoUrl}" class="channel-logo" loading="lazy" decoding="async" style="position:relative; z-index:2; pointer-events:none; ${logoStyle}" onerror="this.outerHTML='<span>${canonical}</span>'">` : `<span style="position:relative; z-index:2; pointer-size:0.65rem; pointer-events:none;">${canonical}</span>`}
                     </div></div><div class="channel-dropdown"></div>`;
-            },            longPressTimer: null,
+            },            getChannelPriority(name) {
+                    // Evaluamos la prioridad basada en el nombre CANÓNICO para que los alias hereden el grupo correcto
+                    const canon = getCanonicalName(name).toUpperCase();
+                    // Ampliamos la detección para capturar [PL], (PL) o simplemente PL al final
+                    const isForeign = ['PL', 'DE', 'RU'].some(t => name.toUpperCase().includes('['+t+']') || name.toUpperCase().includes('('+t+')') || canon.endsWith(' '+t));
+                    
+                    // 1. ELEVEN y cualquier canal extranjero (incluyendo Eurosport PL/DE/RU) van a OTROS
+                    if (canon.includes('ELEVEN') || isForeign) return 4.1;
+                    
+                    // 2. DAZN mantiene su prioridad 1 (Grupo DAZN)
+                    if (canon.includes('DAZN')) return 1;
+                    
+                    // 3. Movistar+ y competiciones de fútbol mantienen prioridad 2
+                    if ((canon.includes('M+') && !canon.includes('FILM+')) || canon.includes('MOVISTAR') || canon.includes('LIGA DE CAMPEONES') || canon.includes('HYPERMOTION')) return 2;
+                    
+                    // 4. Eurosport (solo si no es extranjero) mantiene prioridad 3
+                    if (canon.includes('EUROSPORT')) return 3;
+                    
+                    return 4.1;
+                },
+            // Ordena los nombres y los reparte en las secciones DAZN / MOVISTAR / EUROSPORT / OTROS (usado por la pestaña Canales y por el exportador)
+            groupChannels(names) {
+                const getPriority = (n) => this.getChannelPriority(n);
+                const gistOrder = Object.keys(channelLogosMap);
+                const sortedChannels = [...names].sort((a, b) => {
+                    const pA = getPriority(a), pB = getPriority(b);
+                    if (pA !== pB) return pA - pB;
+
+                    // Forzamos la búsqueda por nombre canónico para que los alias hereden la posición del Gist
+                    const canonA = getCanonicalName(a);
+                    const canonB = getCanonicalName(b);
+
+                    const indexA = gistOrder.indexOf(canonA);
+                    const indexB = gistOrder.indexOf(canonB);
+
+                    if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+                    if (indexA !== -1) return -1;
+                    if (indexB !== -1) return 1;
+                    return canonA.localeCompare(canonB);
+                });
+
+                const groups = { DAZN: [], MOVISTAR: [], EUROSPORT: [], OTROS: [] };
+                sortedChannels.forEach(name => {
+                    const p = getPriority(name);
+                    if (p === 1) groups.DAZN.push(name);
+                    else if (p === 2) groups.MOVISTAR.push(name);
+                    else if (p === 3) groups.EUROSPORT.push(name);
+                    else groups.OTROS.push(name);
+                });
+                return groups;
+            },
+            longPressTimer: null,
             isLongPress: false,
             touchStartY: 0,
 

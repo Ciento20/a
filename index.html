@@ -402,7 +402,7 @@
                         } else {
                             raw = await NetworkService.fetchIpnsResource(src.ipnsKey, src.subPath, src.isValid, src.directUrls || []);
                         }
-                        const newHash = this.generateHash('parser-v4|' + (src.onlyGroups ? 'g:' + src.onlyGroups.join(',') + '|' : '') + raw);
+                        const newHash = this.generateHash('parser-v5|' + (src.onlyGroups ? 'g:' + src.onlyGroups.join(',') + '|' : '') + raw);
                         if (currentHashes[src.id] === newHash) { if (src.id !== 'AS') sourceOk = true; report[src.id] = 'OK (sin cambios)'; continue; }
 
                         let parsed = this[src.parser](raw);
@@ -498,10 +498,12 @@
             // Quita de un nombre cualquier resto de hash/ID (trozos hexadecimales largos, "id=", "acestream://"...)
             sanitizeName(n) {
                 return String(n || '')
+                    .replace(/\bshickat(?:\.[a-z]+)*\b/gi, ' ')
                     .replace(/acestream:\/\/\S*/gi, ' ')
                     .replace(/\b(?:id|hash|content_id|infohash)\s*[=:]\s*\S*/gi, ' ')
                     .replace(/[a-f0-9]{8,}/gi, (m) => (m.length >= 20 || (/\d/.test(m) && /[a-f]/i.test(m))) ? ' ' : m)
                     .replace(/[\(\[\{]\s*[\)\]\}]/g, ' ')
+                    .replace(/(?:\s*\|\s*){2,}/g, ' | ')
                     .replace(/^[\s\-–|,:;=>]+|[\s\-–|,:;=>]+$/g, '')
                     .replace(/\s{2,}/g, ' ')
                     .trim();
@@ -610,7 +612,7 @@
                 let n = String(raw || '').split('-->')[0];
                 n = n.replace(/\b(?:https?|ftp):\/\/\S*/gi, ' ').replace(/\bwww\.\S*/gi, ' ');                      // URLs completas
                 n = n.replace(/\b\d{1,3}(?:\.\d{1,3}){3}(?::\d+)?\S*/g, ' ');                                          // IP:puerto/ruta
-                n = n.replace(/\S*[a-z0-9-]\.(?:com|top|io|me|net|org|tv|link|xyz|app|cc|to)(?:[\/:?#]\S*)?(?=\s|$)/gi, ' '); // dominios sueltos: elcano.top, t.me/xxx
+                n = n.replace(/\S*[a-z0-9-]\.(?:com|top|io|me|net|org|tv|link|xyz|app|cc|to|online|blog|site|live|club|info|biz|fun|pro)(?:[\/:?#]\S*)?(?=\s|$)/gi, ' '); // dominios sueltos: elcano.top, t.me/xxx
                 n = n.replace(/\b(?:zeronet|ipns|ipfs)\b/gi, ' ');                                                    // restos de origen
                 n = n.replace(/[\u{1F1E6}-\u{1F1FF}\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\uFE0F]/gu, ' ');           // emojis y banderas
                 n = n.replace(/\[[^\]]*\]|\((?:[^)]*)\)|\{[^}]*\}/g, ' ');                                          // [ES] (Multi) {HD}...

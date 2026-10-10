@@ -75,21 +75,30 @@
   var tv=/SMART-TV|SmartTV|Tizen|Web0S|WebOS|NetCast|BRAVIA|VIDAA|HbbTV|Hisense|Philips|AFT[A-Z]+|Android TV|GoogleTV|CrKey|AppleTV|Roku|TV Safari|\bTV\b/i.test(ua);
   window.LITE = ls==='1' || (ls!=='0' && tv);
   if(window.LITE) document.documentElement.classList.add('lite');
-  // Barra lateral: se activa con el modo ligero o, si el navegador no se identifica como tele,
-  // con una pantalla grande sin táctil ni ratón (?tv=1 / ?tv=0 fuerzan activarla / desactivarla)
-  var tvq = /[?&]tv=1/.test(q) ? true : (/[?&]tv=0/.test(q) ? false : null);
-  var noTouch = !('ontouchstart' in window) && !(navigator.maxTouchPoints > 0);
-  var noHover = false;
-  try { noHover = window.matchMedia('(hover: none), (pointer: none)').matches; } catch(e){}
-  var wide = Math.max(window.innerWidth||0, (screen&&screen.width)||0) >= 900;
-  window.TVNAV = tvq !== null ? tvq : (window.LITE || (noTouch && noHover && wide));
-  if(window.TVNAV) document.documentElement.classList.add('tvnav');
+  // Barra lateral: pantalla grande y apaisada (tele) -> a la izquierda; móvil -> abajo. No depende del user agent.
+  // (?tv=1 / ?tv=0 fuerzan activarla / desactivarla)
+  var SIDE_Q='(min-width:900px) and (min-height:480px) and (orientation:landscape)';
+  window.isSideNav=function(){
+    var d=document.documentElement;
+    if(d.classList.contains('tvnav')) return true;
+    if(d.classList.contains('notvnav')) return false;
+    try{ return window.matchMedia(SIDE_Q).matches; }catch(e){ return false; }
+  };
+  if(/[?&]tv=1/.test(q)) document.documentElement.classList.add('tvnav');
+  else if(/[?&]tv=0/.test(q)) document.documentElement.classList.add('notvnav');
 })();
 </script>
 <style id="lite-css">
 @keyframes blink-marker{0%,100%{opacity:1}50%{opacity:0.2}}
 /* Modo ligero para TV: sin animaciones, blur, filtros, scroll-snap ni capas GPU extra */
 html.lite *,html.lite *::before,html.lite *::after{animation:none!important;transition:none!important;scroll-behavior:auto!important;text-shadow:none!important}
+@media (min-width:900px) and (min-height:480px) and (orientation:landscape){
+html:not(.notvnav) body{padding-left:92px!important;padding-bottom:6px!important}
+html:not(.notvnav) .bottom-nav{top:0;bottom:0;left:0;right:auto;width:80px;height:auto;flex-direction:column;justify-content:center;align-items:stretch;gap:18px;border-top:none;border-right:1px solid var(--border-color)}
+html:not(.notvnav) .nav-item{flex:0 0 auto;width:100%;padding:16px 0;font-size:.7rem;box-sizing:border-box}
+html:not(.notvnav) .nav-icon svg{width:30px;height:30px}
+html:not(.notvnav) .nav-item:focus,html:not(.notvnav) .nav-item:focus-visible{outline:3px solid var(--accent-blue);outline-offset:-4px;background:rgba(255,255,255,.08);color:var(--text-main)}
+}
 html.tvnav body{padding-left:92px!important;padding-bottom:6px!important}
 html.tvnav .bottom-nav{top:0;bottom:0;left:0;right:auto;width:80px;height:auto;flex-direction:column;justify-content:center;align-items:stretch;gap:18px;border-top:none;border-right:1px solid var(--border-color)}
 html.tvnav .nav-item{flex:0 0 auto;width:100%;padding:16px 0;font-size:.7rem;box-sizing:border-box}
@@ -2623,7 +2632,7 @@ html.lite .is-live .time{color:var(--accent-blue)}
                 };
                 // Barra lateral (modo TV): OK activa, arriba/abajo cambia entre Eventos y Canales, derecha vuelve al contenido
                 document.addEventListener('keydown', (e) => {
-                    if (!window.TVNAV || e.defaultPrevented) return;
+                    if (!window.isSideNav() || e.defaultPrevented) return;
                     const cur = document.activeElement;
                     const si = document.getElementById('globalSearchInput');
                     if (cur === si && (e.key === 'ArrowLeft' || e.keyCode === 37) && si.selectionStart === 0 && si.selectionEnd === 0) {
@@ -2676,7 +2685,7 @@ html.lite .is-live .time{color:var(--accent-blue)}
                     }
                     if (!best) {
                         // Modo TV: al llegar al borde izquierdo se pasa a la barra lateral
-                        if (dir === 'l' && window.TVNAV && focusNav()) e.preventDefault();
+                        if (dir === 'l' && window.isSideNav() && focusNav()) e.preventDefault();
                         return; // nada en esa dirección: que decida el navegador
                     }
 

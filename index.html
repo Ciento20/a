@@ -824,7 +824,7 @@ html.lite .is-live .time{color:var(--accent-blue)}
             overlay: null,
 
             buttonHtml() {
-                return `<div style="grid-column:1/-1;width:100%;display:flex;justify-content:center;margin:5px 0 20px;"><div class="channel-item"><div class="channel-button" onclick="ExportManager.open()"><span class="material-symbols-outlined" style="font-size:1.6rem;pointer-events:none;">playlist_add_check</span><span style="pointer-events:none;">ABRIR EN VLC</span></div></div></div>`;
+                return `<div style="grid-column:1/-1;width:100%;display:flex;justify-content:center;margin:5px 0 20px;"><div class="channel-item"><div class="channel-button" onclick="ExportManager.open()"><span class="material-symbols-outlined" style="font-size:1.6rem;pointer-events:none;">download</span><span style="pointer-events:none;">DESCARGAR LISTA .M3U</span></div></div></div>`;
             },
             loadPrefs() {
                 try {
@@ -870,24 +870,24 @@ html.lite .is-live .time{color:var(--accent-blue)}
                 ov.className = 'modal-overlay';
                 ov.addEventListener('click', (e) => { if (e.target === ov) this.close(); });
                 ov.innerHTML = `
-                    <div class="modal-content" style="width:92%;max-width:440px;max-height:88vh;display:flex;flex-direction:column;padding:14px;box-sizing:border-box;overflow:hidden;">
-                        <div class="modal-title" style="font-size:.9rem;">Abrir lista en VLC</div>
-                        <div id="exp-body" style="flex:1;overflow-y:auto;min-height:0;display:flex;flex-direction:column;gap:8px;"></div>
+                    <div class="modal-content" style="width:92%;max-width:440px;max-height:calc(100% - 24px);max-height:calc(100dvh - 24px);display:flex;flex-direction:column;padding:14px;box-sizing:border-box;overflow:hidden;">
+                        <div class="modal-title" style="font-size:.9rem;">Descargar lista .m3u</div>
+                        <div id="exp-body" style="flex:1 1 auto;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;touch-action:pan-y;min-height:0;display:flex;flex-direction:column;gap:8px;"></div>
                         <div id="exp-msg" style="display:none;font-size:.7rem;line-height:1.4;color:#ffb74d;margin-top:10px;"></div>
                         <label style="display:flex;align-items:center;gap:8px;font-size:.7rem;color:var(--text-muted);margin:12px 0 8px;cursor:pointer;">
                             <input type="checkbox" id="exp-alts" style="accent-color:var(--accent-blue);width:16px;height:16px;"> Incluir también los enlaces alternativos de cada canal
                         </label>
+                        <button id="exp-names" style="width:100%;background:var(--channel-bg);color:var(--text-main);border:1px solid var(--border-color);border-radius:10px;padding:10px;font-weight:700;font-size:.75rem;cursor:pointer;margin-bottom:8px;">Descargar nombres + hashes (.txt)</button>
                         <div style="display:flex;gap:8px;">
                             <button id="exp-cancel" style="flex:0 0 auto;background:transparent;color:var(--text-muted);border:1px solid var(--border-color);border-radius:10px;padding:10px 14px;font-weight:700;font-size:.75rem;cursor:pointer;">Cancelar</button>
-                            <button id="exp-dl" style="flex:0 0 auto;background:var(--channel-bg);color:var(--text-main);border:1px solid var(--border-color);border-radius:10px;padding:10px 12px;font-weight:700;font-size:.75rem;cursor:pointer;">Descargar .m3u</button>
-                            <button id="exp-go" style="flex:1;background:var(--accent-blue);color:#fff;border:none;border-radius:10px;padding:10px;font-weight:700;font-size:.8rem;cursor:pointer;"></button>
+                            <button id="exp-dl" style="flex:1;background:var(--accent-blue);color:#fff;border:none;border-radius:10px;padding:10px;font-weight:700;font-size:.8rem;cursor:pointer;">Descargar .m3u</button>
                         </div>
                     </div>`;
                 document.body.appendChild(ov);
                 this.overlay = ov;
                 ov.querySelector('#exp-cancel').onclick = () => this.close();
-                ov.querySelector('#exp-go').onclick = () => this.openInVLC();
-                ov.querySelector('#exp-dl').onclick = () => this.downloadM3U();
+                                ov.querySelector('#exp-dl').onclick = () => this.downloadM3U();
+                ov.querySelector('#exp-names').onclick = () => this.downloadNames();
                 ov.querySelector('#exp-alts').onchange = (e) => { this.prefs.alts = e.target.checked; this.savePrefs(); this.refresh(); };
             },
 
@@ -904,7 +904,7 @@ html.lite .is-live .time{color:var(--accent-blue)}
                     const channels = this.data[sec.key];
                     if (!channels.length) return;
                     const box = document.createElement('div');
-                    box.style.cssText = `border:1px solid ${sec.color}66;border-radius:10px;background:rgba(0,0,0,.25);overflow:hidden;`;
+                    box.style.cssText = `flex:0 0 auto;border:1px solid ${sec.color}66;border-radius:10px;background:rgba(0,0,0,.25);overflow:hidden;`;
                     const head = document.createElement('div');
                     head.style.cssText = 'display:flex;align-items:center;gap:10px;padding:10px 12px;cursor:pointer;';
                     const allBtn = document.createElement('button');
@@ -993,14 +993,15 @@ html.lite .is-live .time{color:var(--accent-blue)}
                     st.allBtn.textContent = o === st.channels.length ? 'Quitar todo' : 'Seleccionar todo';
                     st.count.textContent = o + '/' + st.channels.length;
                 });
-                const go = this.overlay.querySelector('#exp-go');
+                const dl0 = this.overlay.querySelector('#exp-dl');
                 const links = this.SECTIONS.reduce((n, s) => n + this.data[s.key].filter(e => this.isOn(e.canon)).reduce((m, e) => m + (this.prefs.alts ? e.items.length : 1), 0), 0);
-                go.textContent = on > 0 ? 'Abrir en VLC (' + on + (on === 1 ? ' canal' : ' canales') + (this.prefs.alts ? ' · ' + links + ' enlaces' : '') + ')' : 'Nada seleccionado';
-                go.disabled = on === 0;
-                go.style.opacity = on === 0 ? '.4' : '1';
+                dl0.textContent = on > 0 ? 'Descargar .m3u (' + on + (on === 1 ? ' canal' : ' canales') + (this.prefs.alts ? ' · ' + links + ' enlaces' : '') + ')' : 'Nada seleccionado';
                 const dl = this.overlay.querySelector('#exp-dl');
                 dl.disabled = on === 0;
                 dl.style.opacity = on === 0 ? '.4' : '1';
+                const nm = this.overlay.querySelector('#exp-names');
+                nm.disabled = on === 0;
+                nm.style.opacity = on === 0 ? '.4' : '1';
             },
 
             buildM3U() {
@@ -1029,24 +1030,32 @@ html.lite .is-live .time{color:var(--accent-blue)}
                 m.textContent = t || '';
                 m.style.display = t ? 'block' : 'none';
             },
-            // No se guarda ningún archivo: la lista se genera en memoria y se entrega al sistema para que la abra VLC.
-            async openInVLC() {
-                this.showMsg('');
-                const { text, count } = this.buildM3U();
-                if (count === 0) return;
-                try {
-                    const file = new File([text], 'lista_vlc.m3u', { type: 'audio/x-mpegurl' });
-                    if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                        await navigator.share({ files: [file], title: 'Lista VLC' });
-                        this.close();
-                        return;
-                    }
-                } catch (e) {
-                    if (e && e.name === 'AbortError') return; // el usuario cerró el selector
-                    console.warn('[VLC] share falló ->', e);
-                }
-                // Sin menú de compartir: se descarga el .m3u para abrirlo con VLC
-                this.downloadM3U('Tu navegador no puede abrir VLC directamente: se ha descargado la lista, ábrela con VLC.');
+            // Respaldo para el gist (formato lista plana): una línea con el nombre y debajo su(s) hash(es), sin numerar ni secciones
+            downloadNames() {
+                const out = [];
+                let n = 0;
+                this.SECTIONS.forEach(sec => {
+                    this.data[sec.key].forEach(e => {
+                        if (!this.isOn(e.canon)) return;
+                        const items = e.items.slice().sort((a, b) => RatingEngine.getScore(b.id) - RatingEngine.getScore(a.id));
+                        const use = this.prefs.alts ? items : items.slice(0, 1);
+                        const ids = [...new Set(use.map(it => it.id))];
+                        if (!ids.length) return;
+                        out.push(e.canon);
+                        ids.forEach(id => out.push(id));
+                        n += ids.length;
+                    });
+                });
+                if (n === 0) return;
+                const url = URL.createObjectURL(new Blob([out.join('\n') + '\n'], { type: 'text/plain;charset=utf-8' }));
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'canales.txt';
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                setTimeout(() => URL.revokeObjectURL(url), 5000);
+                this.showMsg('Respaldo descargado (' + n + (n === 1 ? ' enlace' : ' enlaces') + ').');
             },
             downloadM3U(msg) {
                 const { text, count } = this.buildM3U();

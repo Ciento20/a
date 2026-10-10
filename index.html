@@ -78,32 +78,35 @@
   // Barra lateral: pantalla grande y apaisada (tele) -> a la izquierda; móvil -> abajo. No depende del user agent.
   // (?tv=1 / ?tv=0 fuerzan activarla / desactivarla)
   var SIDE_Q='(min-width:900px) and (min-height:480px) and (orientation:landscape)';
-  window.isSideNav=function(){
-    var d=document.documentElement;
-    if(d.classList.contains('tvnav')) return true;
-    if(d.classList.contains('notvnav')) return false;
-    try{ return window.matchMedia(SIDE_Q).matches; }catch(e){ return false; }
-  };
+  window.isSideNav=function(){ return document.documentElement.classList.contains('sidenav'); };
   if(/[?&]tv=1/.test(q)) document.documentElement.classList.add('tvnav');
   else if(/[?&]tv=0/.test(q)) document.documentElement.classList.add('notvnav');
+  // La decisión solo se recalcula cuando cambia el ANCHO: al abrir el teclado en la TV solo cambia
+  // el alto, y antes eso hacía fallar la media query y la barra saltaba abajo mientras duraba el teclado.
+  var lastW=-1;
+  function updSide(){
+    var d=document.documentElement, w=window.innerWidth;
+    if(w===lastW) return; lastW=w;
+    var on;
+    if(d.classList.contains('tvnav')) on=true;
+    else if(d.classList.contains('notvnav')) on=false;
+    else { try{ on=window.matchMedia(SIDE_Q).matches; }catch(e){ on=false; } }
+    d.classList.toggle('sidenav',on);
+  }
+  updSide();
+  window.addEventListener('resize',updSide);
+  window.addEventListener('orientationchange',function(){ lastW=-1; updSide(); });
 })();
 </script>
 <style id="lite-css">
 @keyframes blink-marker{0%,100%{opacity:1}50%{opacity:0.2}}
 /* Modo ligero para TV: sin animaciones, blur, filtros, scroll-snap ni capas GPU extra */
 html.lite *,html.lite *::before,html.lite *::after{animation:none!important;transition:none!important;scroll-behavior:auto!important;text-shadow:none!important}
-@media (min-width:900px) and (min-height:480px) and (orientation:landscape){
-html:not(.notvnav) body{padding-left:92px!important;padding-bottom:6px!important}
-html:not(.notvnav) .bottom-nav{top:0;bottom:0;left:0;right:auto;width:80px;height:auto;flex-direction:column;justify-content:center;align-items:stretch;gap:18px;border-top:none;border-right:1px solid var(--border-color)}
-html:not(.notvnav) .nav-item{flex:0 0 auto;width:100%;padding:16px 0;font-size:.7rem;box-sizing:border-box}
-html:not(.notvnav) .nav-icon svg{width:30px;height:30px}
-html:not(.notvnav) .nav-item:focus,html:not(.notvnav) .nav-item:focus-visible{outline:3px solid var(--accent-blue);outline-offset:-4px;background:rgba(255,255,255,.08);color:var(--text-main)}
-}
-html.tvnav body{padding-left:92px!important;padding-bottom:6px!important}
-html.tvnav .bottom-nav{top:0;bottom:0;left:0;right:auto;width:80px;height:auto;flex-direction:column;justify-content:center;align-items:stretch;gap:18px;border-top:none;border-right:1px solid var(--border-color)}
-html.tvnav .nav-item{flex:0 0 auto;width:100%;padding:16px 0;font-size:.7rem;box-sizing:border-box}
-html.tvnav .nav-icon svg{width:30px;height:30px}
-html.tvnav .nav-item:focus,html.tvnav .nav-item:focus-visible{outline:3px solid var(--accent-blue);outline-offset:-4px;background:rgba(255,255,255,.08);color:var(--text-main)}
+html.sidenav body{padding-bottom:6px!important}
+html.sidenav .bottom-nav{top:0;bottom:0;left:0;right:auto;width:80px;height:auto;flex-direction:column;justify-content:center;align-items:stretch;gap:18px;border-top:none;border-right:1px solid var(--border-color)}
+html.sidenav .nav-item{flex:0 0 auto;width:100%;padding:16px 0;font-size:.7rem;box-sizing:border-box}
+html.sidenav .nav-icon svg{width:30px;height:30px}
+html.sidenav .nav-item:focus,html.sidenav .nav-item:focus-visible{outline:3px solid var(--accent-blue);outline-offset:-4px;background:rgba(255,255,255,.08);color:var(--text-main)}
 html.lite #events-container{scroll-snap-type:none!important;transform:none!important;min-height:0!important}
 html.lite .event-card{content-visibility:visible!important;contain:none!important;contain-intrinsic-size:auto!important}
 html.lite .event-card{scroll-snap-align:none!important;filter:none!important}
@@ -2540,69 +2543,6 @@ html.lite .is-live .time{color:var(--accent-blue)}
                 });
                 if (UIManager.pendingRefresh && !UIManager.isBusy()) UIManager.refresh();
             });
-
-            // --- Mando de TV: mantener pulsado OK/Enter sobre un canal abre el desglose ---
-            // Los navegadores de TV no mandan mousedown/touchstart al pulsar OK: solo un click
-            // inmediato (por eso reproducía el primer enlace al instante). Medimos nosotros la
-            // duración de la pulsación con keydown/keyup.
-            (() => {
-                const LONG_MS = 500;
-                let timer = null, fired = false, btnDown = null;
-                const isOk = e => e.key === 'Enter' || e.keyCode === 13 || e.key === ' ';
-                const OPT_CODES = [93, 82, 457, 405, 406];
-                const OPT_KEYS = ['ContextMenu', 'Menu', 'Info', 'ColorF2Yellow', 'ColorF3Blue', 'i', 'I'];
-                const isOpts = e => OPT_KEYS.indexOf(e.key) !== -1 || OPT_CODES.indexOf(e.keyCode) !== -1;
-                // Diagnóstico: abre la web con ?keys=1 para ver en pantalla qué tecla envía cada botón del mando
-                if (/[?&]keys=1/.test(location.search)) {
-                    const box = document.createElement('div');
-                    box.style.cssText = 'position:fixed;right:10px;bottom:10px;z-index:99999;background:#000c;color:#fff;font:14px monospace;padding:8px 12px;border-radius:8px;pointer-events:none;';
-                    box.textContent = 'Pulsa una tecla del mando…';
-                    document.body.appendChild(box);
-                    document.addEventListener('keydown', (e) => { box.textContent = 'key=' + e.key + '  code=' + e.code + '  keyCode=' + e.keyCode; }, true);
-                }
-                document.addEventListener('keydown', (e) => {
-                    // Atrás/Escape cierra el desglose abierto en vez de salir de la página
-                    if ((e.key === 'Escape' || e.keyCode === 10009 || e.keyCode === 461) && document.querySelector('.channel-dropdown.active')) {
-                        e.preventDefault(); UIManager.closeAllChannelDropdowns(); return;
-                    }
-                    // Botón alternativo para abrir/cerrar la lista de enlaces sin mantener OK
-                    // (Menú, Info, amarillo/azul del mando, o la tecla I). OK sigue reproduciendo al instante.
-                    if (isOpts(e)) {
-                        const ob = e.target.closest && e.target.closest('.channel-button[data-ch]');
-                        if (ob) {
-                            e.preventDefault();
-                            UIManager.keyHandledAt = Date.now();
-                            if (e.repeat) return;
-                            const dd = ob.closest('.channel-item') && ob.closest('.channel-item').nextElementSibling;
-                            if (dd && dd.classList.contains('channel-dropdown') && dd.classList.contains('active')) UIManager.closeAllChannelDropdowns();
-                            else UIManager.openChannelDropdown(ob, decodeURIComponent(ob.dataset.ch));
-                            return;
-                        }
-                    }
-                    if (!isOk(e)) return;
-                    const btn = e.target.closest && e.target.closest('.channel-button[data-ch]');
-                    if (!btn) return;
-                    e.preventDefault();
-                    UIManager.keyHandledAt = Date.now();
-                    if (e.repeat || btnDown) return;
-                    btnDown = btn; fired = false;
-                    timer = setTimeout(() => {
-                        fired = true;
-                        UIManager.keyHandledAt = Date.now();
-                        UIManager.openChannelDropdown(btn, decodeURIComponent(btn.dataset.ch));
-                        if (navigator.vibrate) navigator.vibrate(50);
-                    }, LONG_MS);
-                });
-                document.addEventListener('keyup', (e) => {
-                    if (!isOk(e) || !btnDown) return;
-                    e.preventDefault();
-                    clearTimeout(timer);
-                    UIManager.keyHandledAt = Date.now();
-                    const btn = btnDown; btnDown = null;
-                    if (!fired) UIManager.playBestOrNext(decodeURIComponent(btn.dataset.ch)); // pulsación corta
-                });
-                window.addEventListener('blur', () => { clearTimeout(timer); btnDown = null; });
-            })();
 
             // --- Mando de TV: movimiento propio con las flechas ---
             // La navegación espacial nativa de los navegadores de TV se atasca (o salta al final/inicio)

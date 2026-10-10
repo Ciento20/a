@@ -294,6 +294,34 @@
                 err.attempts = attempts;
                 throw err;
             },
+            // Lector IPNS real en el navegador (Helia verified-fetch). inbrowser.link y los gateways clásicos ya no
+            // sirven el archivo en crudo desde fuera (solo devuelven un arranque de service worker), así que se
+            // resuelve y verifica el contenido aquí mismo. La librería se carga una sola vez (tarda ~15 s la primera).
+            _heliaPromise: null,
+            getHelia() {
+                if (!this._heliaPromise) {
+                    this._heliaPromise = (async () => {
+                        const mod = await Promise.race([
+                            import('https://esm.sh/@helia/verified-fetch'),
+                            new Promise((_, rej) => setTimeout(() => rej(new Error('timeout cargando Helia')), 45000))
+                        ]);
+                        return await mod.createVerifiedFetch({
+                            gateways: ['https://trustless-gateway.link', 'https://dweb.link'],
+                            routers: ['https://delegated-ipfs.dev']
+                        });
+                    })().catch(e => { this._heliaPromise = null; throw e; });
+                }
+                return this._heliaPromise;
+            },
+            async fetchViaHelia(ipnsKey, subPath, ms = 60000) {
+                const vf = await this.getHelia();
+                const res = await Promise.race([
+                    vf('ipns://' + ipnsKey + subPath),
+                    new Promise((_, rej) => setTimeout(() => rej(new Error('timeout leyendo IPNS')), ms))
+                ]);
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                return (await res.text()).replace(/^\uFEFF/, '');
+            },
             // Plan B: lee el gist manual. El parámetro ?t= evita que la caché de GitHub sirva una copia vieja (ventana de 1 min).
             async fetchManualGist() {
                 const text = await this.fetchHtml(CONFIG.GIST_MANUAL + '?t=' + Math.floor(Date.now() / 60000), 8000);
@@ -378,13 +406,41 @@
 
         const AceStreamEngine = {
             SOURCES: [
-                { id: 'ERA', ipnsKey: 'k2k4r8lm8tkmuxbc8lkmq1in3v0oya1p6pe9o5bu0hu30br5ko08k2gb', subPath: '/data/listas/lista_fuera_iptv.m3u', parser: 'parseEra', isValid: (t) => t && t.includes('#EXTINF') },
+                { id: 'ERA', ipnsKey: 'k2k4r8lm8tkmuxbc8lkmq1in3v0oya1p6pe9o5bu0hu30br5ko08k2gb', subPath: '/data/listas/listaplana.txt', helia: true, parser: 'parseEra', isValid: (t) => t && (t.includes('#EXTINF') || /(?<![a-f0-9])[a-f0-9]{40}(?![a-f0-9])/i.test(t)) },
                 { id: 'ELCANO', ipnsKey: 'k51qzi5uqu5dh5qej4b9wlcr5i6vhc7rcfkekhrxqek5c9lk6gdaiik820fecs', subPath: '/hashes.json', directUrls: ['https://tokyo.elcano-ipfs.workers.dev/k51qzi5uqu5dh5qej4b9wlcr5i6vhc7rcfkekhrxqek5c9lk6gdaiik820fecs/hashes.json'], parser: 'parseElcano', isValid: (t) => { try { return Array.isArray(JSON.parse(t).hashes); } catch (e) { return false; } } },
                 // Fuente local: lista M3U que sirve tu propio motor AceStream (AS). No usa gateways IPFS.
                 { id: 'AS', label: 'AS', localUrl: 'http://127.0.0.1:6878/pl.m3u', onlyGroups: ['Amateur'], parser: 'parseAS', isValid: (t) => t && (t.includes('#EXTINF') || /(?<![a-f0-9])[a-f0-9]{40}(?![a-f0-9])/i.test(t)) }
             ],generateHash(str){let hash=5381,i=str.length;while(i)hash=(hash*33)^str.charCodeAt(--i);return(hash>>>0).toString(16)},
 
-            async init() {
+            async fetchSourceRaw(src) {
+                if (src.localUrl) {
+                    const raw = await NetworkService.fetchHtml(src.localUrl, 5000);
+                    console.log('[AS] Respuesta de', src.localUrl, '(' + raw.length + ' bytes):', raw.slice(0, 300));
+                    if (!src.isValid(raw)) throw new Error('respuesta no reconocida como lista: «' + raw.slice(0, 60).replace(/\s+/g, ' ') + '»');
+                    return raw;
+                }
+                let heliaMsg = '';
+                if (src.helia) {
+                    try {
+                        const t = await NetworkService.fetchViaHelia(src.ipnsKey, src.subPath);
+                        if (src.isValid(t)) { console.log('[Helia] OK', src.id, t.length + ' bytes'); return t; }
+                        heliaMsg = 'respuesta no válida';
+                    } catch (e) { heliaMsg = (e && e.message) || 'error'; }
+                    console.warn('[Helia] falló, pruebo gateways ->', heliaMsg);
+                }
+                try {
+                    return await NetworkService.fetchIpnsResource(src.ipnsKey, src.subPath, src.isValid, src.directUrls || []);
+                } catch (e) {
+                    if (heliaMsg) e.attempts = ['helia: ' + heliaMsg, ...(e.attempts || [])];
+                    throw e;
+                }
+            },
+            // Si ya hay una carga en curso (arranque + comprobación al enfocar), se comparte en vez de repetir las descargas
+            init() {
+                if (!this._initPromise) this._initPromise = this._init().finally(() => { this._initPromise = null; });
+                return this._initPromise;
+            },
+            async _init() {
                 let masterMap = new Map();
                 const cache = JSON.parse(localStorage.getItem(STORAGE_CONFIG.CACHE_KEY)) || { hashes: {}, data: [] };
                 const currentHashes = cache.hashes || {};
@@ -392,17 +448,14 @@
                 let sourceOk = false; // true si ERA o ELC han aportado datos (nuevos o sin cambios)
                 const report = {};
 
+                // Las descargas de todas las fuentes arrancan a la vez (ERA con Helia tarda más); luego se procesan en orden
+                const rawFetches = new Map();
+                for (const src of this.SOURCES) { const pr = this.fetchSourceRaw(src); pr.catch(() => {}); rawFetches.set(src.id, pr); }
+
                 for (const src of this.SOURCES) {
                     try {
-                        let raw;
-                        if (src.localUrl) {
-                            raw = await NetworkService.fetchHtml(src.localUrl, 5000);
-                            console.log('[AS] Respuesta de', src.localUrl, '(' + raw.length + ' bytes):', raw.slice(0, 300));
-                            if (!src.isValid(raw)) throw new Error('respuesta no reconocida como lista: «' + raw.slice(0, 60).replace(/\s+/g, ' ') + '»');
-                        } else {
-                            raw = await NetworkService.fetchIpnsResource(src.ipnsKey, src.subPath, src.isValid, src.directUrls || []);
-                        }
-                        const newHash = this.generateHash('parser-v5|' + (src.onlyGroups ? 'g:' + src.onlyGroups.join(',') + '|' : '') + raw);
+                        const raw = await rawFetches.get(src.id);
+                        const newHash = this.generateHash('parser-v7|' + (src.onlyGroups ? 'g:' + src.onlyGroups.join(',') + '|' : '') + raw);
                         if (currentHashes[src.id] === newHash) { if (src.id !== 'AS') sourceOk = true; report[src.id] = 'OK (sin cambios)'; continue; }
 
                         let parsed = this[src.parser](raw);
@@ -511,6 +564,34 @@
             parseEra(text) {
                 const results = [];
                 const lines = text.split(/\r?\n/);
+                // Formato "lista plana": una línea con el nombre (p.ej. "DAZN 1 FHD --> NEW ERA") y la siguiente con el ID.
+                // Un mismo nombre puede repetirse con IDs distintos: se conservan todos (se dedupe por ID).
+                if (!text.includes('#EXTINF')) {
+                    // Si el gateway devuelve el visor HTML en vez del texto crudo, se extrae el texto de la página
+                    if (/<\/?(?:html|body|pre|div|p|br|span)\b/i.test(text)) {
+                        const doc = new DOMParser().parseFromString(text.replace(/<br\s*\/?>/gi, '\n').replace(/<\/(?:p|div|li|tr)>/gi, '\n'), 'text/html');
+                        doc.querySelectorAll('script,style').forEach(n => n.remove());
+                        lines.length = 0;
+                        lines.push(...(doc.body.textContent || '').split(/\r?\n/));
+                    }
+                    const idRe = /(?<![a-f0-9])([a-f0-9]{40})(?![a-f0-9])/i;
+                    const seen = new Set();
+                    let lastName = '';
+                    for (const raw of lines) {
+                        const line = raw.trim();
+                        if (!line) continue;
+                        const m = line.includes('-->') ? null : line.match(idRe);
+                        if (!m) {
+                            lastName = this.sanitizeName(line.split('-->')[0].replace(/\b(HDP|SDP|FHDP)\b/gi, '').trim());
+                            continue;
+                        }
+                        const id = m[1].toLowerCase();
+                        if (!lastName || seen.has(id)) continue;
+                        seen.add(id);
+                        results.push({ name: lastName, id, logo: '', group: '' });
+                    }
+                    return results;
+                }
                 for (let i = 0; i < lines.length; i++) {
                     const line = lines[i].trim();
                     if (!line.startsWith('#EXTINF')) continue;
@@ -2300,8 +2381,19 @@
                     }
                 }
 
-                aceStreamMap = await AceStreamEngine.init();
-                UIManager.refresh();
+                const cachedAce = AceStreamEngine.loadFromCache();
+                if (cachedAce.length > 0) {
+                    // Hay canales guardados: se muestran ya y la actualización (ERA con Helia tarda) sigue en segundo plano
+                    aceStreamMap = cachedAce;
+                    UIManager.refresh();
+                    AceStreamEngine.init().then(m => {
+                        aceStreamMap = m;
+                        if (state.tvSearchTerm === '') UIManager.refresh();
+                    }).catch(() => {});
+                } else {
+                    aceStreamMap = await AceStreamEngine.init();
+                    UIManager.refresh();
+                }
             } catch (err) {
                 console.error("Error en carga:", err);
             } finally {

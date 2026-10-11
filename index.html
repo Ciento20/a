@@ -137,7 +137,9 @@ html.lite .is-live .time{color:var(--accent-blue)}
             // Un hash que no aparece en NINGUNA fuente durante este tiempo se elimina por completo
             // (lista de enlaces, puntuación y ciclo de probados). Se identifica solo por el hash.
             LINK_TTL_MS: 15 * 24 * 60 * 60 * 1000, // 15 días
-            SEEN_KEY: 'ace_hash_seen'               // hash -> última vez que apareció (en horas)
+            SEEN_KEY: 'ace_hash_seen',              // hash -> última vez que apareció (en horas)
+            SRC_OK_KEY: 'ace_source_ok',            // fuente -> última vez que respondió bien (en horas)
+            SOURCE_DOWN_MS: 30 * 24 * 60 * 60 * 1000 // fuente sin responder 30 días: se deja de protegerla
         };        const RatingEngine = {
             DB_KEY: 'ace_autorating_v1',
             SESSION_KEY: 'ace_current_session',
@@ -623,6 +625,11 @@ html.lite .is-live .time{color:var(--accent-blue)}
                 try { const o = JSON.parse(localStorage.getItem(STORAGE_CONFIG.SEEN_KEY)); if (o && typeof o === 'object' && !Array.isArray(o)) seen = o; } catch (e) {}
                 let seenDirty = false;
                 const okTags = new Set(); // fuentes que han respondido bien en esta ejecución
+                // Última vez que cada fuente respondió bien (periodo de gracia: si no hay registro, empieza hoy)
+                let srcOk = {};
+                try { const o = JSON.parse(localStorage.getItem(STORAGE_CONFIG.SRC_OK_KEY)); if (o && typeof o === 'object' && !Array.isArray(o)) srcOk = o; } catch (e) {}
+                let srcOkDirty = false;
+                ['ERA', 'ELC', 'AS', 'MAN'].forEach(t => { if (srcOk[t] === undefined) { srcOk[t] = nowH; srcOkDirty = true; } });
                 // Se refresca como mucho cada 12 h para no reescribir el almacenamiento en cada comprobación
                 const markSeen = (id) => {
                     const k = lc(id); if (!k) return;
@@ -689,9 +696,10 @@ html.lite .is-live .time{color:var(--accent-blue)}
                 }
                 try { localStorage.setItem('ace_report', JSON.stringify(report)); } catch (e) {}
 
-                // PLAN B: si ni ERA ni ELC han dado nada, se lee el gist manual
-                if (!sourceOk) {
-                    console.warn('[Plan B] ERA y ELC sin datos, probando el gist manual...');
+                // PLAN B: si falla ERA o ELC (basta con una de las dos), se lee también el gist manual.
+                // okTags solo contiene las fuentes que han respondido con datos en esta ejecución.
+                if (!okTags.has('ERA') || !okTags.has('ELC')) {
+                    console.warn('[Plan B] ' + [!okTags.has('ERA') && 'ERA', !okTags.has('ELC') && 'ELC'].filter(Boolean).join(' y ') + ' sin datos, probando el gist manual...');
                     try {
                         const raw = await NetworkService.fetchManualGist();
                         const newHash = this.generateHash('parser-v3|' + raw); // cambiar la versión fuerza a re-parsear
@@ -704,7 +712,9 @@ html.lite .is-live .time{color:var(--accent-blue)}
                                 parsed.forEach(item => {
                                     item.source = 'MAN';
                                     markSeen(item.id);
-                                    masterMap.set(item.id, item);
+                                    // Con ERA/ELC funcionando, el gist no pisa un enlace que ya viene de ellas
+                                    const prev = masterMap.get(item.id);
+                                    if (!prev || prev.source === 'MAN') masterMap.set(item.id, item);
                                 });
                                 currentHashes.MANUAL = newHash;
                                 hasChanges = true;
@@ -725,9 +735,14 @@ html.lite .is-live .time{color:var(--accent-blue)}
                 try {
                     const cutoffH = nowH - Math.floor(STORAGE_CONFIG.LINK_TTL_MS / 3600000);
                     const stale = (id) => seen[id] !== undefined && seen[id] < cutoffH;
-                    const allOk = this.SOURCES.every(s => okTags.has(tagOf(s)));
+                    // Una fuente que lleva más de 30 días sin responder deja de proteger sus enlaces:
+                    // si se cayó para siempre, no pueden quedarse eternamente.
+                    const downH = Math.floor(STORAGE_CONFIG.SOURCE_DOWN_MS / 3600000);
+                    okTags.forEach(t => { if (nowH - (srcOk[t] || 0) >= 12) { srcOk[t] = nowH; srcOkDirty = true; } });
+                    const eligible = (tag) => okTags.has(tag) || (srcOk[tag] !== undefined && nowH - srcOk[tag] > downH);
+                    const allOk = this.SOURCES.every(s => eligible(tagOf(s)));
                     const victims = [];
-                    for (const [k, v] of masterMap) { if (okTags.has(v.source) && stale(lc(v.id))) victims.push(k); }
+                    for (const [k, v] of masterMap) { if (eligible(v.source) && stale(lc(v.id))) victims.push(k); }
                     const gone = new Set();
                     if (victims.length > 0 && victims.length < masterMap.size) {
                         victims.forEach(k => { gone.add(lc(masterMap.get(k).id)); masterMap.delete(k); });
@@ -749,6 +764,7 @@ html.lite .is-live .time{color:var(--accent-blue)}
                     }
                 } catch (e) { console.warn('[Limpieza] error:', e); }
                 if (seenDirty) { try { localStorage.setItem(STORAGE_CONFIG.SEEN_KEY, JSON.stringify(seen)); } catch (e) {} }
+                if (srcOkDirty) { try { localStorage.setItem(STORAGE_CONFIG.SRC_OK_KEY, JSON.stringify(srcOk)); } catch (e) {} }
 
                 const master = Array.from(masterMap.values());
 

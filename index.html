@@ -2288,10 +2288,11 @@ html.lite .is-live .time{color:var(--accent-blue)}
                     let contentHtml = '<div style="display:flex; flex-wrap:wrap; gap:10px; justify-content:center;">';
                     if (title === 'OTROS CANALES') {
                         const regions = [{ keys: ['[BE]', '(BE)'], flag: '🇧🇪', id: 'be' }, { keys: ['[DE]', '(DE)'], flag: '🇩🇪', id: 'de' }, { keys: ['[TR]', '(TR)'], flag: '🇹🇷', id: 'tr' }, { keys: ['[PL]', '(PL)'], flag: '🇵🇱', id: 'pl' }, { keys: ['[RU]', '(RU)'], flag: '🇷🇺', id: 'ru' }];
-                        let mainChannels = channels.filter(c => !regions.some(r => r.keys.some(k => c.toUpperCase().includes(k))));
+                        const inReg = (c, r) => r.keys.some(k => c.toUpperCase().includes(k)) || (r.id === 'tr' && (/\sTR$/.test(c.toUpperCase().trim()) || /\sTR$/.test(getCanonicalName(c))));
+                        let mainChannels = channels.filter(c => !regions.some(r => inReg(c, r)));
                         contentHtml += mainChannels.map(c => this.getChannelHtml(c)).join('');
                         regions.forEach(reg => {
-                            const regChannels = channels.filter(c => reg.keys.some(k => c.toUpperCase().includes(k)));
+                            const regChannels = channels.filter(c => inReg(c, reg));
                             if (regChannels.length > 0) {
                                 contentHtml += `<div class="channel-item"><div class="channel-button" onclick="const el = document.getElementById('group-${reg.id}'); el.style.display = el.style.display === 'none' ? 'flex' : 'none'"><span style="font-size:2rem;">${reg.flag}</span></div></div><div id="group-${reg.id}" style="display:none; width:100%; flex-wrap:wrap; gap:10px; justify-content:center; margin:10px 0; padding:10px; background:rgba(255,255,255,0.05); border-radius:10px; border:1px dashed rgba(255,255,255,0.1);">${regChannels.map(c => this.getChannelHtml(c)).join('')}</div>`;
                             }
@@ -2328,8 +2329,8 @@ html.lite .is-live .time{color:var(--accent-blue)}
             // del área útil, que es lo máximo que cabe sin que el borde del botón los recorte).
             // Canales M+ / LaLiga / Eurosport (y sus numerales, p.ej. "M+ LALIGA 2", "EUROSPORT 1"): logo más grande.
             logoBox(url, canon) {
-                if (/M\+\s*LA ?LIGA/i.test(canon || '')) return { w: '140%', h: '165%' };
-                if (/M\+|EUROSPORT/i.test(canon || '')) return { w: '126%', h: '145%' };
+                if (/\bM\+\s*LA ?LIGA/i.test(canon || '')) return { w: '140%', h: '165%' };
+                if (/\bM\+|EUROSPORT/i.test(canon || '')) return { w: '126%', h: '145%' };
                 return /^https?:\/\/(?:[^\/?#]*\.)?movistarplus\.es(?:[:\/?#]|$)/i.test(url || '')
                     ? { w: '114%', h: '128%' }
                     : { w: '80%', h: '80%' };

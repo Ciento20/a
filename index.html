@@ -700,7 +700,7 @@ html.lite .is-live .time{color:var(--accent-blue)}
                         const raw = await rawFetches.get(src.id);
                         okTags.add(tagOf(src));
                         if (!src.onlyGroups) markRaw(raw); // (AS filtra por grupo: ahí solo cuentan los items ya filtrados)
-                        const newHash = this.generateHash('parser-v14|' + (src.onlyGroups ? 'g:' + src.onlyGroups.join(',') + '|' : '') + raw);
+                        const newHash = this.generateHash('parser-v15|' + (src.onlyGroups ? 'g:' + src.onlyGroups.join(',') + '|' : '') + raw);
                         if (currentHashes[src.id] === newHash) { if (src.id !== 'AS') sourceOk = true; report[src.id] = 'OK (sin cambios)'; markTagged(tagOf(src), !src.onlyGroups); continue; }
 
                         let parsed = this[src.parser](raw);
@@ -725,7 +725,7 @@ html.lite .is-live .time{color:var(--accent-blue)}
                                 return true;
                             });
                             this._lastCounts = 'Amateur ' + cnt.amateur[1] + ' · Series ' + cnt.series[1] + '/' + cnt.series[0] + ' · Movies ' + cnt.movies[1] + '/' + cnt.movies[0];
-                            parsed.forEach(it => { delete it.hint; if (norm(it.group) !== 'amateur') it.logo = ''; });
+                            parsed.forEach(it => { delete it.hint; const lg = String(it.logo || '').trim(); it.logo = (/^https?:\/\/[^\s"'<>]+$/i.test(lg) && lg.length <= 220) ? lg : ''; });
                             if (parsed.length === 0) {
                                 // Se retiran los canales AS guardados de antes y se informa de los grupos que sí trae la lista
                                 for (const [k, v] of masterMap) { if (v.source === 'AS') masterMap.delete(k); }

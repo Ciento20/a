@@ -143,10 +143,26 @@ html.lite .is-live .time{color:var(--accent-blue)}
 
             getDB() { return JSON.parse(localStorage.getItem(this.DB_KEY)) || {}; },
             
-            getScore(id) { 
+            // Tabla de efectos (minutos que duró la sesión -> efecto en la puntuación)
+            //   < 1 min .... -1.8
+            //   1 a 15 min . -1.5
+            //   15 a 25 min  -1.0
+            //   25 a 30 min  -0.5
+            //   cada 30 min viéndolo: +0.5 (máximo +1.5 por sesión)
+            MAX_REWARD: 1.5,
+            penaltyFor(min) {
+                if (min < 1) return -1.8;
+                if (min < 15) return -1.5;
+                if (min < 25) return -1.0;
+                if (min < 30) return -0.5;
+                return 0;
+            },
+
+            getScore(id) {
                 const entry = this.getDB()[id];
-                if (!entry) return 2.0;
-                return (typeof entry === 'object') ? (entry.score || 2.0) : entry;
+                if (entry === undefined || entry === null) return 2.0;
+                if (typeof entry === 'object') return (typeof entry.score === 'number') ? entry.score : 2.0;
+                return entry;
             },
 
             saveScore(id, delta, name = "") {
@@ -154,31 +170,62 @@ html.lite .is-live .time{color:var(--accent-blue)}
                 let entry = db[id];
 
                 if (!entry || typeof entry !== 'object') {
-                    entry = { score: entry || 2.0, name: name || "Desconocido" };
+                    entry = { score: (typeof entry === 'number') ? entry : 2.0, name: name || "Desconocido" };
                 }
-                
+
                 if (name) entry.name = name;
                 entry.score = Math.max(0.0, Math.min(5.0, entry.score + delta));
-                
+
                 db[id] = entry;
                 localStorage.setItem(this.DB_KEY, JSON.stringify(db));
-            },            
+            },
 
             trackStart(id, channelName, index = 0) {
                 this.checkPreviousSession(channelName);
                 const now = Date.now();
                 this.stopRealTimeUpdate();
-                
+
                 const sessionData = {
-                    id: id, 
-                    channelName: channelName, 
+                    id: id,
+                    channelName: channelName,
                     index: index,
-                    start: now, 
-                    lastProcessedMin: 0
+                    start: now
                 };
-                
+
                 localStorage.setItem(this.SESSION_KEY, JSON.stringify(sessionData));
                 this.startRealTimeUpdate();
+            },
+
+            // Recompensa por tiempo visto: +0.5 por cada 30 min, máximo +1.5 por sesión.
+            // Aplica solo la DIFERENCIA respecto a lo ya acreditado (session.recoveryApplied),
+            // así que puede llamarse tantas veces como se quiera sin sumar de más.
+            // Devuelve true si ha modificado la sesión.
+            _applyWatchReward(session, minutesSpent) {
+                const target = Math.min(this.MAX_REWARD, Math.floor(minutesSpent / 30) * 0.5);
+                const already = session.recoveryApplied || 0;
+                if (target <= already) return false;
+                this.saveScore(session.id, target - already, session.channelName);
+                session.recoveryApplied = target;
+                // Enlace que funciona: el ciclo de "ya probados" de este canal se reinicia,
+                // para que la próxima vez se ofrezca primero este (el mejor puntuado) y no
+                // se salte por haberlo "probado" ya.
+                if (already === 0 && typeof UIManager !== 'undefined' && UIManager.clearTriedCycle) {
+                    UIManager.clearTriedCycle(session.channelName);
+                }
+                return true;
+            },
+
+            _clearPendingFor(id) {
+                try {
+                    const pending = JSON.parse(localStorage.getItem(this.PENDING_KEY));
+                    if (pending && pending.id === id) localStorage.removeItem(this.PENDING_KEY);
+                } catch (e) { localStorage.removeItem(this.PENDING_KEY); }
+            },
+
+            _refreshUI() {
+                if (typeof UIManager !== 'undefined' && UIManager.refreshRatingDisplays) {
+                    UIManager.refreshRatingDisplays();
+                }
             },
 
             checkPreviousSession(newChannelName = null) {
@@ -186,38 +233,38 @@ html.lite .is-live .time{color:var(--accent-blue)}
                 if (!session) return;
 
                 const minutesSpent = Math.floor((Date.now() - session.start) / 60000);
-                let sessionChanged = false;
+                let sessionChanged = this._applyWatchReward(session, minutesSpent);
 
-                // Recompensa por tiempo visto (hasta 1.5 puntos, por tramos de 30 min).
-                // Se aplica solo la DIFERENCIA respecto a lo ya acreditado, para que llamar
-                // a este método varias veces (p.ej. cada vez que vuelves a la pestaña) no
-                // sume la recompensa repetidas veces y perjudique a los enlaces buenos... y no
-                // maquille los que en realidad han estado colgados/en bucle todo ese tiempo.
-                const recoveryPoints = Math.min(1.5, Math.floor(minutesSpent / 30) * 0.5);
-                const alreadyApplied = session.recoveryApplied || 0;
-                if (recoveryPoints > alreadyApplied) {
-                    this.saveScore(session.id, recoveryPoints - alreadyApplied, session.channelName);
-                    session.recoveryApplied = recoveryPoints;
-                    sessionChanged = true;
+                // Si el usuario elige un canal con OTRO nombre, no es un fallo del enlace
+                // (simplemente quiere ver otra cosa): no se penaliza, y si ya se había
+                // aplicado la penalización al volver a la app, se devuelve.
+                const switchedChannel = !!newChannelName && newChannelName !== session.channelName;
+                if (switchedChannel) {
+                    if (session.penaltyApplied) {
+                        this.saveScore(session.id, -session.penaltyApplied, session.channelName);
+                        // Como no se ha penalizado, tampoco debe quedar marcado como "ya probado"
+                        if (typeof UIManager !== 'undefined' && UIManager.unmarkTried) {
+                            UIManager.unmarkTried(session.channelName, session.id);
+                        }
+                    }
+                    this._clearPendingFor(session.id);
+                    localStorage.removeItem(this.SESSION_KEY);
+                    this._refreshUI();
+                    return;
                 }
 
-                // Penalización por fallo rápido: se evalúa en CUALQUIER punto de contacto
-                // (reintento del mismo canal, elección de otro canal, o simplemente volver
-                // a la app/pestaña tras probar el enlace externo), no solo si se repulsa el
-                // mismo canal. Antes solo se comprobaba en ese único caso, así que si volvías
-                // a la app y elegías otro canal (o simplemente mirabas y volvías), el enlace
-                // fallido se quedaba con su puntuación intacta para siempre: de ahí que nunca
-                // se actualizara y que un mismo enlace roto volviera a salir elegido más tarde.
-                // Se aplica como máximo una vez por sesión (session.penalized) para no penalizar
-                // el mismo intento varias veces si hay varios eventos de "vuelta a la app".
-                if (!session.penalized) {
-                    let penalty = 0;
-                    if (minutesSpent < 5) penalty = -1.5;
-                    else if (minutesSpent < 15) penalty = -1.0;
-                    else if (minutesSpent < 25) penalty = -0.5;
-
+                // Penalización por sesión corta (misma lógica de siempre: se evalúa al volver
+                // a la app o al reintentar el MISMO canal, y como máximo una vez por sesión).
+                // Con el reproductor interno abierto, volver a la pestaña no significa que el
+                // enlace haya fallado (el fallo ya lo detecta el vigilante y reintenta).
+                const internalOpen = !newChannelName && !!document.getElementById('internal-video');
+                if (!session.penalized && !internalOpen) {
+                    const penalty = this.penaltyFor(minutesSpent);
                     if (penalty !== 0) {
+                        const before = this.getScore(session.id);
                         this.saveScore(session.id, penalty, session.channelName);
+                        // delta realmente aplicado (puede ser menor si se topó con el 0)
+                        session.penaltyApplied = this.getScore(session.id) - before;
                         session.penalized = true;
                         sessionChanged = true;
                         localStorage.setItem(this.PENDING_KEY, JSON.stringify({ id: session.id, timestamp: Date.now() }));
@@ -226,21 +273,15 @@ html.lite .is-live .time{color:var(--accent-blue)}
 
                 if (sessionChanged) {
                     localStorage.setItem(this.SESSION_KEY, JSON.stringify(session));
-                    // Refresco inmediato: si el usuario tiene abierto el listado de IDs
-                    // de este canal, que vea el cambio de puntuación al instante, sin
-                    // tener que cerrar y reabrir el modal.
-                    if (typeof UIManager !== 'undefined' && UIManager.refreshRatingDisplays) {
-                        UIManager.refreshRatingDisplays();
-                    }
+                    this._refreshUI();
                 }
 
-                // Cerramos la sesión si ya ha pasado suficiente tiempo, o si el usuario ha
-                // elegido explícitamente otro canal (confirma que abandona este intento).
                 if (minutesSpent >= 30) {
-                    localStorage.removeItem(this.SESSION_KEY);
                     localStorage.removeItem(this.PENDING_KEY);
-                } else if (newChannelName && newChannelName !== session.channelName) {
-                    localStorage.removeItem(this.SESSION_KEY);
+                    // La sesión se mantiene abierta hasta agotar la recompensa (+1.5)
+                    if ((session.recoveryApplied || 0) >= this.MAX_REWARD) {
+                        localStorage.removeItem(this.SESSION_KEY);
+                    }
                 }
             },
 
@@ -249,13 +290,13 @@ html.lite .is-live .time{color:var(--accent-blue)}
                 this.interval = setInterval(() => {
                     const session = JSON.parse(localStorage.getItem(this.SESSION_KEY));
                     if (!session) return this.stopRealTimeUpdate();
-                    const min = (Date.now() - session.start) / 60000;
-                    
-                    if (min >= 30 && (min - session.lastProcessedMin) >= 30) {
-                        this.saveScore(session.id, 0.5, session.channelName);
-                        session.lastProcessedMin = Math.floor(min / 30) * 30;
+                    const min = Math.floor((Date.now() - session.start) / 60000);
+
+                    if (this._applyWatchReward(session, min)) {
                         localStorage.setItem(this.SESSION_KEY, JSON.stringify(session));
+                        this._refreshUI();
                     }
+                    if ((session.recoveryApplied || 0) >= this.MAX_REWARD) this.stopRealTimeUpdate();
                 }, 30000);
             },
 
@@ -2169,7 +2210,7 @@ html.lite .is-live .time{color:var(--accent-blue)}
                 }
                 this.isLongPress = false;
             },            TRIED_KEY: 'ace_tried_cycle',
-            TRIED_TTL_MS: 24 * 60 * 60 * 1000, // si pasas 24 h sin pulsar ese canal, el ciclo empieza de cero (si no, continúa por donde iba)
+            TRIED_TTL_MS: 2 * 60 * 60 * 1000, // si pasas 2 h sin pulsar ese canal, el ciclo empieza de cero (si no, continúa por donde iba). Cada pulsación renueva el plazo, así que durante un mismo reintento no caduca.
             _readTried() { try { return JSON.parse(localStorage.getItem(this.TRIED_KEY)) || {}; } catch (e) { return {}; } },
             getTriedCycle(canon) {
                 const e = this._readTried()[canon];
@@ -2180,6 +2221,13 @@ html.lite .is-live .time{color:var(--accent-blue)}
                 const db = this._readTried();
                 const cur = this.getTriedCycle(canon);
                 db[canon] = { ts: Date.now(), ids: cur.includes(id) ? cur : [...cur, id] };
+                try { localStorage.setItem(this.TRIED_KEY, JSON.stringify(db)); } catch (e) {}
+            },
+            unmarkTried(canon, id) {
+                const db = this._readTried();
+                const cur = this.getTriedCycle(canon);
+                if (!cur.includes(id)) return;
+                db[canon] = { ts: Date.now(), ids: cur.filter(x => x !== id) };
                 try { localStorage.setItem(this.TRIED_KEY, JSON.stringify(db)); } catch (e) {}
             },
             clearTriedCycle(canon) {
@@ -2195,7 +2243,7 @@ html.lite .is-live .time{color:var(--accent-blue)}
                 // volver a ofrecerte el mismo enlace que acaba de fallar. Este orden es
                 // la clave de todo: puntuar primero, elegir después.
                 const prevSession = JSON.parse(localStorage.getItem(RatingEngine.SESSION_KEY));
-                const repeatingSameChannel = triedCount === 0 && prevSession && prevSession.channelName === canonicalName;
+                const repeatingSameChannel = triedCount === 0 && prevSession && prevSession.channelName === canonicalName && (Date.now() - prevSession.start) < 30 * 60000;
 
                 RatingEngine.checkPreviousSession(canonicalName);
 
@@ -2356,11 +2404,7 @@ html.lite .is-live .time{color:var(--accent-blue)}
                 list.innerHTML = "";
                 
                 matching.forEach((item, i) => {
-                    let currentRating = RatingEngine.getScore(item.id);
-                    const pending = JSON.parse(localStorage.getItem(RatingEngine.PENDING_KEY));
-                    if (pending && pending.id === item.id) {
-                        currentRating = Math.max(0.0, currentRating - 1.5);
-                    }
+                    const currentRating = RatingEngine.getScore(item.id);
                     const btn = document.createElement('div');
                     btn.className = 'id-item'; btn.title = item.id;                    btn.innerHTML = `
                         <small style="flex: 1; text-align: left; color: var(--text-muted); font-size: 0.6rem; font-weight: 700; opacity: 0.6; letter-spacing: 0.5px;">${item.source || 'ID'}</small>
@@ -2436,11 +2480,7 @@ html.lite .is-live .time{color:var(--accent-blue)}
                 dropdown.innerHTML = `<div class="dropdown-title">${getCanonicalName(channelName)}</div>`;
 
                 matching.forEach((item, i) => {
-                    let currentRating = RatingEngine.getScore(item.id);
-                    const pending = JSON.parse(localStorage.getItem(RatingEngine.PENDING_KEY));
-                    if (pending && pending.id === item.id) {
-                        currentRating = Math.max(0.0, currentRating - 1.5);
-                    }
+                    const currentRating = RatingEngine.getScore(item.id);
                     const cardWrap = document.createElement('div');
                     cardWrap.className = 'channel-item';
                     const idBtn = document.createElement('div');
@@ -2697,6 +2737,7 @@ html.lite .is-live .time{color:var(--accent-blue)}
             document.getElementById('noResultsContainer').addEventListener('touchend', handleTouchEnd, {passive: true});
 
             window.addEventListener('focus', () => RatingEngine.checkPreviousSession());
+            try { if (localStorage.getItem(RatingEngine.SESSION_KEY)) RatingEngine.startRealTimeUpdate(); } catch (e) {}
             aceStreamMap = AceStreamEngine.loadFromCache();
             if (globalData.length > 0 || aceStreamMap.length > 0) {
                 UIManager.refresh();

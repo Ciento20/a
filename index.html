@@ -2169,7 +2169,7 @@ html.lite .is-live .time{color:var(--accent-blue)}
                 }
                 this.isLongPress = false;
             },            TRIED_KEY: 'ace_tried_cycle',
-            TRIED_TTL_MS: 5 * 60 * 1000, // si pasas 5 min sin pulsar ese canal, el ciclo empieza de cero
+            TRIED_TTL_MS: 24 * 60 * 60 * 1000, // si pasas 24 h sin pulsar ese canal, el ciclo empieza de cero (si no, continúa por donde iba)
             _readTried() { try { return JSON.parse(localStorage.getItem(this.TRIED_KEY)) || {}; } catch (e) { return {}; } },
             getTriedCycle(canon) {
                 const e = this._readTried()[canon];

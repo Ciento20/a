@@ -381,7 +381,8 @@ html.lite .is-live .time{color:var(--accent-blue)}
             normalizeText(text) {
                 return text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
             }
-        };        let channelLogosMap = JSON.parse(localStorage.getItem('logo_cache')) || {};
+        };        let channelLogoAlt = JSON.parse(localStorage.getItem('logo_alt_cache')) || {}; // logos de respaldo por canal (si falla el del gist)
+        let channelLogosMap = JSON.parse(localStorage.getItem('logo_cache')) || {};
         let channelCanonicalMap = JSON.parse(localStorage.getItem('canonical_cache')) || {};
         let globalData = JSON.parse(localStorage.getItem('event_data_cache')) || [];
         let aceStreamMap = []; 
@@ -510,13 +511,24 @@ html.lite .is-live .time{color:var(--accent-blue)}
             async fetchLogos() {
                 try {
                     const [gistRes, xmlRes] = await Promise.all([
-                        fetch(CONFIG.GIST_LOGOS),
+                        // ?t= evita que la caché de GitHub sirva una copia vieja del gist (ventana de 1 min)
+                        fetch(CONFIG.GIST_LOGOS + '?t=' + Math.floor(Date.now() / 60000)),
                         fetch(CONFIG.EPG_XML).catch(() => null)
                     ]);
-                    
+
                     const text = await gistRes.text();
                     const logoMap = {};
                     const canonicalMap = {};
+                    // PRIORIDAD DE LOGOS: 1) URL válida del gist  2) logo del XML (EPG)  3) logo de la propia lista de canales.
+                    // gistLogo = canales cuya URL del gist es válida (el XML no la pisa).
+                    // logoAlt  = respaldos por canal, para usarlos si la imagen del gist no carga.
+                    const gistLogo = new Set();
+                    const logoAlt = {};
+                    const addAlt = (canon, url) => {
+                        if (!canon || !url) return;
+                        const arr = logoAlt[canon] || (logoAlt[canon] = []);
+                        if (!arr.includes(url)) arr.push(url);
+                    };
                     let currentAliases = [];
 
                     text.split('\n').forEach(line => {
@@ -528,7 +540,14 @@ html.lite .is-live .time{color:var(--accent-blue)}
                             const canonicalName = cleanChannelName(parts[0]);
                             const logoUrl = 'http' + parts[1].trim();
                             
-                            logoMap[canonicalName] = logoUrl;
+                            // La clave se crea siempre (el orden de los canales sigue el del gist), pero solo
+                            // cuenta como logo del gist si la URL es válida; si no, queda vacía y la rellenan otras fuentes.
+                            if (/^https?:\/\/[^\s"'<>]+$/i.test(logoUrl)) {
+                                logoMap[canonicalName] = logoUrl;
+                                gistLogo.add(canonicalName);
+                            } else {
+                                logoMap[canonicalName] = '';
+                            }
                             canonicalMap[canonicalName] = canonicalName;
                             
                             currentAliases.forEach(alias => {
@@ -569,7 +588,8 @@ html.lite .is-live .time{color:var(--accent-blue)}
                                         const canonicalName = canonicalMap[cleanName];
                                         
                                         if (canonicalName && !xmlLogosApplied.has(canonicalName)) {
-                                            logoMap[canonicalName] = logoUrl;
+                                            if (gistLogo.has(canonicalName)) addAlt(canonicalName, logoUrl); // el gist manda; el XML queda de respaldo
+                                            else logoMap[canonicalName] = logoUrl;                          // sin URL válida en el gist: se usa el del XML
                                             xmlLogosApplied.add(canonicalName);
                                             break;
                                         }
@@ -578,7 +598,7 @@ html.lite .is-live .time{color:var(--accent-blue)}
                             }
                         }
                     }
-                    return { logoMap, canonicalMap };
+                    return { logoMap, canonicalMap, logoAlt };
                 } catch (e) { return null; }
             }
         };
@@ -1710,7 +1730,7 @@ html.lite .is-live .time{color:var(--accent-blue)}
                     <div id="internal-player-container" style="position:fixed;top:20px;right:20px;width:320px;background:#000;z-index:9999;display:flex;flex-direction:column;border-radius:12px;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,0.8);border:1px solid #444;touch-action:none;transition: box-shadow 0.3s ease;">
                         <div id="player-handle" style="padding:8px 12px;display:flex;justify-content:space-between;align-items:center;background:#1a1a1a;border-bottom:1px solid #333;cursor:move;user-select:none;">
                             <div style="display:flex;align-items:center;pointer-events:none;height:22px;">
-                                ${channelLogosMap[getCanonicalName(name)] ? `<img src="${channelLogosMap[getCanonicalName(name)]}" style="height:100%;max-width:100px;object-fit:contain;filter:drop-shadow(0 0 2px rgba(0,0,0,0.5));">` : `<span style="font-size:0.7rem;font-weight:bold;color:var(--accent-blue);">${name}</span>`}
+                                ${(() => { const c = getCanonicalName(name), l = this.getLogoCandidates(c, getAceIndex().get(c) || []); return l.length ? `<img src="${l[0]}" data-alt="${l.slice(1).map(encodeURIComponent).join(' ')}" data-name="${encodeURIComponent(name)}" onerror="UIManager.logoFallback(this)" style="height:100%;max-width:100px;object-fit:contain;filter:drop-shadow(0 0 2px rgba(0,0,0,0.5));">` : `<span style="font-size:0.7rem;font-weight:bold;color:var(--accent-blue);">${name}</span>`; })()}
                             </div>
                             <button onclick="UIManager.playAttemptToken++; if(UIManager.stallCheckInterval){clearInterval(UIManager.stallCheckInterval); UIManager.stallCheckInterval=null;} const p=document.getElementById('internal-player-container'); if(p){const v=p.querySelector('video'); if(v&&v._hls)v._hls.destroy(); Ambilight.destroy(); p.remove();}" style="background:none;border:none;color:white;font-size:1.2rem;cursor:pointer;line-height:1;">&times;</button>
                         </div>
@@ -2238,14 +2258,54 @@ html.lite .is-live .time{color:var(--accent-blue)}
                 this.container.innerHTML = mainHtml;
 
                 // Canales renderizados por grupos superiores
-            },            getChannelHtml(name) {
+            },
+            // Lista ordenada de logos posibles para un canal, de más a menos prioritario:
+            //   1) URL del gist  2) logo del XML (EPG)  3) logos que traen las propias listas de canales.
+            getLogoCandidates(canonical, matching) {
+                const list = [];
+                const add = (u) => { if (u && typeof u === 'string' && !list.includes(u)) list.push(u); };
+                add(channelLogosMap[canonical]);
+                (channelLogoAlt[canonical] || []).forEach(add);
+                (matching || []).forEach(m => add(m.logo));
+                return list;
+            },
+            // Tamaño del logo dentro de su botón: los de movistarplus.es (y subdominios) se ven pequeños con
+            // el tamaño normal (80%), así que ocupan algo más (100%).
+            // Los de movistarplus.es usan casi todo el botón (se ocupa también el margen interno: 114% x 128%
+            // del área útil, que es lo máximo que cabe sin que el borde del botón los recorte).
+            logoBox(url) {
+                return /^https?:\/\/(?:[^\/?#]*\.)?movistarplus\.es(?:[:\/?#]|$)/i.test(url || '')
+                    ? { w: '114%', h: '128%' }
+                    : { w: '80%', h: '80%' };
+            },
+            // Si una imagen no carga, prueba la siguiente de la lista; si ya no quedan, muestra el nombre en texto.
+            logoFallback(img) {
+                const rest = (img.dataset.alt || '').split(' ').filter(Boolean).map(decodeURIComponent);
+                const next = rest.shift();
+                if (next) {
+                    img.dataset.alt = rest.map(encodeURIComponent).join(' ');
+                    if (img.classList.contains('channel-logo')) {
+                        const b = this.logoBox(next);
+                        img.style.width = b.w; img.style.height = b.h; img.style.flexShrink = '0';
+                    }
+                    img.src = next;
+                    return;
+                }
+                const span = document.createElement('span');
+                span.textContent = decodeURIComponent(img.dataset.name || '');
+                if (img.parentNode) img.parentNode.replaceChild(span, img);
+            },
+            getChannelHtml(name) {
                 const canonical = getCanonicalName(name);
                 const matching = getAceIndex().get(canonical) || [];
-                const logoUrl = channelLogosMap[canonical] || matching.find(m => m.logo)?.logo;
+                const logoCands = this.getLogoCandidates(canonical, matching);
+                const logoUrl = logoCands[0];
+                const logoAlt = logoCands.slice(1).map(encodeURIComponent).join(' ');
                 if (matching.length === 0) return '';
 
                 const safeName = name.replace(/'/g, "\\'");
-                const logoStyle = 'width:80%; height:80%;';
+                const lb = this.logoBox(logoUrl);
+                const logoStyle = 'width:' + lb.w + '; height:' + lb.h + '; flex-shrink:0;';
 
                 return `<div class="channel-item"><div class="channel-button" tabindex="0" role="button" data-ch="${encodeURIComponent(name)}"
                              onclick="UIManager.handleChannelClick(event, '${safeName}')"
@@ -2255,7 +2315,7 @@ html.lite .is-live .time{color:var(--accent-blue)}
                              ontouchstart="UIManager.startLongPress(event, '${safeName}')" 
                              ontouchmove="const moveY = Math.abs(event.touches[0].clientY - UIManager.touchStartY); if(moveY > 10) UIManager.clearLongPress();"
                              ontouchend="UIManager.clearLongPress()">
-                        ${logoUrl ? `<img src="${logoUrl}" class="channel-logo" loading="lazy" decoding="async" style="position:relative; z-index:2; pointer-events:none; ${logoStyle}" onerror="this.outerHTML='<span>${canonical}</span>'">` : `<span style="position:relative; z-index:2; pointer-size:0.65rem; pointer-events:none;">${canonical}</span>`}
+                        ${logoUrl ? `<img src="${logoUrl}" data-alt="${logoAlt}" data-name="${encodeURIComponent(canonical)}" class="channel-logo" loading="lazy" decoding="async" style="position:relative; z-index:2; pointer-events:none; ${logoStyle}" onerror="UIManager.logoFallback(this)">` : `<span style="position:relative; z-index:2; pointer-size:0.65rem; pointer-events:none;">${canonical}</span>`}
                     </div></div><div class="channel-dropdown"></div>`;
             },            getChannelPriority(name) {
                     // Evaluamos la prioridad basada en el nombre CANÓNICO para que los alias hereden el grupo correcto
@@ -2933,8 +2993,11 @@ html.lite .is-live .time{color:var(--accent-blue)}
 
                 if (gistResult) {
                     channelLogosMap = gistResult.logoMap;
+                    channelLogoAlt = gistResult.logoAlt || {};
                     channelCanonicalMap = gistResult.canonicalMap; resetNameCaches();
+                    UIManager.lastEventsHTML = ''; // el HTML guardado de Eventos llevaba los logos antiguos: se vuelve a generar
                     localStorage.setItem('logo_cache', JSON.stringify(gistResult.logoMap));
+                    try { localStorage.setItem('logo_alt_cache', JSON.stringify(channelLogoAlt)); } catch (e) {}
                     localStorage.setItem('canonical_cache', JSON.stringify(gistResult.canonicalMap));
                 }
 

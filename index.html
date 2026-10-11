@@ -624,7 +624,7 @@ html.lite .is-live .time{color:var(--accent-blue)}
                 { id: 'ERA', ipnsKey: 'k2k4r8lm8tkmuxbc8lkmq1in3v0oya1p6pe9o5bu0hu30br5ko08k2gb', subPath: '/data/listas/listaplana.txt', helia: true, parser: 'parseEra', isValid: (t) => t && (t.includes('#EXTINF') || /(?<![a-f0-9])[a-f0-9]{40}(?![a-f0-9])/i.test(t)) },
                 { id: 'ELCANO', ipnsKey: 'k51qzi5uqu5dh5qej4b9wlcr5i6vhc7rcfkekhrxqek5c9lk6gdaiik820fecs', subPath: '/hashes.json', directUrls: ['https://tokyo.elcano-ipfs.workers.dev/k51qzi5uqu5dh5qej4b9wlcr5i6vhc7rcfkekhrxqek5c9lk6gdaiik820fecs/hashes.json'], parser: 'parseElcano', isValid: (t) => { try { return Array.isArray(JSON.parse(t).hashes); } catch (e) { return false; } } },
                 // Fuente local: lista M3U que sirve tu propio motor AceStream (AS). No usa gateways IPFS.
-                { id: 'AS', label: 'AS', localUrl: 'http://127.0.0.1:6878/pl.m3u', onlyGroups: ['Amateur'], parser: 'parseAS', isValid: (t) => t && (t.includes('#EXTINF') || /(?<![a-f0-9])[a-f0-9]{40}(?![a-f0-9])/i.test(t)) }
+                { id: 'AS', label: 'AS', localUrl: 'http://127.0.0.1:6878/pl.m3u', onlyGroups: ['Amateur', 'Series', 'Movies'], parser: 'parseAS', isValid: (t) => t && (t.includes('#EXTINF') || /(?<![a-f0-9])[a-f0-9]{40}(?![a-f0-9])/i.test(t)) }
             ],generateHash(str){let hash=5381,i=str.length;while(i)hash=(hash*33)^str.charCodeAt(--i);return(hash>>>0).toString(16)},
 
             async fetchSourceRaw(src) {
@@ -695,20 +695,37 @@ html.lite .is-live .time{color:var(--accent-blue)}
                 const rawFetches = new Map();
                 for (const src of this.SOURCES) { const pr = this.fetchSourceRaw(src); pr.catch(() => {}); rawFetches.set(src.id, pr); }
 
-                for (const src of this.SOURCES) {
+                for (const src of [...this.SOURCES].sort((a, b) => (b.id === 'AS') - (a.id === 'AS'))) {
                     try {
                         const raw = await rawFetches.get(src.id);
                         okTags.add(tagOf(src));
                         if (!src.onlyGroups) markRaw(raw); // (AS filtra por grupo: ahí solo cuentan los items ya filtrados)
-                        const newHash = this.generateHash('parser-v7|' + (src.onlyGroups ? 'g:' + src.onlyGroups.join(',') + '|' : '') + raw);
+                        const newHash = this.generateHash('parser-v14|' + (src.onlyGroups ? 'g:' + src.onlyGroups.join(',') + '|' : '') + raw);
                         if (currentHashes[src.id] === newHash) { if (src.id !== 'AS') sourceOk = true; report[src.id] = 'OK (sin cambios)'; markTagged(tagOf(src), !src.onlyGroups); continue; }
 
                         let parsed = this[src.parser](raw);
                         if (src.onlyGroups) {
                             const norm = (v) => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
-                            const wanted = src.onlyGroups.map(norm);
-                            const seenGroups = [...new Set(parsed.map(it => it.group || '(sin grupo)'))];
-                            parsed = parsed.filter(it => wanted.includes(norm(it.group)));
+                            const seenGroups = [...new Set(parsed.map(it => it.group || '(sin grupo)'))]; this._lastGroups = seenGroups;
+                            // Amateur: grupo completo (como siempre). Series y Movies: las listas completas son enormes
+                            // (miles de canales, bloquean la app y llenan la memoria), así que solo se guardan los que
+                            // indican Spain/España en el nombre, el país o el idioma. Tope de seguridad por grupo.
+                            const CAP = 1500;
+                            const spainRe = /spain|espana|spanish|castellano|\bes\b|\besp\b/;
+                            const cnt = { amateur: [0, 0], series: [0, 0], movies: [0, 0] };
+                            parsed = parsed.filter(it => {
+                                const g = norm(it.group);
+                                if (g === 'amateur') { cnt.amateur[0]++; cnt.amateur[1]++; return true; }
+                                const kind = /^series\b/.test(g) ? 'series' : /^movies?\b/.test(g) ? 'movies' : null;
+                                if (!kind) return false;
+                                cnt[kind][0]++;
+                                if (!spainRe.test(norm(it.name + ' ' + (it.hint || '') + ' ' + it.group))) return false;
+                                if (cnt[kind][1] >= CAP) return false;
+                                cnt[kind][1]++;
+                                return true;
+                            });
+                            this._lastCounts = 'Amateur ' + cnt.amateur[1] + ' · Series ' + cnt.series[1] + '/' + cnt.series[0] + ' · Movies ' + cnt.movies[1] + '/' + cnt.movies[0];
+                            parsed.forEach(it => { delete it.hint; if (norm(it.group) !== 'amateur') it.logo = ''; });
                             if (parsed.length === 0) {
                                 // Se retiran los canales AS guardados de antes y se informa de los grupos que sí trae la lista
                                 for (const [k, v] of masterMap) { if (v.source === 'AS') masterMap.delete(k); }
@@ -719,7 +736,7 @@ html.lite .is-live .time{color:var(--accent-blue)}
                             }
                         }
                         if (parsed.length === 0) { okTags.delete(tagOf(src)); report[src.id] = 'respuesta sin canales' + (src.id === 'AS' ? ' (inicio: «' + raw.slice(0, 60).replace(/\s+/g, ' ') + '»)' : ''); continue; } // respuesta válida pero sin canales: no cuenta
-                        report[src.id] = 'OK (' + parsed.length + ' canales)';
+                        report[src.id] = 'OK (' + parsed.length + ' canales)' + (src.onlyGroups ? ' · ' + (this._lastCounts || '') + ' (guardados/en lista) · grupos: ' + (this._lastGroups || []).slice(0, 12).join(', ') : '');
                         parsed.forEach(it => markSeen(it.id));
                         hasChanges = true;
                         currentHashes[src.id] = newHash;
@@ -822,12 +839,15 @@ html.lite .is-live .time{color:var(--accent-blue)}
                 }
                 return master;
             },            saveToCache(data, hashes = {}) {
-                const cacheObj = { 
-                    timestamp: Date.now(), 
-                    data: data, 
-                    hashes: hashes 
-                };
-                localStorage.setItem(STORAGE_CONFIG.CACHE_KEY, JSON.stringify(cacheObj));
+                const attempt = (d, h) => { localStorage.setItem(STORAGE_CONFIG.CACHE_KEY, JSON.stringify({ timestamp: Date.now(), data: d, hashes: h })); };
+                try { attempt(data, hashes); return; } catch (e) { console.warn('[Cache] no cabe completa, reduciendo...', e && e.name); }
+                try { attempt(data.map(it => ({ ...it, logo: '' })), hashes); return; } catch (e) {}
+                try {
+                    // Sin los canales AS; y se invalida su hash para que se vuelvan a leer en la próxima carga
+                    const h2 = { ...hashes }; delete h2.AS;
+                    attempt(data.filter(it => it.source !== 'AS').map(it => ({ ...it, logo: '' })), h2);
+                    return;
+                } catch (e) { console.warn('[Cache] no se pudo guardar la caché de canales', e && e.name); }
             },
             loadFromCache() {
                 const cached = localStorage.getItem(STORAGE_CONFIG.CACHE_KEY);
@@ -1026,7 +1046,8 @@ html.lite .is-live .time{color:var(--accent-blue)}
                     const id = idMatch[1].toLowerCase();
                     if (seen.has(id)) continue;
                     seen.add(id);
-                    results.push({ name, id, logo: attr('tvg-logo'), group: attr('group-title') || extGrp });
+                    const hint = [attr('tvg-country'), attr('tvg-language'), attr('tvg-name'), commaIdx !== -1 ? noAttrs.slice(commaIdx + 1) : ''].join(' ');
+                    results.push({ name, id, logo: attr('tvg-logo'), group: attr('group-title') || extGrp, hint });
                 }
                 // Si no era una M3U con #EXTINF, se intenta con el parser tolerante (texto plano / JSON)
                 return results.length ? results : this.parseManual(text).map(it => ({ ...it, name: this.cleanAsName(it.name) })).filter(it => it.name);

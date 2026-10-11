@@ -71,80 +71,42 @@
   try{ ls=localStorage.getItem('lite'); }catch(e){}
   if(/[?&]lite=0/.test(q)){ try{localStorage.setItem('lite','0');}catch(e){} ls='0'; }
   if(/[?&]lite=1/.test(q)){ try{localStorage.setItem('lite','1');}catch(e){} ls='1'; }
-  // ===== Detección de TV (mando a distancia) frente a tablet/móvil/PC =====
-  // El user agent NO se usa: navegadores de TV como TV Bro se hacen pasar por PC, tablet o móvil, así que
-  // dice lo que quiere el navegador y no lo que es el aparato. Se decide por lo que tiene el dispositivo:
-  //   1) ?tv=1 / ?tv=0 o el comando /tv fuerzan el modo y se recuerdan (?tv=auto vuelve al automático).
-  //   2) Pantalla táctil (o se ha tocado la pantalla) -> NUNCA es TV: tablet, móvil, híbrido.
-  //   3) Hay ratón o trackpad -> es un PC, no una TV.
-  //   4) Sin táctil ni ratón, pantalla grande y apaisada -> TV con mando.
   var ua=navigator.userAgent||'';
-  function mq(s){ try{ return window.matchMedia(s).matches; }catch(e){ return false; } }
-  var forced=null, touchSeen=false;
-  try{ forced=localStorage.getItem('tv_mode'); }catch(e){}
-  if(/[?&]tv=1/.test(q)){ forced='1'; try{localStorage.setItem('tv_mode','1');}catch(e){} }
-  else if(/[?&]tv=0/.test(q)){ forced='0'; try{localStorage.setItem('tv_mode','0');}catch(e){} }
-  else if(/[?&]tv=auto/.test(q)){ forced=null; try{localStorage.removeItem('tv_mode');}catch(e){} }
-  var SIDE_Q='(min-width:900px) and (min-height:480px) and (orientation:landscape)';
-  function hasTouch(){ return touchSeen || ((typeof navigator.maxTouchPoints==='number') ? navigator.maxTouchPoints>0 : ('ontouchstart' in window)); }
-  function detectTv(){
-    if(forced==='1') return true;
-    if(forced==='0') return false;
-    if(hasTouch()) return false;
-    if(mq('(any-pointer:fine)')) return false;
-    return mq(SIDE_Q);
-  }
-  window.IS_TV=detectTv();
-  window.LITE = ls==='1' || (ls!=='0' && window.IS_TV);
+  var tv=/SMART-TV|SmartTV|Tizen|Web0S|WebOS|NetCast|BRAVIA|VIDAA|HbbTV|Hisense|Philips|AFT[A-Z]+|Android TV|GoogleTV|CrKey|AppleTV|Roku|TV Safari|\bTV\b/i.test(ua);
+  window.LITE = ls==='1' || (ls!=='0' && tv);
   if(window.LITE) document.documentElement.classList.add('lite');
-  // Barra lateral: solo en TV. Un móvil o una tablet (aunque sea apaisada) usan la barra inferior.
+  // Barra lateral según el ÚLTIMO método de entrada usado (no depende del user agent ni del tamaño de pantalla):
+  //   flechas -> barra a la izquierda | táctil/ratón -> barra abajo.
+  // (?tv=1 / ?tv=0 siguen forzando activarla / desactivarla)
   window.isSideNav=function(){ return document.documentElement.classList.contains('sidenav'); };
-  // La decisión solo se recalcula cuando cambia el ANCHO: al abrir el teclado en la TV solo cambia
-  // el alto, y antes eso hacía fallar la media query y la barra saltaba abajo mientras duraba el teclado.
-  var lastW=-1;
-  function updSide(){
-    var d=document.documentElement, w=window.innerWidth;
-    if(w===lastW) return; lastW=w;
-    var on=detectTv();
-    window.IS_TV=on;
+  var d=document.documentElement;
+  var forced = /[?&]tv=1/.test(q) ? 1 : /[?&]tv=0/.test(q) ? 0 : null;
+  function setSide(on){
+    if(forced!==null) on=!!forced;
     d.classList.toggle('sidenav',on);
-    d.classList.toggle('tv',on);
+    try{ localStorage.setItem('navmode', on?'keys':'pointer'); }catch(e){}
   }
-  updSide();
-  window.addEventListener('resize',updSide);
-  window.addEventListener('orientationchange',function(){ lastW=-1; updSide(); });
-  // Red de seguridad: si en modo automático se toca la pantalla, no es una TV.
-  window.addEventListener('touchstart',function(){
-    if(touchSeen) return; touchSeen=true;
-    if(forced===null && window.IS_TV){ lastW=-1; updSide(); window.LITE = ls==='1'; document.documentElement.classList.toggle('lite',window.LITE); }
-  },{passive:true});
-  // Comando /tv (en el buscador): alterna automático -> forzar TV -> forzar NO TV, y muestra lo que detecta el dispositivo
-  window.showTvInfo=function(){
-    var old=document.getElementById('tv-diag'); if(old) old.remove();
-    var el=document.createElement('div'); el.id='tv-diag';
-    el.style.cssText='position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:10050;background:#000;color:#fff;border:2px solid #448aff;border-radius:12px;padding:14px 16px;font:12px/1.6 monospace;max-width:90%;white-space:pre-wrap;word-break:break-all';
-    el.textContent=[
-      'MODO TV: '+(window.IS_TV?'SÍ':'NO')+'  ('+(forced==='1'?'forzado TV':forced==='0'?'forzado NO TV':'automático')+')',
-      'táctil: '+(navigator.maxTouchPoints===undefined?'?':navigator.maxTouchPoints)+(touchSeen?' (tocada)':''),
-      'ratón (any-pointer:fine): '+mq('(any-pointer:fine)'),
-      'pointer fine/coarse: '+mq('(pointer:fine)')+' / '+mq('(pointer:coarse)'),
-      'hover: '+mq('(hover:hover)')+'  any-hover: '+mq('(any-hover:hover)'),
-      'pantalla: '+window.innerWidth+'x'+window.innerHeight+' @'+(window.devicePixelRatio||1),
-      'UA: '+ua.slice(0,90),
-      '(toca para cerrar; /tv de nuevo cambia de modo)'
-    ].join('\n');
-    el.onclick=function(){ el.remove(); };
-    (document.body||document.documentElement).appendChild(el);
-    setTimeout(function(){ if(el.parentNode) el.remove(); },20000);
-  };
-  window.cycleTvMode=function(){
-    forced = forced===null ? '1' : (forced==='1' ? '0' : null);
-    try{ if(forced===null) localStorage.removeItem('tv_mode'); else localStorage.setItem('tv_mode',forced); }catch(e){}
-    lastW=-1; updSide();
-    window.LITE = ls==='1' || (ls!=='0' && window.IS_TV);
-    document.documentElement.classList.toggle('lite',window.LITE);
-    window.showTvInfo();
-  };
+  // Estado inicial: el último que se usó (así no parpadea al cargar)
+  var saved=null; try{ saved=localStorage.getItem('navmode'); }catch(e){}
+  d.classList.toggle('sidenav', forced!==null ? !!forced : saved==='keys');
+
+  if(forced===null){
+    var ARROWS={ArrowUp:1,ArrowDown:1,ArrowLeft:1,ArrowRight:1,37:1,38:1,39:1,40:1};
+    window.addEventListener('keydown',function(e){
+      if(!(ARROWS[e.key]||ARROWS[e.keyCode])) return;
+      var t=e.target;
+      if(t && (t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.isContentEditable)) return;
+      if(!window.isSideNav()) setSide(true);
+    },true);
+    var off=function(){ if(window.isSideNav()) setSide(false); };
+    window.addEventListener('touchstart',off,{passive:true,capture:true});
+    window.addEventListener('pointerdown',function(e){
+      if(e.pointerType==='touch'||e.pointerType==='mouse'||e.pointerType==='pen') off();
+    },true);
+    window.addEventListener('mousemove',function(e){
+      if(e.movementX||e.movementY) off();
+    },true);
+  }
 })();
 </script>
 <style id="lite-css">
@@ -2733,12 +2695,11 @@ html.lite .is-live .time{color:var(--accent-blue)}
             }
             UIManager.switchTab(currentTab);
             UIManager.updatePlayerButton();            gInput.addEventListener('input', (e) => {
-                // Comandos ocultos: /r (modo reproductor), /e (mostrar/ocultar botón de descarga .m3u) y /tv (modo TV: auto/forzar/quitar)
+                // Comandos ocultos: /r (modo reproductor) y /e (mostrar/ocultar botón de descarga .m3u)
                 const v = e.target.value.trim().toLowerCase();
-                if (v === '/r' || v === '/e' || v === '/tv') {
+                if (v === '/r' || v === '/e') {
                     clearTimeout(sT);
                     if (v === '/r') UIManager.togglePlayerMode();
-                    else if (v === '/tv') window.cycleTvMode();
                     else ExportManager.toggleButton();
                     e.target.value = '';
                     cBtn.style.display = 'none';

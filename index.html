@@ -141,7 +141,35 @@ html.lite .is-live .time{color:var(--accent-blue)}
             PENDING_KEY: 'ace_pending_penalties_list',
             interval: null,
 
-            getDB() { return JSON.parse(localStorage.getItem(this.DB_KEY)) || {}; },
+            // Lectura robusta y cacheada: si el JSON guardado se corrompe, antes getScore()
+            // lanzaba una excepción y el botón del canal dejaba de funcionar. Además se evita
+            // re-parsear toda la base de datos en cada comparación del sort (exportación, listados).
+            _dbRaw: null, _dbObj: null,
+            getDB() {
+                let raw = null;
+                try { raw = localStorage.getItem(this.DB_KEY); } catch (e) {}
+                if (raw !== null && raw === this._dbRaw && this._dbObj) return this._dbObj;
+                let obj = {};
+                try { obj = JSON.parse(raw) || {}; } catch (e) { obj = {}; }
+                if (typeof obj !== 'object' || Array.isArray(obj)) obj = {};
+                this._dbRaw = raw; this._dbObj = obj;
+                return obj;
+            },
+
+            getSession() {
+                try { return JSON.parse(localStorage.getItem(this.SESSION_KEY)); } catch (e) { return null; }
+            },
+
+            // Se llama cuando la app pasa a segundo plano (p.ej. al abrir el reproductor externo).
+            // Sirve para distinguir un "he vuelto a la app" real de un evento de foco espurio
+            // justo al lanzar el enlace, que penalizaría por error un enlace que sí funciona.
+            markLeftApp() {
+                const session = this.getSession();
+                if (session && !session.leftApp) {
+                    session.leftApp = true;
+                    try { localStorage.setItem(this.SESSION_KEY, JSON.stringify(session)); } catch (e) {}
+                }
+            },
             
             // Tabla de efectos (minutos que duró la sesión -> efecto en la puntuación)
             //   < 1 min .... -1.8
@@ -177,7 +205,7 @@ html.lite .is-live .time{color:var(--accent-blue)}
                 entry.score = Math.max(0.0, Math.min(5.0, entry.score + delta));
 
                 db[id] = entry;
-                localStorage.setItem(this.DB_KEY, JSON.stringify(db));
+                try { localStorage.setItem(this.DB_KEY, JSON.stringify(db)); } catch (e) { console.warn('No se pudo guardar la puntuación', e); }
             },
 
             trackStart(id, channelName, index = 0) {
@@ -229,7 +257,7 @@ html.lite .is-live .time{color:var(--accent-blue)}
             },
 
             checkPreviousSession(newChannelName = null) {
-                const session = JSON.parse(localStorage.getItem(this.SESSION_KEY));
+                const session = this.getSession();
                 if (!session) return;
 
                 const minutesSpent = Math.floor((Date.now() - session.start) / 60000);
@@ -257,8 +285,11 @@ html.lite .is-live .time{color:var(--accent-blue)}
                 // a la app o al reintentar el MISMO canal, y como máximo una vez por sesión).
                 // Con el reproductor interno abierto, volver a la pestaña no significa que el
                 // enlace haya fallado (el fallo ya lo detecta el vigilante y reintenta).
-                const internalOpen = !newChannelName && !!document.getElementById('internal-video');
-                if (!session.penalized && !internalOpen) {
+                // Y si la llamada es "pasiva" (evento de foco, sin elegir canal), solo cuenta si la app
+                // llegó a ir a segundo plano. Al pulsar un canal (con nombre) siempre se evalúa.
+                const passive = !newChannelName;
+                const skipPenalty = passive && (!!document.getElementById('internal-video') || !session.leftApp);
+                if (!session.penalized && !skipPenalty) {
                     const penalty = this.penaltyFor(minutesSpent);
                     if (penalty !== 0) {
                         const before = this.getScore(session.id);
@@ -276,19 +307,18 @@ html.lite .is-live .time{color:var(--accent-blue)}
                     this._refreshUI();
                 }
 
+                // La sesión NO se borra aquí aunque ya sea buena: hace falta conservarla para
+                // detectar que el enlace se cayó y el usuario vuelve a pulsar el mismo canal.
+                // Se sustituye sola en el siguiente trackStart().
                 if (minutesSpent >= 30) {
                     localStorage.removeItem(this.PENDING_KEY);
-                    // La sesión se mantiene abierta hasta agotar la recompensa (+1.5)
-                    if ((session.recoveryApplied || 0) >= this.MAX_REWARD) {
-                        localStorage.removeItem(this.SESSION_KEY);
-                    }
                 }
             },
 
             startRealTimeUpdate() {
                 if (this.interval) clearInterval(this.interval);
                 this.interval = setInterval(() => {
-                    const session = JSON.parse(localStorage.getItem(this.SESSION_KEY));
+                    const session = this.getSession();
                     if (!session) return this.stopRealTimeUpdate();
                     const min = Math.floor((Date.now() - session.start) / 60000);
 
@@ -2242,8 +2272,13 @@ html.lite .is-live .time{color:var(--accent-blue)}
                 // se ordena con la puntuación todavía sin actualizar y el sistema puede
                 // volver a ofrecerte el mismo enlace que acaba de fallar. Este orden es
                 // la clave de todo: puntuar primero, elegir después.
-                const prevSession = JSON.parse(localStorage.getItem(RatingEngine.SESSION_KEY));
-                const repeatingSameChannel = triedCount === 0 && prevSession && prevSession.channelName === canonicalName && (Date.now() - prevSession.start) < 30 * 60000;
+                const prevSession = RatingEngine.getSession();
+                // Pulsar otra vez el MISMO canal significa que el enlace anterior no sirve (falló
+                // enseguida, o se cayó a mitad de partido tras haber funcionado un buen rato).
+                // En ambos casos se excluye para que salga la siguiente mejor opción. Si había
+                // funcionado >30 min no se penaliza (ya cobró su recompensa), solo se salta esta
+                // vez. Pasadas 4 h se considera una sesión antigua y no cuenta como repetición.
+                const repeatingSameChannel = triedCount === 0 && prevSession && prevSession.channelName === canonicalName && (Date.now() - prevSession.start) < 4 * 3600000;
 
                 RatingEngine.checkPreviousSession(canonicalName);
 
@@ -2877,9 +2912,9 @@ html.lite .is-live .time{color:var(--accent-blue)}
             if (window.syncMarker) window.syncMarker();
             if (typeof UIManager !== 'undefined' && state.tvSearchTerm === '') UIManager.refresh();
         });
-        window.addEventListener('pagehide', () => { try { UIManager.saveUiState(); } catch (e) {} });
+        window.addEventListener('pagehide', () => { try { UIManager.saveUiState(); } catch (e) {} try { RatingEngine.markLeftApp(); } catch (e) {} });
         document.addEventListener('visibilitychange', () => {
-            if (document.hidden) { try { UIManager.saveUiState(); } catch (e) {} }
+            if (document.hidden) { try { UIManager.saveUiState(); } catch (e) {} try { RatingEngine.markLeftApp(); } catch (e) {} }
             if (!document.hidden) {
                 if (window.syncMarker) window.syncMarker();
                 if (typeof UIManager !== 'undefined' && state.tvSearchTerm === '') UIManager.refresh();

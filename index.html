@@ -700,7 +700,7 @@ html.lite .is-live .time{color:var(--accent-blue)}
                         const raw = await rawFetches.get(src.id);
                         okTags.add(tagOf(src));
                         if (!src.onlyGroups) markRaw(raw); // (AS filtra por grupo: ahí solo cuentan los items ya filtrados)
-                        const newHash = this.generateHash('parser-v15|' + (src.onlyGroups ? 'g:' + src.onlyGroups.join(',') + '|' : '') + raw);
+                        const newHash = this.generateHash('parser-v16|' + (src.onlyGroups ? 'g:' + src.onlyGroups.join(',') + '|' : '') + raw);
                         if (currentHashes[src.id] === newHash) { if (src.id !== 'AS') sourceOk = true; report[src.id] = 'OK (sin cambios)'; markTagged(tagOf(src), !src.onlyGroups); continue; }
 
                         let parsed = this[src.parser](raw);
@@ -1034,12 +1034,13 @@ html.lite .is-live .time{color:var(--accent-blue)}
 
                     // El ID puede estar en el propio EXTINF o en la primera línea de URL que le siga
                     let idMatch = line.match(idRe);
+                    let urlStr = line;
                     let extGrp = '';
                     let j = i + 1;
                     while (!idMatch && j < lines.length && !lines[j].trim().startsWith('#EXTINF')) {
                         const l = lines[j].trim();
                         if (/^#EXTGRP:/i.test(l)) extGrp = l.slice(8).trim();
-                        if (l && !l.startsWith('#')) { idMatch = l.match(idRe); break; }
+                        if (l && !l.startsWith('#')) { idMatch = l.match(idRe); urlStr = l; break; }
                         j++;
                     }
                     if (!idMatch || !name) continue;
@@ -1047,7 +1048,10 @@ html.lite .is-live .time{color:var(--accent-blue)}
                     if (seen.has(id)) continue;
                     seen.add(id);
                     const hint = [attr('tvg-country'), attr('tvg-language'), attr('tvg-name'), commaIdx !== -1 ? noAttrs.slice(commaIdx + 1) : ''].join(' ');
-                    results.push({ name, id, logo: attr('tvg-logo'), group: attr('group-title') || extGrp, hint });
+                    const item = { name, id, logo: attr('tvg-logo'), group: attr('group-title') || extGrp, hint };
+                    // aceserve sirve algunos canales por infohash (getstream?infohash=...), que NO es un content ID: acestream://HASH no los abre
+                    if (/[?&]infohash=/i.test(urlStr)) item.kind = 'infohash';
+                    results.push(item);
                 }
                 // Si no era una M3U con #EXTINF, se intenta con el parser tolerante (texto plano / JSON)
                 return results.length ? results : this.parseManual(text).map(it => ({ ...it, name: this.cleanAsName(it.name) })).filter(it => it.name);
@@ -1282,7 +1286,7 @@ html.lite .is-live .time{color:var(--accent-blue)}
                         use.forEach((it, idx) => {
                             const t = title(e.canon) + (use.length > 1 ? ' (' + (idx + 1) + ')' : '');
                             lines.push('#EXTINF:-1 tvg-name="' + attr(e.canon) + '"' + (logo ? ' tvg-logo="' + attr(logo) + '"' : '') + ' group-title="' + sec.label + '",' + t);
-                            lines.push(this.VLC_BASE + it.id);
+                            lines.push(it.kind === 'infohash' ? this.VLC_BASE.replace('?id=', '?infohash=') + it.id : this.VLC_BASE + it.id);
                             n++;
                         });
                     });
@@ -1749,7 +1753,19 @@ html.lite .is-live .time{color:var(--accent-blue)}
                 // Botón eliminado: El cambio de modo se gestiona exclusivamente mediante el comando /r
                 const btn = document.getElementById('fab-player-toggle');
                 if (btn) btn.remove();
-            },            async openInternalPlayer(id, name) {
+            },            launchExternal(item, name) {
+                if (item && item.kind === 'infohash') {
+                    const path = '127.0.0.1:6878/ace/getstream?infohash=' + item.id;
+                    if (/Android/i.test(navigator.userAgent)) {
+                        location.href = 'intent://' + path + '#Intent;scheme=http;package=org.videolan.vlc;type=video/*;S.title=' + encodeURIComponent(name || '') + ';end';
+                    } else {
+                        location.href = 'http://' + path;
+                    }
+                    return;
+                }
+                location.href = 'acestream://' + item.id;
+            },
+            async openInternalPlayer(id, name, kind) {
                 if (this.stallCheckInterval) { clearInterval(this.stallCheckInterval); this.stallCheckInterval = null; }
                 const old = document.getElementById('internal-player-container');
                 if (old) {
@@ -1926,7 +1942,7 @@ html.lite .is-live .time{color:var(--accent-blue)}
                 video.addEventListener('playing', showControls);
                 showControls();
 
-                const streamUrl = `http://127.0.0.1:6878/ace/manifest.m3u8?id=${id}`;
+                const streamUrl = `http://127.0.0.1:6878/ace/manifest.m3u8?${kind === 'infohash' ? 'infohash' : 'id'}=${id}`;
                 let isAlive = false;
                 try {
                     isAlive = await fetch('http://127.0.0.1:6878/webui/api/service?method=get_version', { mode: 'no-cors' }).then(() => true).catch(() => false);
@@ -2571,12 +2587,12 @@ html.lite .is-live .time{color:var(--accent-blue)}
 
                 const mode = localStorage.getItem('player_mode') || 'external';
                 if (mode === 'internal') {
-                    this.openInternalPlayer(pick.id, canonicalName).then(() => {
+                    this.openInternalPlayer(pick.id, canonicalName, pick.kind).then(() => {
                         this.watchStream(myToken, channelName, triedCount, [...excludedIds, pick.id]);
                     });
                 } else {
                     this.saveUiState();
-                    location.href = 'acestream://' + pick.id;
+                    this.launchExternal(pick, canonicalName);
                 }
             },
 
@@ -2678,10 +2694,10 @@ html.lite .is-live .time{color:var(--accent-blue)}
                         RatingEngine.trackStart(item.id, getCanonicalName(channelName), i);
                         const mode = localStorage.getItem('player_mode') || 'external';
                         if (mode === 'internal') {
-                            UIManager.openInternalPlayer(item.id, getCanonicalName(channelName));
+                            UIManager.openInternalPlayer(item.id, getCanonicalName(channelName), item.kind);
                             UIManager.closeModal();
                         } else {
-                            window.location.href = `acestream://${item.id}`;
+                            UIManager.launchExternal(item, getCanonicalName(channelName));
                         }
                     };
                     list.appendChild(btn);
@@ -2761,10 +2777,10 @@ html.lite .is-live .time{color:var(--accent-blue)}
                         RatingEngine.trackStart(item.id, getCanonicalName(channelName), i);
                         const mode = localStorage.getItem('player_mode') || 'external';
                         if (mode === 'internal') {
-                            UIManager.openInternalPlayer(item.id, getCanonicalName(channelName));
+                            UIManager.openInternalPlayer(item.id, getCanonicalName(channelName), item.kind);
                         } else {
                             UIManager.saveUiState();
-                            window.location.href = `acestream://${item.id}`;
+                            UIManager.launchExternal(item, getCanonicalName(channelName));
                         }
                         UIManager.closeAllChannelDropdowns();
                     };

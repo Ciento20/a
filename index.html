@@ -2326,7 +2326,10 @@ html.lite .is-live .time{color:var(--accent-blue)}
             // el tamaño normal (80%), así que ocupan algo más (100%).
             // Los de movistarplus.es usan casi todo el botón (se ocupa también el margen interno: 114% x 128%
             // del área útil, que es lo máximo que cabe sin que el borde del botón los recorte).
-            logoBox(url) {
+            // Canales M+ / LaLiga / Eurosport (y sus numerales, p.ej. "M+ LALIGA 2", "EUROSPORT 1"): logo más grande.
+            logoBox(url, canon) {
+                if (/M\+\s*LA ?LIGA/i.test(canon || '')) return { w: '140%', h: '165%' };
+                if (/M\+|EUROSPORT/i.test(canon || '')) return { w: '126%', h: '145%' };
                 return /^https?:\/\/(?:[^\/?#]*\.)?movistarplus\.es(?:[:\/?#]|$)/i.test(url || '')
                     ? { w: '114%', h: '128%' }
                     : { w: '80%', h: '80%' };
@@ -2338,7 +2341,7 @@ html.lite .is-live .time{color:var(--accent-blue)}
                 if (next) {
                     img.dataset.alt = rest.map(encodeURIComponent).join(' ');
                     if (img.classList.contains('channel-logo')) {
-                        const b = this.logoBox(next);
+                        const b = this.logoBox(next, decodeURIComponent(img.dataset.name || ''));
                         img.style.width = b.w; img.style.height = b.h; img.style.flexShrink = '0';
                     }
                     img.src = next;
@@ -2357,7 +2360,7 @@ html.lite .is-live .time{color:var(--accent-blue)}
                 if (matching.length === 0) return '';
 
                 const safeName = name.replace(/'/g, "\\'");
-                const lb = this.logoBox(logoUrl);
+                const lb = this.logoBox(logoUrl, canonical);
                 const logoStyle = 'width:' + lb.w + '; height:' + lb.h + '; flex-shrink:0;';
 
                 return `<div class="channel-item"><div class="channel-button" tabindex="0" role="button" data-ch="${encodeURIComponent(name)}"

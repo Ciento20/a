@@ -2834,6 +2834,8 @@ html.lite .is-live .time{color:var(--accent-blue)}
                     const r0 = curBtn.getBoundingClientRect();
                     const cx = r0.left + r0.width / 2, cy = r0.top + r0.height / 2;
                     let best = null, bestScore = Infinity;
+                    const vertical = (dir === 'u' || dir === 'd');
+                    const cands = []; // solo para arriba/abajo: candidatos { el, main, cross }
                     const all = cont.querySelectorAll('.channel-button');
                     for (let i = 0; i < all.length; i++) {
                         const el = all[i];
@@ -2846,8 +2848,22 @@ html.lite .is-live .time{color:var(--accent-blue)}
                         else if (dir === 'd') { if (dy < 4) continue; main = dy; cross = Math.abs(dx); }
                         else if (dir === 'l') { if (dx > -4) continue; main = -dx; cross = Math.abs(dy); }
                         else { if (dx < 4) continue; main = dx; cross = Math.abs(dy); }
+                        if (vertical) { cands.push({ el, main, cross }); continue; }
                         const score = main + cross * 2.5;
                         if (score < bestScore) { bestScore = score; best = el; }
+                    }
+                    if (vertical && cands.length) {
+                        // Arriba/abajo: primero se elige la FILA más cercana y dentro de ella la tarjeta
+                        // más alineada en horizontal. Con la puntuación mixta de antes, una fila con menos
+                        // tarjetas que la columna actual (p.ej. 3 tarjetas viniendo de la 4ª columna) perdía
+                        // frente a una fila más lejana que sí tenía una tarjeta justo debajo, y se saltaba.
+                        const ROW_TOL = 24; // px: tarjetas de una misma fila comparten posición vertical
+                        let minMain = Infinity;
+                        for (const c of cands) if (c.main < minMain) minMain = c.main;
+                        let bestCross = Infinity;
+                        for (const c of cands) {
+                            if (c.main <= minMain + ROW_TOL && c.cross < bestCross) { bestCross = c.cross; best = c.el; }
+                        }
                     }
                     if (!best) {
                         // Modo TV: al llegar al borde izquierdo se pasa a la barra lateral

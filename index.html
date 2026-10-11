@@ -138,6 +138,8 @@ html.lite .is-live .time{color:var(--accent-blue)}
             BASE_URL: 'https://www.futbolenlatv.es',
             TARGET_URL: 'https://www.futbolenlatv.es/deporte',
             GIST_LOGOS: 'https://gist.githubusercontent.com/Ciento20/5580f05d8ecab2a3de797d7ef4365406/raw/',
+            // Base de los logos de Movistar+: en el gist basta con poner el ID (MLIGA, DAZMOT.png...) y se completa sola
+            MOVISTAR_LOGO_BASE: 'https://www.movistarplus.es/recorte/m-DP/canal/',
             EPG_XML: 'https://raw.githubusercontent.com/davidmuma/EPG_dobleM/master/guiatv.xml',
             // Plan B: gist que se rellena a mano. Sin el hash de revisión en la URL, siempre devuelve la última versión guardada.
             GIST_MANUAL: 'https://gist.githubusercontent.com/Ciento20/fcb8208326c94be2668f6aaaf914cd1c/raw/gistfile1.txt'
@@ -535,11 +537,25 @@ html.lite .is-live .time{color:var(--accent-blue)}
                         const trimmed = line.trim();
                         if (!trimmed) return;
 
+                        // Una línea con logo puede ser de dos formas:
+                        //   Nombre: https://servidor/logo.png      -> URL completa
+                        //   Nombre: MLIGA   (o   Nombre: MLIGA.png) -> solo el ID del logo de Movistar+; la URL
+                        //                                              completa se construye sola (CONFIG.MOVISTAR_LOGO_BASE)
+                        let canonicalName = null, logoUrl = null;
                         if (trimmed.includes(': http')) {
                             const parts = trimmed.split(': http');
-                            const canonicalName = cleanChannelName(parts[0]);
-                            const logoUrl = 'http' + parts[1].trim();
-                            
+                            canonicalName = cleanChannelName(parts[0]);
+                            logoUrl = 'http' + parts[1].trim();
+                        } else {
+                            const ci = trimmed.lastIndexOf(':');
+                            const mv = ci > 0 ? trimmed.slice(ci + 1).trim().match(/^([A-Za-z0-9_-]{2,40})(?:\.png)?$/i) : null;
+                            if (mv) {
+                                canonicalName = cleanChannelName(trimmed.slice(0, ci));
+                                logoUrl = CONFIG.MOVISTAR_LOGO_BASE + mv[1] + '.png';
+                            }
+                        }
+
+                        if (canonicalName !== null) {
                             // La clave se crea siempre (el orden de los canales sigue el del gist), pero solo
                             // cuenta como logo del gist si la URL es válida; si no, queda vacía y la rellenan otras fuentes.
                             if (/^https?:\/\/[^\s"'<>]+$/i.test(logoUrl)) {

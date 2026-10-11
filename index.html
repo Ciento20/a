@@ -134,7 +134,10 @@ html.lite .is-live .time{color:var(--accent-blue)}
 
         const STORAGE_CONFIG = {
             CACHE_KEY: 'ace_ids_cache',
-            EXPIRATION_MS: 30 * 24 * 60 * 60 * 1000 // 30 días
+            // Un hash que no aparece en NINGUNA fuente durante este tiempo se elimina por completo
+            // (lista de enlaces, puntuación y ciclo de probados). Se identifica solo por el hash.
+            LINK_TTL_MS: 15 * 24 * 60 * 60 * 1000, // 15 días
+            SEEN_KEY: 'ace_hash_seen'               // hash -> última vez que apareció (en horas)
         };        const RatingEngine = {
             DB_KEY: 'ace_autorating_v1',
             SESSION_KEY: 'ace_current_session',
@@ -154,6 +157,15 @@ html.lite .is-live .time{color:var(--accent-blue)}
                 if (typeof obj !== 'object' || Array.isArray(obj)) obj = {};
                 this._dbRaw = raw; this._dbObj = obj;
                 return obj;
+            },
+
+            // Elimina las puntuaciones cuyo hash cumple el predicado (se usa en la limpieza de enlaces antiguos)
+            pruneScores(shouldRemove) {
+                const db = this.getDB();
+                let n = 0;
+                for (const k of Object.keys(db)) { if (shouldRemove(k.toLowerCase())) { delete db[k]; n++; } }
+                if (n > 0) { try { localStorage.setItem(this.DB_KEY, JSON.stringify(db)); } catch (e) {} }
+                return n;
             },
 
             getSession() {
@@ -602,6 +614,29 @@ html.lite .is-live .time{color:var(--accent-blue)}
                 let sourceOk = false; // true si ERA o ELC han aportado datos (nuevos o sin cambios)
                 const report = {};
 
+                // ===== Seguimiento de "última vez visto" por hash (ignora nombres y fuentes) =====
+                const now = Date.now();
+                const nowH = Math.floor(now / 3600000);
+                const tagOf = (src) => src.id === 'ELCANO' ? 'ELC' : src.id; // etiqueta que llevan los items en la caché
+                const lc = (id) => String(id || '').toLowerCase();
+                let seen = {};
+                try { const o = JSON.parse(localStorage.getItem(STORAGE_CONFIG.SEEN_KEY)); if (o && typeof o === 'object' && !Array.isArray(o)) seen = o; } catch (e) {}
+                let seenDirty = false;
+                const okTags = new Set(); // fuentes que han respondido bien en esta ejecución
+                // Se refresca como mucho cada 12 h para no reescribir el almacenamiento en cada comprobación
+                const markSeen = (id) => {
+                    const k = lc(id); if (!k) return;
+                    if (seen[k] === undefined || nowH - seen[k] >= 12) { seen[k] = nowH; seenDirty = true; }
+                };
+                const markRaw = (raw) => { const m = String(raw).match(/(?<![a-f0-9])[a-f0-9]{40}(?![a-f0-9])/gi); if (m) m.forEach(markSeen); };
+                // Marca los items de una fuente SIN CAMBIOS. Con strict=true se saltan los ids de 40 hex
+                // (esos ya se marcan leyendo la lista cruda): los items que una fuente ya retiró de su
+                // lista siguen guardados con su etiqueta y, si se marcaran aquí, nunca caducarían.
+                const markTagged = (tag, strict) => { for (const v of masterMap.values()) if (v.source === tag && !(strict && /^[a-f0-9]{40}$/i.test(String(v.id)))) markSeen(v.id); };
+                // Migración / periodo de gracia: todo hash que ya existía sin registro empieza a contar desde hoy
+                masterMap.forEach(v => { if (seen[lc(v.id)] === undefined) { seen[lc(v.id)] = nowH; seenDirty = true; } });
+                try { Object.keys(RatingEngine.getDB()).forEach(k => { if (seen[lc(k)] === undefined) { seen[lc(k)] = nowH; seenDirty = true; } }); } catch (e) {}
+
                 // Las descargas de todas las fuentes arrancan a la vez (ERA con Helia tarda más); luego se procesan en orden
                 const rawFetches = new Map();
                 for (const src of this.SOURCES) { const pr = this.fetchSourceRaw(src); pr.catch(() => {}); rawFetches.set(src.id, pr); }
@@ -609,8 +644,10 @@ html.lite .is-live .time{color:var(--accent-blue)}
                 for (const src of this.SOURCES) {
                     try {
                         const raw = await rawFetches.get(src.id);
+                        okTags.add(tagOf(src));
+                        if (!src.onlyGroups) markRaw(raw); // (AS filtra por grupo: ahí solo cuentan los items ya filtrados)
                         const newHash = this.generateHash('parser-v7|' + (src.onlyGroups ? 'g:' + src.onlyGroups.join(',') + '|' : '') + raw);
-                        if (currentHashes[src.id] === newHash) { if (src.id !== 'AS') sourceOk = true; report[src.id] = 'OK (sin cambios)'; continue; }
+                        if (currentHashes[src.id] === newHash) { if (src.id !== 'AS') sourceOk = true; report[src.id] = 'OK (sin cambios)'; markTagged(tagOf(src), !src.onlyGroups); continue; }
 
                         let parsed = this[src.parser](raw);
                         if (src.onlyGroups) {
@@ -627,8 +664,9 @@ html.lite .is-live .time{color:var(--accent-blue)}
                                 continue;
                             }
                         }
-                        if (parsed.length === 0) { report[src.id] = 'respuesta sin canales' + (src.id === 'AS' ? ' (inicio: «' + raw.slice(0, 60).replace(/\s+/g, ' ') + '»)' : ''); continue; } // respuesta válida pero sin canales: no cuenta
+                        if (parsed.length === 0) { okTags.delete(tagOf(src)); report[src.id] = 'respuesta sin canales' + (src.id === 'AS' ? ' (inicio: «' + raw.slice(0, 60).replace(/\s+/g, ' ') + '»)' : ''); continue; } // respuesta válida pero sin canales: no cuenta
                         report[src.id] = 'OK (' + parsed.length + ' canales)';
+                        parsed.forEach(it => markSeen(it.id));
                         hasChanges = true;
                         currentHashes[src.id] = newHash;
                         if (src.id === 'AS') {
@@ -657,12 +695,15 @@ html.lite .is-live .time{color:var(--accent-blue)}
                     try {
                         const raw = await NetworkService.fetchManualGist();
                         const newHash = this.generateHash('parser-v3|' + raw); // cambiar la versión fuerza a re-parsear
+                        okTags.add('MAN'); markRaw(raw);
+                        if (currentHashes.MANUAL === newHash) markTagged('MAN');
                         if (currentHashes.MANUAL !== newHash) {
                             const parsed = this.parseManual(raw);
                             if (parsed.length > 0) {
                                 for (const [k, v] of masterMap) { if (v.source === 'MAN') masterMap.delete(k); }
                                 parsed.forEach(item => {
                                     item.source = 'MAN';
+                                    markSeen(item.id);
                                     masterMap.set(item.id, item);
                                 });
                                 currentHashes.MANUAL = newHash;
@@ -676,6 +717,38 @@ html.lite .is-live .time{color:var(--accent-blue)}
                         console.warn('[Plan B] Gist manual no disponible ->', e.message || e);
                     }
                 }
+
+                // ===== Limpieza: hashes que llevan 15 días sin aparecer en ninguna fuente =====
+                // Solo se eliminan items de fuentes que han respondido bien hoy (si una fuente está caída
+                // no sabemos si el hash sigue en ella). Los hashes "huérfanos" (con puntuación pero ya
+                // sin item) solo se limpian cuando TODAS las fuentes han respondido.
+                try {
+                    const cutoffH = nowH - Math.floor(STORAGE_CONFIG.LINK_TTL_MS / 3600000);
+                    const stale = (id) => seen[id] !== undefined && seen[id] < cutoffH;
+                    const allOk = this.SOURCES.every(s => okTags.has(tagOf(s)));
+                    const victims = [];
+                    for (const [k, v] of masterMap) { if (okTags.has(v.source) && stale(lc(v.id))) victims.push(k); }
+                    const gone = new Set();
+                    if (victims.length > 0 && victims.length < masterMap.size) {
+                        victims.forEach(k => { gone.add(lc(masterMap.get(k).id)); masterMap.delete(k); });
+                        hasChanges = true;
+                    }
+                    const remaining = new Set(); masterMap.forEach(v => remaining.add(lc(v.id)));
+                    gone.forEach(id => { if (remaining.has(id)) gone.delete(id); }); // sigue en otra fuente guardada: se queda
+                    if (allOk) {
+                        const orphan = new Set(Object.keys(seen));
+                        try { Object.keys(RatingEngine.getDB()).forEach(k => orphan.add(lc(k))); } catch (e) {}
+                        orphan.forEach(id => { if (!remaining.has(id) && stale(id)) gone.add(id); });
+                    }
+                    if (gone.size > 0) {
+                        try { RatingEngine.pruneScores(id => gone.has(id)); } catch (e) {}
+                        try { if (typeof UIManager !== 'undefined' && UIManager.pruneTried) UIManager.pruneTried(gone); } catch (e) {}
+                        gone.forEach(id => { delete seen[id]; });
+                        seenDirty = true;
+                        console.log('[Limpieza] hashes eliminados tras 15 días sin aparecer:', gone.size);
+                    }
+                } catch (e) { console.warn('[Limpieza] error:', e); }
+                if (seenDirty) { try { localStorage.setItem(STORAGE_CONFIG.SEEN_KEY, JSON.stringify(seen)); } catch (e) {} }
 
                 const master = Array.from(masterMap.values());
 
@@ -698,8 +771,9 @@ html.lite .is-live .time{color:var(--accent-blue)}
                 if (!cached) return [];
                 try {
                     const cacheObj = JSON.parse(cached);
-                    const isExpired = (Date.now() - cacheObj.timestamp) > STORAGE_CONFIG.EXPIRATION_MS;
-                    return isExpired ? [] : (cacheObj.data || []);
+                    // La caducidad ya no es de toda la caché a la vez: cada hash caduca por separado
+                    // (ver la limpieza por hash en _init()).
+                    return cacheObj.data || [];
                 } catch (e) { return []; }
             },
             // Quita de un nombre cualquier resto de hash/ID (trozos hexadecimales largos, "id=", "acestream://"...)
@@ -2252,6 +2326,16 @@ html.lite .is-live .time{color:var(--accent-blue)}
                 const cur = this.getTriedCycle(canon);
                 db[canon] = { ts: Date.now(), ids: cur.includes(id) ? cur : [...cur, id] };
                 try { localStorage.setItem(this.TRIED_KEY, JSON.stringify(db)); } catch (e) {}
+            },
+            pruneTried(gone) {
+                const db = this._readTried(); let changed = false;
+                for (const canon of Object.keys(db)) {
+                    const e = db[canon];
+                    if (!e || !Array.isArray(e.ids)) continue;
+                    const ids = e.ids.filter(id => !gone.has(String(id).toLowerCase()));
+                    if (ids.length !== e.ids.length) { changed = true; if (ids.length) db[canon] = { ...e, ids }; else delete db[canon]; }
+                }
+                if (changed) { try { localStorage.setItem(this.TRIED_KEY, JSON.stringify(db)); } catch (e) {} }
             },
             unmarkTried(canon, id) {
                 const db = this._readTried();

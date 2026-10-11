@@ -2333,11 +2333,32 @@ html.lite .is-live .time{color:var(--accent-blue)}
                 clearTimeout(this.longPressTimer);
             },
 
+            _okTimer: null,
+            _okName: '',
+            OK_DOUBLE_MS: 350, // ventana para la doble pulsación de OK en modo flechas
             handleChannelClick(event, channelName) {
                 // Clicks sintéticos que genera la TV al pulsar OK: ya los gestiona el handler de teclado.
                 if (Date.now() - this.keyHandledAt < 700) { this.isLongPress = false; return; }
                 if (!this.isLongPress) {
-                    this.playBestOrNext(channelName);
+                    if (window.isSideNav && window.isSideNav()) {
+                        // Modo flechas: OK una vez = reproducir (tras una espera mínima de 350 ms),
+                        // OK dos veces seguidas en el mismo canal = desplegar/cerrar sus enlaces.
+                        const btn = event.currentTarget;
+                        if (this._okTimer && this._okName === channelName) {
+                            clearTimeout(this._okTimer);
+                            this._okTimer = null;
+                            this.openChannelDropdown(btn, channelName);
+                        } else {
+                            if (this._okTimer) clearTimeout(this._okTimer);
+                            this._okName = channelName;
+                            this._okTimer = setTimeout(() => {
+                                this._okTimer = null;
+                                this.playBestOrNext(channelName);
+                            }, this.OK_DOUBLE_MS);
+                        }
+                    } else {
+                        this.playBestOrNext(channelName);
+                    }
                 }
                 this.isLongPress = false;
             },            TRIED_KEY: 'ace_tried_cycle',
@@ -2843,63 +2864,6 @@ html.lite .is-live .time{color:var(--accent-blue)}
                     if (r.top < margin) window.scrollBy(0, r.top - margin);
                     else if (r.bottom > vh - margin) window.scrollBy(0, r.bottom - (vh - margin));
                 });
-            })();
-
-            // --- Botón ATRÁS del mando (modo flechas) ---
-            // Con el foco en un canal: ATRÁS despliega sus enlaces. Con un desglose abierto: ATRÁS lo cierra.
-            // En TV Bro un ATRÁS corto no hace nada, así que se capta de dos formas:
-            //  1) keydown de las teclas típicas de "atrás" (Escape, GoBack, keyCode 4...), por si el navegador las envía;
-            //  2) un estado de historial "centinela": ATRÁS lo consume y dispara 'popstate' en vez de no hacer nada.
-            // (Solo se arma en modo flechas, para no alterar el botón atrás en móvil/tablet.)
-            (() => {
-                const BACK_KEYS = { Escape: 1, Backspace: 1, BrowserBack: 1, GoBack: 1, XF86Back: 1, 27: 1, 8: 1, 4: 1, 461: 1, 10009: 1 };
-                const MENU_KEYS = { ContextMenu: 1, Menu: 1, Info: 1, 93: 1, 82: 1, 457: 1 };
-                const ARROW_CODES = { ArrowUp: 1, ArrowDown: 1, ArrowLeft: 1, ArrowRight: 1, 37: 1, 38: 1, 39: 1, 40: 1 };
-                let lastBack = 0, armed = false;
-
-                const isTyping = (t) => t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable);
-                const ownerOf = (dd) => (dd && dd.previousElementSibling) ? dd.previousElementSibling.querySelector('[data-ch]') : null;
-
-                // Devuelve true si ha hecho algo (abrir/cerrar) para poder bloquear el comportamiento por defecto
-                const backAction = () => {
-                    const now = Date.now();
-                    if (now - lastBack < 400) return true; // keydown + popstate de la misma pulsación: solo cuenta una
-                    lastBack = now;
-                    const open = document.querySelector('.channel-dropdown.active');
-                    if (open) {
-                        const owner = ownerOf(open);
-                        UIManager.closeAllChannelDropdowns();
-                        if (owner && owner.isConnected) { try { owner.focus({ preventScroll: true }); } catch (e) { owner.focus(); } }
-                        return true;
-                    }
-                    if (!window.isSideNav()) { lastBack = 0; return false; }
-                    const cur = document.activeElement;
-                    const btn = cur && cur.closest ? cur.closest('[data-ch]') : null;
-                    if (btn) { UIManager.openChannelDropdown(btn, decodeURIComponent(btn.dataset.ch)); return true; }
-                    return true; // foco en otro sitio (barra lateral, buscador...): ATRÁS no hace nada, como antes
-                };
-
-                const arm = () => {
-                    if (armed) return;
-                    try { history.pushState({ ace: 1 }, '', location.href); armed = true; } catch (e) {}
-                };
-                window.addEventListener('popstate', () => {
-                    if (!armed) return;
-                    armed = false;
-                    backAction();
-                    if (window.isSideNav()) arm();
-                });
-
-                window.addEventListener('keydown', (e) => {
-                    if (e.altKey || e.ctrlKey || e.metaKey) return;
-                    if ((ARROW_CODES[e.key] || ARROW_CODES[e.keyCode]) && window.isSideNav()) { arm(); return; }
-                    if (isTyping(e.target)) return;
-                    if (BACK_KEYS[e.key] || BACK_KEYS[e.keyCode] || MENU_KEYS[e.key] || MENU_KEYS[e.keyCode]) {
-                        if (backAction()) { e.preventDefault(); e.stopPropagation(); }
-                    }
-                }, true);
-
-                if (window.isSideNav()) arm();
             })();
 
             let touchstartX = 0; let touchendX = 0;

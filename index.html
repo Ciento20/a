@@ -1416,6 +1416,26 @@ html.lite .is-live .time{color:var(--accent-blue)}
                 const m = String(logo || '').match(/movistarplus\.es\/.*?\/canal\/([^\/?#]+?)\.png/i);
                 return m ? m[1].toLowerCase() : '';
             },
+            // Códigos del addon para canales cuyo logo no es de movistarplus.es (nombre limpio -> código)
+            ADDON_CODES: { 'DAZN F1': 'mvf1', 'EUROSPORT 1': 'esp', 'EUROSPORT 2': 'esp2', 'CALLE 13': 'cl13' },
+            // Nombre exacto de cada canal en el addon (código -> nombre, con sus mayúsculas), para que no se dupliquen
+            CODE_NAMES: {
+                'inteua': '1+1 Internacional', '24h': '24 Horas', 'aljaze': 'Al Jazeera English', 'a3': 'Antena 3',
+                'aragon': 'Aragón TV Int', 'atress': 'Atreseries', 'axn': 'AXN', 'set': 'AXN Movies', 'baby': 'Baby TV',
+                'bbcear': 'BBC Earth', 'bbfoo': 'BBC Food', 'bbhis': 'BBC History', 'bbclif': 'BBC Lifestyle',
+                'bbc': 'BBC News', 'bbdra': 'BBC Series', 'bbgea': 'BBC Top Gear',
+                'm1sd': 'DAZN 1', 'm2sd': 'DAZN 2', 'dazn4': 'DAZN 4', 'mvf1': 'DAZN F1', 'daznli': 'DAZN LALIGA',
+                'dazmot': 'DAZN MotoGP', 'esp': 'Eurosport 1', 'esp2': 'Eurosport 2'
+            },
+            // Nombres del addon sin código conocido: se buscan por el nombre limpio en mayúsculas
+            ADDON_NAMES: ['DAZN 3', 'DAZN Baloncesto', 'DAZN Baloncesto 2', 'DAZN Baloncesto 3', 'DAZN LALIGA 2'],
+            nameByKey() {
+                if (!this._nbk) {
+                    this._nbk = {};
+                    Object.values(this.CODE_NAMES).concat(this.ADDON_NAMES).forEach(n => { this._nbk[this.addonClean(n)] = n; });
+                }
+                return this._nbk;
+            },
             posterUrl(u) { return 'https://wsrv.nl/?url=' + encodeURIComponent(u) + '&w=216&h=324&fit=contain&we&cbg=0000&output=png'; },
             // Lista para el addon: tvg-id = movistar-plus:<código> (o nombre limpio), nombre/grupo en mayúsculas y el mismo id y nombre en todos los enlaces de un canal
             buildAddonM3U() {
@@ -1432,11 +1452,12 @@ html.lite .is-live .time{color:var(--accent-blue)}
                         const use = this.prefs.alts ? items : items.slice(0, 1);
                         if (!use.length) return;
                         const logo = channelLogosMap[e.canon] || (items.find(i => i.logo) || {}).logo || '';
-                        const name = title(this.addonName(e.canon));
+                        const upName = title(this.addonName(e.canon));
                         const cands = [logo].concat(channelLogoAlt[e.canon] || [], items.map(i => i.logo));
-                        const code = cands.map(u => this.addonCode(u)).find(Boolean) || '';
+                        const code = cands.map(u => this.addonCode(u)).find(Boolean) || this.ADDON_CODES[this.addonClean(upName)] || '';
+                        const name = title((code && this.CODE_NAMES[code]) || this.nameByKey()[this.addonClean(upName)] || upName); // nombre exacto del addon si lo conocemos
                         if (!code) noCode.push(name);
-                        const id = code ? PREFIX + code : this.addonClean(name);
+                        const id = code ? PREFIX + code : this.addonClean(upName);
                         const img = logo ? (this.gist.poster ? this.posterUrl(logo) : logo) : '';
                         ch++;
                         use.forEach(it => {

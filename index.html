@@ -1409,9 +1409,8 @@ html.lite .is-live .time{color:var(--accent-blue)}
   .replace(/\s+/g,' ').trim(); return cleanId(v); },
             // Código de Movistar+ sacado del logo (.../canal/M1SD.png -> m1sd)
             addonCode(logo) {
-                const base = CONFIG.MOVISTAR_LOGO_BASE;
-                if (!logo || !String(logo).startsWith(base)) return '';
-                return ((String(logo).match(/\/([^\/]+?)\.png$/i) || [])[1] || '').toLowerCase();
+                const m = String(logo || '').match(/movistarplus\.es\/.*?\/canal\/([^\/?#]+?)\.png/i);
+                return m ? m[1].toLowerCase() : '';
             },
             posterUrl(u) { return 'https://wsrv.nl/?url=' + encodeURIComponent(u) + '&w=216&h=324&fit=contain&we&cbg=0000&output=png'; },
             // Lista para el addon: tvg-id = movistar-plus:<código> (o nombre limpio), nombre/grupo en mayúsculas y el mismo id y nombre en todos los enlaces de un canal
@@ -1421,6 +1420,7 @@ html.lite .is-live .time{color:var(--accent-blue)}
                 const PREFIX = 'movistar-plus:';
                 const lines = ['#EXTM3U'];
                 let n = 0, ch = 0;
+                const noCode = [];
                 this.SECTIONS.forEach(sec => {
                     this.data[sec.key].forEach(e => {
                         if (!this.isOn(e.canon)) return;
@@ -1429,7 +1429,9 @@ html.lite .is-live .time{color:var(--accent-blue)}
                         if (!use.length) return;
                         const logo = channelLogosMap[e.canon] || (items.find(i => i.logo) || {}).logo || '';
                         const name = title(this.addonName(e.canon));
-                        const code = this.addonCode(logo);
+                        const cands = [logo].concat(channelLogoAlt[e.canon] || [], items.map(i => i.logo));
+                        const code = cands.map(u => this.addonCode(u)).find(Boolean) || '';
+                        if (!code) noCode.push(name);
                         const id = code ? PREFIX + code : this.addonClean(name);
                         const img = logo ? (this.gist.poster ? this.posterUrl(logo) : logo) : '';
                         ch++;
@@ -1440,7 +1442,7 @@ html.lite .is-live .time{color:var(--accent-blue)}
                         });
                     });
                 });
-                return { text: lines.join('\n') + '\n', count: n, channels: ch };
+                return { text: lines.join('\n') + '\n', count: n, channels: ch, noCode };
             },
             // Crea el Gist si no existía y, si ya existe, reescribe su archivo (el enlace raw no cambia)
             async uploadGist() {
@@ -1449,7 +1451,7 @@ html.lite .is-live .time{color:var(--accent-blue)}
                 const token = (g.token || '').trim();
                 if (!token) { this.showMsg('Pon primero el token de GitHub (con permiso gist).'); return; }
                 const file = (g.file || '').trim().replace(/[\\\/]+/g, '') || 'canales.m3u';
-                const { text, count, channels } = this.buildAddonM3U();
+                const { text, count, channels, noCode } = this.buildAddonM3U();
                 if (count === 0) return;
                 const btn = this.overlay.querySelector('#exp-gup');
                 const label = btn.textContent;
@@ -1478,7 +1480,7 @@ html.lite .is-live .time{color:var(--accent-blue)}
                     g.id = j.id; g.file = file; this.saveGist(); this.fillGist();
                     const link = 'https://gist.githubusercontent.com/' + j.owner.login + '/' + j.id + '/raw/' + file;
                     const what = (oldId && !renewed) ? 'Gist actualizado' : 'Gist creado';
-                    this.showMsg(what + ' (' + channels + (channels === 1 ? ' canal' : ' canales') + ' · ' + count + (count === 1 ? ' enlace' : ' enlaces') + ').' + (renewed ? ' El anterior ya no existía: el enlace es nuevo.' : ''), link, true);
+                    this.showMsg(what + ' (' + channels + (channels === 1 ? ' canal' : ' canales') + ' · ' + count + (count === 1 ? ' enlace' : ' enlaces') + ').' + (renewed ? ' El anterior ya no existía: el enlace es nuevo.' : '') + (noCode.length ? ' Sin código de Movistar (usan el nombre como id y puede que no se sincronicen): ' + noCode.join(', ') + '.' : ' Todos llevan código de Movistar.'), link, true);
                 } catch (err) {
                     this.showMsg('No se pudo conectar con GitHub: ' + (err && err.message ? err.message : err));
                 } finally {

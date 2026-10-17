@@ -1221,6 +1221,8 @@ html.lite .is-live .time{color:var(--accent-blue)}
                                 <input id="exp-gfile" placeholder="canales.m3u" style="flex:1 1 40%;background:var(--channel-bg);color:var(--text-main);border:1px solid var(--border-color);border-radius:10px;padding:9px 10px;font-size:16px;box-sizing:border-box;min-width:0;">
                                 <input id="exp-gid" placeholder="ID del Gist (vacío = crea uno)" autocomplete="off" style="flex:1 1 60%;background:var(--channel-bg);color:var(--text-main);border:1px solid var(--border-color);border-radius:10px;padding:9px 10px;font-size:16px;box-sizing:border-box;min-width:0;">
                             </div>
+                            <input id="exp-gprefix" placeholder="Prefijo del tvg-id (por defecto movistar-plus:)" autocomplete="off" autocapitalize="off" spellcheck="false" style="width:100%;background:var(--channel-bg);color:var(--text-main);border:1px solid var(--border-color);border-radius:10px;padding:9px 10px;font-size:16px;box-sizing:border-box;min-width:0;">
+                            <div style="font-size:.62rem;color:var(--text-muted);margin-top:-2px;">tvg-id = prefijo + código de Movistar (p. ej. movistar-plus:m1sd). Si no sincroniza, déjalo vacío para usar solo el código (m1sd).</div>
                             <label style="display:flex;align-items:center;gap:8px;font-size:.7rem;color:var(--text-muted);cursor:pointer;">
                                 <input type="checkbox" id="exp-gposter" style="accent-color:var(--accent-blue);width:16px;height:16px;"> Logos en formato póster (wsrv.nl)
                             </label>
@@ -1240,6 +1242,7 @@ html.lite .is-live .time{color:var(--accent-blue)}
                 gs('#exp-gtoken', 'token');
                 gs('#exp-gfile', 'file');
                 gs('#exp-gid', 'id', (el) => (el.value.match(/[0-9a-f]{20,40}/i) || [el.value.trim()])[0]);
+                gs('#exp-gprefix', 'prefix', (el) => el.value.trim());
                 gs('#exp-gposter', 'poster', (el) => el.checked);
                 ov.querySelector('#exp-gup').onclick = () => this.uploadGist();
                 ov.querySelector('#exp-alts').onchange = (e) => { this.prefs.alts = e.target.checked; this.savePrefs(); this.refresh(); };
@@ -1383,13 +1386,13 @@ html.lite .is-live .time{color:var(--accent-blue)}
             },
             // ===== Subida al Gist (formato addon) =====
             GIST_KEY: 'export_gist',
-            gist: { token: '', id: '', file: 'canales.m3u', poster: true },
+            gist: { token: '', id: '', file: 'canales.m3u', poster: true, prefix: 'movistar-plus:' },
             uploading: false,
             loadGist() {
                 try {
                     const g = JSON.parse(localStorage.getItem(this.GIST_KEY) || 'null') || {};
-                    this.gist = { token: g.token || '', id: g.id || '', file: g.file || 'canales.m3u', poster: g.poster !== false };
-                } catch (e) { this.gist = { token: '', id: '', file: 'canales.m3u', poster: true }; }
+                    this.gist = { token: g.token || '', id: g.id || '', file: g.file || 'canales.m3u', poster: g.poster !== false, prefix: typeof g.prefix === 'string' ? g.prefix : 'movistar-plus:' };
+                } catch (e) { this.gist = { token: '', id: '', file: 'canales.m3u', poster: true, prefix: 'movistar-plus:' }; }
             },
             saveGist() { try { localStorage.setItem(this.GIST_KEY, JSON.stringify(this.gist)); } catch (e) {} },
             fillGist() {
@@ -1397,6 +1400,7 @@ html.lite .is-live .time{color:var(--accent-blue)}
                 q('#exp-gtoken').value = this.gist.token;
                 q('#exp-gfile').value = this.gist.file;
                 q('#exp-gid').value = this.gist.id;
+                q('#exp-gprefix').value = this.gist.prefix;
                 q('#exp-gposter').checked = this.gist.poster;
             },
             // Mismas reglas que el generador: nombre en mayúsculas con M+ -> MOVISTAR+
@@ -1417,7 +1421,7 @@ html.lite .is-live .time{color:var(--accent-blue)}
             buildAddonM3U() {
                 const attr = (v) => String(v || '').replace(/"/g, "'").replace(/[\r\n]+/g, ' ');
                 const title = (v) => String(v || '').replace(/[,\r\n]+/g, ' ').replace(/\s{2,}/g, ' ').trim();
-                const PREFIX = 'movistar-plus:';
+                const PREFIX = typeof this.gist.prefix === 'string' ? this.gist.prefix.trim() : 'movistar-plus:'; // vacío = solo el código
                 const lines = ['#EXTM3U'];
                 let n = 0, ch = 0;
                 const noCode = [];
